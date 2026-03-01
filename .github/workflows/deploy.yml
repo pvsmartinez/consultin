@@ -18,10 +18,7 @@ jobs:
       - name: Apply pending migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          supabase db push \
-            --db-url "${{ secrets.SUPABASE_DB_URL }}" \
-            --yes
+        run: supabase --yes db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
 
   # Vercel deploys automatically via GitHub integration on the same push.
   # No explicit step needed — it runs in parallel with this job.
