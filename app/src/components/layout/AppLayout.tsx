@@ -34,7 +34,6 @@ const navItems = [
   { to: '/relatorios',    icon: ChartLineUp,           label: 'Relatórios',     labelProfissional: 'Relatórios',     permission: 'canViewFinancial' as const },
   { to: '/whatsapp',      icon: WhatsappLogo,          label: 'Mensagens',      labelProfissional: 'Mensagens',      permission: 'canViewWhatsApp' as const },
   { to: '/configuracoes', icon: Gear,                  label: 'Configurações',  labelProfissional: 'Configurações',  permission: 'canManageSettings' as const },
-  { to: '/meu-perfil',    icon: UserCircle,            label: 'Meu Perfil',     labelProfissional: 'Meu Perfil',     permission: null },
 ]
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
@@ -129,9 +128,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </NavLink>
           )}
           {profile && (
-            <div className="px-3 py-1">
+            <NavLink
+              to="/minha-conta"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
+                  isActive ? 'bg-gray-100' : 'hover:bg-gray-50'
+                }`
+              }
+            >
+              {profile.avatarUrl
+                ? <img src={profile.avatarUrl} alt="avatar" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                : <UserCircle size={18} className="text-gray-400 flex-shrink-0" />
+              }
               <p className="text-xs font-medium text-gray-600 truncate">{profile.name}</p>
-            </div>
+            </NavLink>
           )}
           <button
             onClick={signOut}

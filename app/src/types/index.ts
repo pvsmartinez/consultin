@@ -237,6 +237,7 @@ export interface UserProfile {
   roles: UserRole[]
   name: string
   isSuperAdmin: boolean
+  avatarUrl: string | null
 }
 
 // Role priority for display and RLS fallback (highest first)

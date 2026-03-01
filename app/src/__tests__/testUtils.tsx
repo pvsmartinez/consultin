@@ -33,6 +33,7 @@ export const MOCK_ADMIN_PROFILE: UserProfile = {
   roles: ['admin'],
   name: 'Admin User',
   isSuperAdmin: false,
+  avatarUrl: null,
 }
 
 export const MOCK_RECEPTIONIST_PROFILE: UserProfile = {
@@ -41,6 +42,7 @@ export const MOCK_RECEPTIONIST_PROFILE: UserProfile = {
   roles: ['receptionist'],
   name: 'Recepcionist User',
   isSuperAdmin: false,
+  avatarUrl: null,
 }
 
 export const MOCK_PROFESSIONAL_PROFILE: UserProfile = {
@@ -49,6 +51,7 @@ export const MOCK_PROFESSIONAL_PROFILE: UserProfile = {
   roles: ['professional'],
   name: 'Professional User',
   isSuperAdmin: false,
+  avatarUrl: null,
 }
 
 export const MOCK_PATIENT_PROFILE: UserProfile = {
@@ -57,6 +60,7 @@ export const MOCK_PATIENT_PROFILE: UserProfile = {
   roles: ['patient'],
   name: 'Patient User',
   isSuperAdmin: false,
+  avatarUrl: null,
 }
 
 /**

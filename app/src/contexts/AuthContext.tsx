@@ -17,6 +17,7 @@ interface AuthContextValue {
   signInWithApple: () => Promise<void>
   signOut: () => Promise<void>
   hasPermission: (key: string) => boolean
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -49,7 +50,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   )
   const query = supabase
     .from('user_profiles')
-    .select('id, clinic_id, roles, name, is_super_admin')
+    .select('id, clinic_id, roles, name, is_super_admin, avatar_url')
     .eq('id', userId)
     .single()
     .then(({ data }) => {
@@ -60,6 +61,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
         roles: (data.roles as UserRole[]) ?? [],
         name: data.name as string,
         isSuperAdmin: (data.is_super_admin as boolean) ?? false,
+        avatarUrl: (data.avatar_url as string | null) ?? null,
       } as UserProfile
     })
   return Promise.race([query, timeout])
@@ -153,12 +155,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return mergedPermissions(profile.roles)[key] ?? false
   }
 
+  const refreshProfile = async () => {
+    const { data: { session: s } } = await supabase.auth.getSession()
+    if (!s) return
+    const p = await fetchProfile(s.user.id)
+    setProfile(p)
+    setCachedProfile(p)
+  }
+
   return (
     <AuthContext.Provider value={{
       session, profile, role: profile ? primaryRole(profile.roles) : null, loading,
       isSuperAdmin: profile?.isSuperAdmin ?? false,
       recoveryMode, clearRecoveryMode,
       signInWithEmail, signInWithGoogle, signInWithApple, signOut, hasPermission,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

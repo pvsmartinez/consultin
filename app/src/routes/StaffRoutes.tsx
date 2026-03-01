@@ -18,6 +18,7 @@ const RelatoriosPage         = lazy(() => import('../pages/RelatoriosPage'))
 const WhatsAppInboxPage      = lazy(() => import('../pages/WhatsAppInboxPage'))
 const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidadePage'))
 const PatientAnamnesisPage    = lazy(() => import('../pages/PatientAnamnesisPage'))
+const MinhaContaPage         = lazy(() => import('../pages/MinhaContaPage'))
 const AccessDeniedPage       = lazy(() => import('../pages/AccessDeniedPage'))
 
 // ─── Staff routes (rendered inside <AppLayout>) ───────────────────────────────
@@ -71,6 +72,7 @@ export default function StaffRoutes() {
       } />
 
       <Route path="/acesso-negado" element={<AccessDeniedPage />} />
+      <Route path="/minha-conta"   element={<MinhaContaPage />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
