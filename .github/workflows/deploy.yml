@@ -11,14 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      - name: Install psql
+        run: sudo apt-get install -y postgresql-client
 
       - name: Apply pending migrations
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase --yes db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: bash scripts/ci_migrate.sh
 
   # Vercel deploys automatically via GitHub integration on the same push.
   # No explicit step needed — it runs in parallel with this job.
