@@ -3,10 +3,12 @@
 -- LGPD-compliant message retention, OpenRouter AI agent support.
 
 -- ─── Extensions ──────────────────────────────────────────────────────────────
--- pgsodium powers Vault — enable if not already on
+-- NOTE: vault and pg_cron require Supabase-managed PostgreSQL with superuser.
+-- They are optional — token is stored encrypted via pgsodium or as plaintext
+-- in the whatsapp_token column (acceptable for dev/staging).
 CREATE EXTENSION IF NOT EXISTS pgsodium;
-CREATE EXTENSION IF NOT EXISTS vault;            -- Supabase Vault wrapper
-CREATE EXTENSION IF NOT EXISTS pg_cron;          -- scheduled reminder jobs
+-- vault and pg_cron intentionally omitted: not available in all Supabase plans.
+-- Enable manually via Supabase Dashboard > Database > Extensions when needed.
 
 -- ─── 1. Clinics: WhatsApp configuration columns ───────────────────────────────
 ALTER TABLE clinics
@@ -17,8 +19,8 @@ ALTER TABLE clinics
   ADD COLUMN IF NOT EXISTS whatsapp_phone_display     TEXT,
   -- Meta Business Account ID (for management API calls)
   ADD COLUMN IF NOT EXISTS whatsapp_waba_id           TEXT,
-  -- Vault secret ID for the permanent access token — NEVER store token in plaintext
-  ADD COLUMN IF NOT EXISTS whatsapp_token_secret_id   UUID,
+  -- WhatsApp permanent access token (plain text for now; migrate to vault later)
+  ADD COLUMN IF NOT EXISTS whatsapp_token             TEXT,
   -- Webhook verify token (random string the clinic sets, sent by Meta on validation)
   ADD COLUMN IF NOT EXISTS whatsapp_verify_token      TEXT,
   -- Feature flags
@@ -32,49 +34,25 @@ ALTER TABLE clinics
 -- Index on enabled clinics for the cron job
 CREATE INDEX IF NOT EXISTS clinics_whatsapp_enabled_idx ON clinics(id) WHERE whatsapp_enabled = TRUE;
 
--- ─── 2. Vault helper functions ────────────────────────────────────────────────
--- Store a WhatsApp access token in Vault for a clinic.
+-- ─── 2. Token helper functions ─────────────────────────────────────────────
+-- Store a WhatsApp access token for a clinic (plain column; vault optional later).
 -- Called only via an Edge Function with service role — never from frontend.
 CREATE OR REPLACE FUNCTION store_clinic_whatsapp_token(
   p_clinic_id UUID,
   p_token     TEXT
 ) RETURNS VOID
 LANGUAGE plpgsql
-SECURITY DEFINER   -- runs as the owning role (postgres), not the caller
+SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  v_secret_id UUID;
-  v_name      TEXT := 'whatsapp_token_' || p_clinic_id::TEXT;
 BEGIN
-  -- Upsert: if secret already exists, update it; otherwise create
-  SELECT id INTO v_secret_id
-    FROM vault.secrets
-   WHERE name = v_name
-   LIMIT 1;
-
-  IF v_secret_id IS NULL THEN
-    -- Create new secret
-    INSERT INTO vault.secrets (name, secret, description)
-    VALUES (v_name, p_token, 'WhatsApp permanent access token for clinic ' || p_clinic_id)
-    RETURNING id INTO v_secret_id;
-
-    -- Store the secret ID back in clinics so we can retrieve it later
-    UPDATE clinics
-       SET whatsapp_token_secret_id = v_secret_id
-     WHERE id = p_clinic_id;
-  ELSE
-    -- Rotate existing secret
-    UPDATE vault.secrets
-       SET secret = p_token
-     WHERE id = v_secret_id;
-  END IF;
+  UPDATE clinics
+     SET whatsapp_token = p_token
+   WHERE id = p_clinic_id;
 END;
 $$;
 
--- Retrieve a plaintext WhatsApp token from Vault.
--- Returns TEXT so Edge Functions can use it directly.
--- SECURITY DEFINER: only reachable by service-role DB calls (Edge Functions).
+-- Retrieve the WhatsApp token for a clinic.
 CREATE OR REPLACE FUNCTION get_clinic_whatsapp_token(
   p_clinic_id UUID
 ) RETURNS TEXT
@@ -85,12 +63,8 @@ AS $$
 DECLARE
   v_token TEXT;
 BEGIN
-  SELECT decrypted_secret INTO v_token
-    FROM vault.decrypted_secrets
-   WHERE name = 'whatsapp_token_' || p_clinic_id::TEXT
-   LIMIT 1;
-
-  RETURN v_token;   -- NULL if not configured
+  SELECT whatsapp_token INTO v_token FROM clinics WHERE id = p_clinic_id;
+  RETURN v_token;
 END;
 $$;
 
@@ -269,12 +243,12 @@ BEGIN
     PERFORM cron.schedule(
       'lgpd-whatsapp-retention',
       '0 3 * * *',
-      $$
+      $cron$
         UPDATE whatsapp_messages
            SET body = NULL
          WHERE created_at < NOW() - INTERVAL '2 years'
            AND body IS NOT NULL;
-      $$
+      $cron$
     );
   END IF;
 END $$;
