@@ -91,7 +91,7 @@ const { error: profileErr } = await supabase.from('user_profiles').upsert(
   {
     id:             authUserId,
     clinic_id:      null,    // super admins are not tied to a single clinic
-    role:           'admin',
+    roles:          ['admin'],
     name,
     is_super_admin: true,
   },
