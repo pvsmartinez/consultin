@@ -5,6 +5,13 @@ import { mapPatient } from '../utils/mappers'
 import type { Patient, PatientInput } from '../types'
 import type { Json } from '../types'
 
+// Columns for patient lists — excludes anamnesis_data (potentially large JSONB)
+// Full select('*') is used only on detail pages (usePatient / useMyPatient)
+const PATIENT_LIST_COLS =
+  'id,clinic_id,user_id,name,cpf,rg,birth_date,sex,phone,email,' +
+  'address_street,address_number,address_complement,address_neighborhood,' +
+  'address_city,address_state,address_zip,notes,custom_fields,created_at'
+
 // Map camelCase PatientInput -> snake_case for DB
 function mapInput(input: PatientInput) {
   return {
@@ -37,14 +44,14 @@ export function usePatients(search = '') {
     queryFn: async () => {
       let q = supabase
         .from('patients')
-        .select('*')
+        .select(PATIENT_LIST_COLS)
         .order('name')
       if (search.trim()) {
         q = q.or(`name.ilike.%${search}%,cpf.ilike.%${search}%,phone.ilike.%${search}%`)
       }
       const { data, error } = await q
       if (error) throw new Error(error.message)
-      return (data ?? []).map(mapPatient)
+      return ((data ?? []) as unknown[]).map(r => mapPatient(r as Record<string, unknown>))
     },
     enabled: !!profile?.clinicId,
   })
