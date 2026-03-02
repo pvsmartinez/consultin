@@ -239,6 +239,7 @@ export interface UserProfile {
   name: string
   isSuperAdmin: boolean
   avatarUrl: string | null
+  permissionOverrides: Partial<Record<string, boolean>>  // per-user overrides on top of role defaults
 }
 
 // Role priority for display and RLS fallback (highest first)
@@ -253,13 +254,21 @@ export function primaryRole(roles: UserRole[] | undefined | null): UserRole {
   return 'patient'
 }
 
-/** Returns merged permission map — true if ANY role grants the permission. */
-export function mergedPermissions(roles: UserRole[] | undefined | null): Record<string, boolean> {
-  if (!Array.isArray(roles)) return Object.fromEntries(Object.keys(ROLE_PERMISSIONS.admin).map(k => [k, false]))
+/** Returns merged permission map — true if ANY role grants the permission, then overrides applied. */
+export function mergedPermissions(
+  roles: UserRole[] | undefined | null,
+  overrides: Partial<Record<string, boolean>> = {},
+): Record<string, boolean> {
+  if (!Array.isArray(roles)) return Object.fromEntries(Object.keys(ROLE_PERMISSIONS.admin).map(k => [k, overrides[k] ?? false]))
   const keys = Object.keys(ROLE_PERMISSIONS.admin)
-  return Object.fromEntries(
+  const base = Object.fromEntries(
     keys.map(k => [k, roles.some(r => (ROLE_PERMISSIONS[r] as Record<string, boolean>)[k] === true)])
   )
+  // Per-user overrides win over role defaults
+  const overrideEntries = Object.entries(overrides).filter(
+    (entry): entry is [string, boolean] => entry[1] !== undefined
+  )
+  return { ...base, ...Object.fromEntries(overrideEntries) }
 }
 
 // What each role is allowed to do
@@ -305,6 +314,21 @@ export const ROLE_PERMISSIONS = {
     canManageOwnAvailability: false,
   },
 } satisfies Record<UserRole, Record<string, boolean>>
+
+/** Typed key for any permission in ROLE_PERMISSIONS */
+export type PermissionKey = keyof typeof ROLE_PERMISSIONS['admin']
+
+/** Human-readable labels for each permission (used in admin UI) */
+export const PERMISSION_LABELS: Record<PermissionKey, string> = {
+  canViewPatients:          'Ver pacientes',
+  canManagePatients:        'Editar pacientes',
+  canManageAgenda:          'Gerenciar agenda',
+  canManageProfessionals:   'Gerenciar profissionais',
+  canViewFinancial:         'Ver financeiro',
+  canManageSettings:        'Configurações da clínica',
+  canViewWhatsApp:          'Caixa de entrada WhatsApp',
+  canManageOwnAvailability: 'Gerenciar própria disponibilidade',
+}
 
 // ─── Clinic Invite ────────────────────────────────────────────────────────────
 export interface ClinicInvite {

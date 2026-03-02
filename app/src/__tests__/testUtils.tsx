@@ -34,6 +34,7 @@ export const MOCK_ADMIN_PROFILE: UserProfile = {
   name: 'Admin User',
   isSuperAdmin: false,
   avatarUrl: null,
+  permissionOverrides: {},
 }
 
 export const MOCK_RECEPTIONIST_PROFILE: UserProfile = {
@@ -43,6 +44,7 @@ export const MOCK_RECEPTIONIST_PROFILE: UserProfile = {
   name: 'Recepcionist User',
   isSuperAdmin: false,
   avatarUrl: null,
+  permissionOverrides: {},
 }
 
 export const MOCK_PROFESSIONAL_PROFILE: UserProfile = {
@@ -52,6 +54,7 @@ export const MOCK_PROFESSIONAL_PROFILE: UserProfile = {
   name: 'Professional User',
   isSuperAdmin: false,
   avatarUrl: null,
+  permissionOverrides: {},
 }
 
 export const MOCK_PATIENT_PROFILE: UserProfile = {
@@ -61,6 +64,7 @@ export const MOCK_PATIENT_PROFILE: UserProfile = {
   name: 'Patient User',
   isSuperAdmin: false,
   avatarUrl: null,
+  permissionOverrides: {},
 }
 
 /**

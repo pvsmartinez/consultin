@@ -46,12 +46,13 @@ function setCachedProfile(p: UserProfile | null) {
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
-  const doFetch = () => supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const doFetch = () => (supabase as any)
     .from('user_profiles')
-    .select('id, clinic_id, roles, name, is_super_admin, avatar_url')
+    .select('id, clinic_id, roles, name, is_super_admin, avatar_url, permission_overrides')
     .eq('id', userId)
     .single()
-    .then(({ data }) => {
+    .then(({ data }: { data: Record<string, unknown> | null }) => {
       if (!data) return null
       return {
         id: data.id as string,
@@ -60,6 +61,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
         name: data.name as string,
         isSuperAdmin: (data.is_super_admin as boolean) ?? false,
         avatarUrl: (data.avatar_url as string | null) ?? null,
+        permissionOverrides: (data.permission_overrides as Record<string, boolean>) ?? {},
       } as UserProfile
     })
 
@@ -186,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = (key: string): boolean => {
     if (!profile) return false
-    return mergedPermissions(profile.roles)[key] ?? false
+    return mergedPermissions(profile.roles, profile.permissionOverrides)[key] ?? false
   }
 
   const refreshProfile = async () => {

@@ -5,9 +5,10 @@ import { mapClinic } from '../utils/mappers'
 import type { Clinic, UserRole } from '../types'
 
 export interface ClinicMember {
-  id:    string
-  name:  string
-  roles: UserRole[]
+  id:                 string
+  name:               string
+  roles:              UserRole[]
+  permissionOverrides: Partial<Record<string, boolean>>
 }
 
 export function useClinic() {
@@ -86,16 +87,18 @@ export function useClinicMembers() {
     queryKey: ['clinic-members', clinicId],
     enabled: !!clinicId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from('user_profiles')
-        .select('id, name, roles')
+        .select('id, name, roles, permission_overrides')
         .eq('clinic_id', clinicId!)
         .order('name')
       if (error) throw error
-      return (data ?? []).map(r => ({
-        id:    r.id as string,
-        name:  r.name as string,
-        roles: (r.roles as UserRole[]) ?? [],
+      return ((data ?? []) as Record<string, unknown>[]).map(r => ({
+        id:                  r.id as string,
+        name:                r.name as string,
+        roles:               (r.roles as UserRole[]) ?? [],
+        permissionOverrides: (r.permission_overrides as Record<string, boolean>) ?? {},
       }))
     },
   })
@@ -105,10 +108,20 @@ export function useUpdateMemberRole() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
   return useMutation({
-    mutationFn: async ({ memberId, roles }: { memberId: string; roles: UserRole[] }) => {
+    mutationFn: async ({
+      memberId,
+      roles,
+      permissionOverrides,
+    }: {
+      memberId: string
+      roles: UserRole[]
+      permissionOverrides?: Partial<Record<string, boolean>>
+    }) => {
+      const update: Record<string, unknown> = { roles }
+      if (permissionOverrides !== undefined) update.permission_overrides = permissionOverrides
       const { error } = await supabase
         .from('user_profiles')
-        .update({ roles })
+        .update(update)
         .eq('id', memberId)
       if (error) throw error
     },
