@@ -46,12 +46,7 @@ function setCachedProfile(p: UserProfile | null) {
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
-  // Must be shorter than the outer auth safety timeout (3 000 ms) so it
-  // actually fires and the catch branch can decide what to show.
-  const timeout = new Promise<null>((_, reject) =>
-    setTimeout(() => reject(new Error('fetchProfile timeout')), 2500)
-  )
-  const query = supabase
+  const doFetch = () => supabase
     .from('user_profiles')
     .select('id, clinic_id, roles, name, is_super_admin, avatar_url')
     .eq('id', userId)
@@ -67,7 +62,21 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
         avatarUrl: (data.avatar_url as string | null) ?? null,
       } as UserProfile
     })
-  return Promise.race([query, timeout])
+
+  // Try up to 3 times with 8s timeout each, in case of transient network delay
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const timeout = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('fetchProfile timeout')), 8000)
+    )
+    try {
+      const result = await Promise.race([doFetch(), timeout])
+      if (result !== null) return result
+    } catch (e) {
+      if (attempt === 2) throw e
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+    }
+  }
+  return null
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -87,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Safety net: if auth never resolves (token refresh hang, network issue),
-    // clear state and show login after 3s. Do NOT await signOut — it can hang too.
+    // clear state and show login after 12s. Do NOT await signOut — it can hang too.
     const timeout = setTimeout(() => {
       if (settled) return
       console.warn('Auth timed out — clearing session')
@@ -97,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCachedProfile(null)
       setLoading(false)
       settle()
-    }, 3000)
+    }, 12000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       settle()
