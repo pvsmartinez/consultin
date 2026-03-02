@@ -1073,6 +1073,17 @@ export type Database = {
     }
     Functions: {
       _normalise_cpf: { Args: { raw: string }; Returns: string }
+      admin_clinic_stats: {
+        Args: Record<string, never>
+        Returns: {
+          clinic_id: string
+          clinic_name: string
+          patients_count: number
+          professionals_count: number
+          appointments_total: number
+          appointments_this_month: number
+        }[]
+      }
       current_user_clinic_id: { Args: never; Returns: string }
       current_user_is_super_admin: { Args: never; Returns: boolean }
       current_user_role: {
@@ -1089,6 +1100,10 @@ export type Database = {
       get_clinic_whatsapp_token: {
         Args: { p_clinic_id: string }
         Returns: string
+      }
+      professional_patient_count: {
+        Args: { p_professional_id: string }
+        Returns: number
       }
       store_clinic_whatsapp_token: {
         Args: { p_clinic_id: string; p_token: string }

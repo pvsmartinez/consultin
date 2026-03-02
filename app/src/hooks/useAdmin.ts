@@ -63,6 +63,7 @@ async function callAdminFn<T>(
 export function useAdminClinics() {
   return useQuery({
     queryKey: ['admin', 'clinics'],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinics')
@@ -96,29 +97,26 @@ export function useCreateClinic() {
 export function useAdminProfiles() {
   return useQuery({
     queryKey: ['admin', 'profiles'],
+    staleTime: 2 * 60_000,
     queryFn: async () => {
+      // Single JOIN query instead of 2 round-trips
       const { data: profiles, error } = await supabase
         .from('user_profiles')
-        .select('id, name, roles, clinic_id, is_super_admin')
+        .select('id, name, roles, clinic_id, is_super_admin, clinics(id, name)')
         .order('name')
       if (error) throw error
 
-      const clinicIds = [...new Set(profiles?.map(p => p.clinic_id).filter(Boolean))]
-      let clinicNames: Record<string, string> = {}
-      if (clinicIds.length > 0) {
-        const { data: clinics } = await supabase
-          .from('clinics').select('id, name').in('id', clinicIds as string[])
-        clinicNames = Object.fromEntries((clinics ?? []).map(c => [c.id, c.name as string]))
-      }
-
-      return (profiles ?? []).map(p => ({
-        id:          p.id as string,
-        name:        p.name as string,
-        roles:       (p.roles as UserRole[]) ?? [],
-        clinicId:    p.clinic_id as string | null,
-        clinicName:  p.clinic_id ? (clinicNames[p.clinic_id] ?? 'Clínica desconhecida') : null,
-        isSuperAdmin: (p.is_super_admin as boolean) ?? false,
-      } satisfies AdminUserProfile))
+      return (profiles ?? []).map(p => {
+        const clinic = p.clinics as { id: string; name: string } | null
+        return {
+          id:          p.id as string,
+          name:        p.name as string,
+          roles:       (p.roles as UserRole[]) ?? [],
+          clinicId:    p.clinic_id as string | null,
+          clinicName:  clinic?.name ?? null,
+          isSuperAdmin: (p.is_super_admin as boolean) ?? false,
+        } satisfies AdminUserProfile
+      })
     },
   })
 }
@@ -167,53 +165,34 @@ export interface AdminOverview {
 export function useAdminOverview() {
   return useQuery<AdminOverview>({
     queryKey: ['admin', 'overview'],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
-      const now = new Date()
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-      const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString()
-
+      // 2 queries instead of 8 — per-clinic aggregations done in DB via RPC
       const [
-        { data: clinics,       error: e1 },
-        { count: totalUsers,   error: e2 },
-        { count: totalPatients, error: e3 },
-        { count: totalAppts,   error: e4 },
-        { data: patientsPC,    error: e5 },
-        { data: profsPC,       error: e6 },
-        { data: apptsMonth,    error: e7 },
-        { data: apptsTotal,    error: e8 },
+        { data: rows,        error: e1 },
+        { count: totalUsers, error: e2 },
       ] = await Promise.all([
-        supabase.from('clinics').select('id, name').order('name'),
-        supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('patients').select('*', { count: 'exact', head: true }),
-        supabase.from('appointments').select('*', { count: 'exact', head: true }),
-        supabase.from('patients').select('clinic_id'),
-        supabase.from('professionals').select('clinic_id').eq('active', true),
-        supabase.from('appointments').select('clinic_id').gte('starts_at', monthStart).lte('starts_at', monthEnd),
-        supabase.from('appointments').select('clinic_id'),
+        supabase.rpc('admin_clinic_stats'),
+        supabase.from('user_profiles').select('id', { count: 'exact', head: true }),
       ])
 
-      for (const err of [e1, e2, e3, e4, e5, e6, e7, e8]) {
-        if (err) throw err
-      }
+      if (e1) throw e1
+      if (e2) throw e2
 
-      // Count per clinic
-      const count = (rows: { clinic_id: string }[] | null, id: string) =>
-        (rows ?? []).filter(r => r.clinic_id === id).length
-
-      const perClinic: ClinicStats[] = (clinics ?? []).map(c => ({
-        clinicId:             c.id as string,
-        clinicName:           c.name as string,
-        patients:             count(patientsPC as { clinic_id: string }[], c.id as string),
-        professionals:        count(profsPC    as { clinic_id: string }[], c.id as string),
-        appointmentsThisMonth: count(apptsMonth as { clinic_id: string }[], c.id as string),
-        appointmentsTotal:    count(apptsTotal  as { clinic_id: string }[], c.id as string),
+      const perClinic: ClinicStats[] = (rows ?? []).map(r => ({
+        clinicId:              r.clinic_id,
+        clinicName:            r.clinic_name,
+        patients:              Number(r.patients_count),
+        professionals:         Number(r.professionals_count),
+        appointmentsThisMonth: Number(r.appointments_this_month),
+        appointmentsTotal:     Number(r.appointments_total),
       }))
 
       return {
-        totalClinics:      (clinics ?? []).length,
+        totalClinics:      perClinic.length,
         totalUsers:        totalUsers ?? 0,
-        totalPatients:     totalPatients ?? 0,
-        totalAppointments: totalAppts ?? 0,
+        totalPatients:     perClinic.reduce((s, r) => s + r.patients, 0),
+        totalAppointments: perClinic.reduce((s, r) => s + r.appointmentsTotal, 0),
         perClinic,
       }
     },
@@ -317,6 +296,7 @@ export interface ClinicSignupRequest {
 export function useSignupRequests() {
   return useQuery<ClinicSignupRequest[]>({
     queryKey: ['admin', 'signup-requests'],
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinic_signup_requests')

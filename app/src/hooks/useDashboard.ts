@@ -11,6 +11,7 @@ export function useClinicKPIs() {
     queryKey: ['dashboard-clinic-kpis', profile?.clinicId ?? null],
     // Super admins without a clinic selected must not run this query
     enabled: !!profile?.clinicId,
+    staleTime: 60_000,
     queryFn: async () => {
       const now = new Date()
       const todayStart = startOfDay(now).toISOString()
@@ -59,6 +60,7 @@ export function useProfessionalKPIs(email: string | undefined, userId: string | 
   return useQuery({
     queryKey: ['dashboard-professional-kpis', userId ?? email],
     enabled: !!(userId || email),
+    staleTime: 60_000,
     queryFn: async () => {
       type ProfRow = { id: string; name: string; specialty: string | null }
       // Primary: match by user_id — immune to email casing/formatting differences
@@ -97,11 +99,8 @@ export function useProfessionalKPIs(email: string | undefined, userId: string | 
           .lte('starts_at', todayEnd)
           .neq('status', 'cancelled'),
 
-        supabase
-          .from('appointments')
-          .select('patient_id')
-          .eq('professional_id', prof.id)
-          .neq('status', 'cancelled'),
+        // COUNT(DISTINCT patient_id) via RPC — avoids downloading all rows to JS
+        supabase.rpc('professional_patient_count', { p_professional_id: prof.id }),
 
         supabase
           .from('appointments')
@@ -113,9 +112,7 @@ export function useProfessionalKPIs(email: string | undefined, userId: string | 
           .limit(5),
       ])
 
-      const uniquePatients = new Set(
-        (patientsResult.data ?? []).map(r => r.patient_id as string)
-      ).size
+      const uniquePatients = (patientsResult.data as unknown as number) ?? 0
 
       return {
         profId:        prof.id as string,

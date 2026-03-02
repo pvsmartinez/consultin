@@ -26,6 +26,7 @@ export function useProfessionals() {
 
   const query = useQuery({
     queryKey: ['professionals', profile?.clinicId ?? null],
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('professionals')

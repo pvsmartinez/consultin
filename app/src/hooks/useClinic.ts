@@ -19,6 +19,7 @@ export function useClinic() {
   const query = useQuery({
     queryKey: ['clinic', clinicId],
     enabled: !!clinicId,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinics')
@@ -86,6 +87,7 @@ export function useClinicMembers() {
   return useQuery<ClinicMember[]>({
     queryKey: ['clinic-members', clinicId],
     enabled: !!clinicId,
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
