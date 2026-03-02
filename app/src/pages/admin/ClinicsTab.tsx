@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import {
   useAdminClinics, useCreateClinic, useUpdateClinic, useEnterClinic, useInviteUser,
   useAdminAuthUsers,
-  type AdminAuthUser,
 } from '../../hooks/useAdmin'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { USER_ROLE_LABELS } from '../../types'
@@ -23,7 +22,6 @@ import type { ClinicForm, CreateUserForm } from './types'
 
 export default function ClinicsTab() {
   const { data: clinics = [], isLoading } = useAdminClinics()
-  const { data: allUsers = [] }           = useAdminAuthUsers()
   const createClinic = useCreateClinic()
   const [showForm, setShowForm] = useState(false)
 
@@ -106,7 +104,7 @@ export default function ClinicsTab() {
 
       {/* Clinic list */}
       <div className="space-y-2">
-        {clinics.map(c => <ClinicRow key={c.id} clinic={c} allUsers={allUsers} />)}
+        {clinics.map(c => <ClinicRow key={c.id} clinic={c} />)}
         {!isLoading && clinics.length === 0 && (
           <p className="text-sm text-gray-500 text-center py-8">Nenhuma clínica cadastrada. Crie a primeira acima.</p>
         )}
@@ -117,7 +115,7 @@ export default function ClinicsTab() {
 
 // ─── Clinic Row (expandable) ──────────────────────────────────────────────────
 
-function ClinicRow({ clinic, allUsers }: { clinic: Clinic; allUsers: AdminAuthUser[] }) {
+function ClinicRow({ clinic }: { clinic: Clinic }) {
   const { profile } = useAuthContext()
   const [open,        setOpen]        = useState(false)
   const [editMode,    setEditMode]    = useState(false)
@@ -127,6 +125,8 @@ function ClinicRow({ clinic, allUsers }: { clinic: Clinic; allUsers: AdminAuthUs
   const enterClinic  = useEnterClinic()
   const inviteUser   = useInviteUser()
 
+  // Só carrega usuários quando a linha é expandida (evita cold start da edge function no load inicial)
+  const { data: allUsers = [], isLoading: loadingUsers } = useAdminAuthUsers({ enabled: open })
   const clinicUsers = allUsers.filter(u => u.clinicId === clinic.id)
 
   // ── Edit clinic form ───────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ function ClinicRow({ clinic, allUsers }: { clinic: Clinic; allUsers: AdminAuthUs
         </button>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs text-gray-500">{clinicUsers.length} usuário{clinicUsers.length !== 1 ? 's' : ''}</span>
+          <span className="text-xs text-gray-500">{open && !loadingUsers ? `${clinicUsers.length} usuário${clinicUsers.length !== 1 ? 's' : ''}` : '—'}</span>
           <button onClick={handleEnter} disabled={enterClinic.isPending}
             title="Entrar nesta clínica como admin (modo teste)"
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-green-400 border border-green-700/50 hover:border-green-500 hover:text-green-300 rounded-lg transition-colors disabled:opacity-40">

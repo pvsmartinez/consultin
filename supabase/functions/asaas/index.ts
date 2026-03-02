@@ -91,6 +91,14 @@ async function getAuthUser(
 
 // ─── Rota composta: ativar assinatura da clínica ──────────────────────────────
 
+interface CreditCardInput {
+  holderName: string
+  number: string
+  expiryMonth: string
+  expiryYear: string
+  ccv: string
+}
+
 interface ActivateInput {
   clinicId: string
   billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | 'UNDEFINED'
@@ -112,6 +120,7 @@ interface ActivateInput {
     city?: string
     state?: string
   }
+  creditCard?: CreditCardInput
 }
 
 async function handleActivateSubscription(req: Request): Promise<Response> {
@@ -122,9 +131,12 @@ async function handleActivateSubscription(req: Request): Promise<Response> {
     return err('Body inválido')
   }
 
-  const { clinicId, billingType, responsible, clinic } = body
+  const { clinicId, billingType, responsible, clinic, creditCard } = body
   if (!clinicId || !billingType || !responsible?.name || !responsible?.cpfCnpj) {
     return err('Campos obrigatórios: clinicId, billingType, responsible.name, responsible.cpfCnpj')
+  }
+  if (billingType === 'CREDIT_CARD' && !creditCard) {
+    return err('Dados do cartão são obrigatórios para billingType CREDIT_CARD')
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -177,7 +189,7 @@ async function handleActivateSubscription(req: Request): Promise<Response> {
     today.setDate(today.getDate() + 1) // vence amanhã
     const nextDueDate = today.toISOString().split('T')[0]
 
-    const subRes = await asaasFetch('/subscriptions', 'POST', JSON.stringify({
+    const subBody: Record<string, unknown> = {
       customer: customerId,
       billingType,
       value: 100.00,
@@ -185,7 +197,29 @@ async function handleActivateSubscription(req: Request): Promise<Response> {
       cycle: 'MONTHLY',
       description: `Plano mensal Consultin — ${clinic.name}`,
       externalReference: clinicId,
-    }))
+    }
+
+    // Cartão de crédito: incluir dados do cartão e do titular
+    if (billingType === 'CREDIT_CARD' && creditCard) {
+      subBody.creditCard = {
+        holderName: creditCard.holderName,
+        number: creditCard.number.replace(/\s/g, ''),
+        expiryMonth: creditCard.expiryMonth,
+        expiryYear: creditCard.expiryYear,
+        ccv: creditCard.ccv,
+      }
+      subBody.creditCardHolderInfo = {
+        name: responsible.name,
+        email: responsible.email ?? '',
+        cpfCnpj: responsible.cpfCnpj,
+        postalCode: responsible.postalCode ?? '',
+        addressNumber: responsible.addressNumber ?? 'S/N',
+        phone: responsible.phone ?? '',
+      }
+      subBody.remoteIp = '127.0.0.1' // obrigatório pelo Asaas; em prod usa IP real
+    }
+
+    const subRes = await asaasFetch('/subscriptions', 'POST', JSON.stringify(subBody))
 
     if (!subRes.ok) {
       const errText = await subRes.text()

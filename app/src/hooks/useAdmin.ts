@@ -221,10 +221,12 @@ export function useAdminOverview() {
 }
 
 // ─── Auth users list (via edge function, service role) ────────────────────────
-export function useAdminAuthUsers() {
+export function useAdminAuthUsers({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<AdminAuthUser[]>({
     queryKey: ['admin', 'auth-users'],
     queryFn: () => callAdminFn<AdminAuthUser[]>(''),
+    enabled,
+    staleTime: 60_000, // 1 min — evita refetch desnecessário
   })
 }
 

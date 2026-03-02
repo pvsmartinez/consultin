@@ -209,6 +209,14 @@ export async function createAsaasTransfer(input: TransferInput): Promise<AsaasTr
 
 // ─── Clinic subscription flow (composite) ────────────────────────────────────
 
+export interface CreditCardInput {
+  holderName: string
+  number: string
+  expiryMonth: string   // '01'–'12'
+  expiryYear: string    // '2025'–
+  ccv: string
+}
+
 export interface ActivateClinicSubscriptionInput {
   clinicId: string
   billingType: AsaasBillingType
@@ -231,6 +239,8 @@ export interface ActivateClinicSubscriptionInput {
     city?: string
     state?: string
   }
+  /** Obrigatório quando billingType === 'CREDIT_CARD' */
+  creditCard?: CreditCardInput
 }
 
 /**

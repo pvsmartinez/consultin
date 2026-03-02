@@ -16,6 +16,7 @@ export interface ActivateBillingInput {
     phone?: string
     postalCode?: string
     address?: string
+    addressNumber?: string
     province?: string
     city?: string
     state?: string
@@ -25,6 +26,13 @@ export interface ActivateBillingInput {
     cnpj?: string
     city?: string
     state?: string
+  }
+  creditCard?: {
+    holderName: string
+    number: string
+    expiryMonth: string
+    expiryYear: string
+    ccv: string
   }
 }
 
@@ -42,6 +50,7 @@ export function useActivateClinicBilling() {
         billingType: input.billingType,
         responsible: input.responsible,
         clinic: input.clinic,
+        creditCard: input.creditCard,
       })
       return { customerId, subscriptionId }
     },
