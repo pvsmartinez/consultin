@@ -224,22 +224,28 @@ cd app && npm run typecheck
 ## Supabase — Migrations & Types
 
 ### Applying migrations (CI/CD — preferred)
+
 Migrations are applied automatically on `git push origin main` via GitHub Actions (`scripts/ci_migrate.sh`). Nothing else needed.
 
 ### Applying migrations manually (if needed)
+
 Use `scripts/apply-migrations.sh` — it reads the DB password from `pedrin/.env`:
+
 ```bash
 cd consultin && bash scripts/apply-migrations.sh
 ```
 
 ### Regenerating TypeScript types
+
 If the schema changes, regenerate types using the Supabase CLI (install if not present):
+
 ```bash
 brew install supabase/tap/supabase
 supabase login
 supabase gen types typescript --project-id nxztzehgnkdmluogxehi > app/src/types/database.ts
 ```
-**Note:** `supabase CLI` may not be installed on the current machine. Check with `which supabase` first.
+
+**Note:** `supabase CLI` is available at `/usr/local/bin/supabase`. Already logged in. No need to install or login.
 
 ---
 
@@ -249,17 +255,18 @@ supabase gen types typescript --project-id nxztzehgnkdmluogxehi > app/src/types/
 
 ### Supabase Project (consultin)
 
-| Key                | Value                                                    |
-|--------------------|----------------------------------------------------------|
-| Project ref        | `nxztzehgnkdmluogxehi`                                   |
-| Region             | `sa-east-1`                                              |
-| REST URL           | `https://nxztzehgnkdmluogxehi.supabase.co`               |
-| Anon key           | `sb_publishable_hXdLHGFae86XehzBS49T9A_XejOUKfA`        |
-| Service role key   | stored in `pedrin/secrets/supabase/config.json`          |
-| DB password        | stored in `pedrin/secrets/supabase/config.json`          |
-| Pooler URL         | `postgresql://postgres.nxztzehgnkdmluogxehi@aws-1-sa-east-1.pooler.supabase.com:5432/postgres` |
+| Key              | Value                                                                                          |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| Project ref      | `nxztzehgnkdmluogxehi`                                                                         |
+| Region           | `sa-east-1`                                                                                    |
+| REST URL         | `https://nxztzehgnkdmluogxehi.supabase.co`                                                     |
+| Anon key         | `sb_publishable_hXdLHGFae86XehzBS49T9A_XejOUKfA`                                               |
+| Service role key | stored in `pedrin/secrets/supabase/config.json`                                                |
+| DB password      | stored in `pedrin/secrets/supabase/config.json`                                                |
+| Pooler URL       | `postgresql://postgres.nxztzehgnkdmluogxehi@aws-1-sa-east-1.pooler.supabase.com:5432/postgres` |
 
 To read credentials programmatically:
+
 ```bash
 cat /Users/pedromartinez/Dev/pmatz/pedrin/secrets/supabase/config.json | python3 -c "
 import sys, json
@@ -273,13 +280,14 @@ print('db_password:', c['db_password'])
 
 ### Super Admin Account
 
-| Field     | Value                       |
-|-----------|-----------------------------|
-| Email     | `pvsmartinez@gmail.com`     |
-| Password  | `12345678`                  |
-| Profile   | `is_super_admin: true`, `roles: ["admin"]`, `clinic_id: null` |
+| Field    | Value                                                         |
+| -------- | ------------------------------------------------------------- |
+| Email    | `pvsmartinez@gmail.com`                                       |
+| Password | `12345678`                                                    |
+| Profile  | `is_super_admin: true`, `roles: ["admin"]`, `clinic_id: null` |
 
 Login via Supabase Auth (email+password) to get a JWT:
+
 ```bash
 curl -s -X POST 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/token?grant_type=password' \
   -H 'apikey: sb_publishable_hXdLHGFae86XehzBS49T9A_XejOUKfA' \
@@ -301,20 +309,21 @@ curl -s -X POST 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/token?grant_ty
 
 ### ✅ Available
 
-| Tool         | How to use                                                           |
-|--------------|----------------------------------------------------------------------|
-| `curl`       | HTTP requests — primary way to interact with Supabase REST API       |
-| `python3`    | Parse JSON from curl responses, run scripts                          |
-| `node` / `npm` | Frontend build, `npm run build`, `npm run typecheck`, `npm run dev` |
-| `git`        | All git operations                                                   |
-| Supabase REST API | CRUD via curl with anon/service-role key headers               |
+| Tool              | How to use                                                          |
+| ----------------- | ------------------------------------------------------------------- |
+| `curl`            | HTTP requests — primary way to interact with Supabase REST API      |
+| `python3`         | Parse JSON from curl responses, run scripts                         |
+| `node` / `npm`    | Frontend build, `npm run build`, `npm run typecheck`, `npm run dev` |
+| `git`             | All git operations                                                  |
+| Supabase REST API | CRUD via curl with anon/service-role key headers                    |
+
+| `supabase CLI` | `/usr/local/bin/supabase` — deploy functions: `supabase functions deploy <name> --project-ref nxztzehgnkdmluogxehi` |
 
 ### ❌ Not Installed / Not Available
 
-| Tool           | Notes                                                               |
-|----------------|---------------------------------------------------------------------|
-| `psql`         | **Not installed.** Use Supabase REST API via curl instead.          |
-| `supabase CLI` | Not confirmed installed. Don't assume `supabase db push` works.      |
+| Tool   | Notes                                                      |
+| ------ | ---------------------------------------------------------- |
+| `psql` | **Not installed.** Use Supabase REST API via curl instead. |
 
 ### Querying the Database
 

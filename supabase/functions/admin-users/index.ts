@@ -16,6 +16,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL               = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_ANON_KEY          = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 // URL canônica do frontend — configurar via `supabase secrets set SITE_URL=https://seu-app.vercel.app`
 const SITE_URL = Deno.env.get('SITE_URL') ?? ''
@@ -42,12 +43,20 @@ async function assertSuperAdmin(req: Request): Promise<{ adminClient: ReturnType
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return err('Missing Authorization header', 401)
 
-  // Verify JWT with anon client, then check super_admin flag
-  const anonClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  const { data: { user }, error } = await anonClient.auth.getUser(authHeader.replace('Bearer ', ''))
+  // Use user-scoped client (recommended pattern for edge functions)
+  // Passes JWT via global header so getUser() validates it server-side
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const { data: { user }, error } = await userClient.auth.getUser()
   if (error || !user) return err('Unauthorized', 401)
 
-  const { data: profile } = await anonClient
+  // Read profile with service role to bypass RLS
+  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const { data: profile } = await serviceClient
     .from('user_profiles')
     .select('is_super_admin')
     .eq('id', user.id)

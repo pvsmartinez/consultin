@@ -19,5 +19,22 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: bash scripts/ci_migrate.sh
 
+  functions:
+    name: Deploy edge functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy edge functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy admin-users --project-ref nxztzehgnkdmluogxehi
+          supabase functions deploy send-clinic-invite --project-ref nxztzehgnkdmluogxehi
+
   # Vercel deploys automatically via GitHub integration on the same push.
   # No explicit step needed — it runs in parallel with this job.

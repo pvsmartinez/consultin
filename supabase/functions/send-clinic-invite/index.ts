@@ -13,6 +13,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_ANON_KEY         = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SITE_URL                  = Deno.env.get('SITE_URL') ?? ''
 
@@ -43,10 +44,17 @@ async function assertClinicAdmin(req: Request): Promise<
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return err('Missing Authorization header', 401)
 
-  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  const { data: { user }, error } = await serviceClient.auth.getUser(authHeader.replace('Bearer ', ''))
+  // Use user-scoped client (recommended pattern for edge functions)
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const { data: { user }, error } = await userClient.auth.getUser()
   if (error || !user) return err('Unauthorized', 401)
 
+  const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
   const { data: profile } = await serviceClient
     .from('user_profiles')
     .select('roles, clinic_id, is_super_admin')
