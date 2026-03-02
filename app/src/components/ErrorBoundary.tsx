@@ -22,6 +22,13 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Chunk load failure after a new deploy — hard reload fixes it automatically
+    if (error.message.includes('Failed to fetch dynamically imported module') ||
+        error.message.includes('Importing a module script failed') ||
+        error.message.includes('error loading dynamically imported module')) {
+      window.location.reload()
+      return { hasError: false, error: null }
+    }
     return { hasError: true, error }
   }
 
