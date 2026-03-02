@@ -18,6 +18,9 @@ interface AuthContextValue {
   signOut: () => Promise<void>
   hasPermission: (key: string) => boolean
   refreshProfile: () => Promise<void>
+  // OTP password reset: send code → verify code → NovaSenhaPage takes over
+  sendPasswordResetOtp: (email: string) => Promise<{ error: string | null }>
+  verifyPasswordResetOtp: (email: string, token: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -150,6 +153,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = () => supabase.auth.signOut().then(() => undefined)
   const clearRecoveryMode = () => setRecoveryMode(false)
 
+  // Step 1: send 6-digit OTP to the user's email
+  const sendPasswordResetOtp = async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    })
+    return { error: error?.message ?? null }
+  }
+
+  // Step 2: verify code → sets recoveryMode so App renders NovaSenhaPage
+  const verifyPasswordResetOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    if (!error) setRecoveryMode(true)
+    return { error: error?.message ?? null }
+  }
+
   const hasPermission = (key: string): boolean => {
     if (!profile) return false
     return mergedPermissions(profile.roles)[key] ?? false
@@ -170,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       recoveryMode, clearRecoveryMode,
       signInWithEmail, signInWithGoogle, signInWithApple, signOut, hasPermission,
       refreshProfile,
+      sendPasswordResetOtp, verifyPasswordResetOtp,
     }}>
       {children}
     </AuthContext.Provider>

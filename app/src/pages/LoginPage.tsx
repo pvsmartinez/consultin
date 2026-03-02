@@ -1,8 +1,7 @@
-import { useState } from 'react'
-import { Stethoscope } from '@phosphor-icons/react'
+import { useRef, useState } from 'react'
+import { Stethoscope, ArrowLeft } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { useAuthContext } from '../contexts/AuthContext'
-import { supabase } from '../services/supabase'
 
 // ─── Social icons (inline SVG — no extra deps) ───────────────────────────────
 const GoogleIcon = () => (
@@ -20,16 +19,77 @@ const AppleIcon = () => (
   </svg>
 )
 
-type View = 'login' | 'register' | 'forgot'
+// ─── OTP input — 6 separate digit boxes ──────────────────────────────────────
+function OtpInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const inputs = useRef<(HTMLInputElement | null)[]>([])
+  const digits = value.split('')
+
+  const focusNext = (i: number) => inputs.current[i + 1]?.focus()
+  const focusPrev = (i: number) => inputs.current[i - 1]?.focus()
+
+  const handleKey = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (digits[i]) {
+        const next = [...digits]
+        next[i] = ''
+        onChange(next.join('').padEnd(6, '').slice(0, 6).replace(/\s/g, ''))
+      } else {
+        focusPrev(i)
+      }
+    }
+    if (e.key === 'ArrowLeft') focusPrev(i)
+    if (e.key === 'ArrowRight') focusNext(i)
+  }
+
+  const handleChange = (i: number, raw: string) => {
+    const digit = raw.replace(/\D/g, '').slice(-1)
+    const next  = value.padEnd(6, ' ').split('')
+    next[i]     = digit || ' '
+    const joined = next.join('').replace(/\s/g, '')
+    onChange(joined)
+    if (digit) focusNext(i)
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    onChange(pasted)
+    e.preventDefault()
+    inputs.current[Math.min(pasted.length, 5)]?.focus()
+  }
+
+  return (
+    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+      {[...Array(6)].map((_, i) => (
+        <input
+          key={i}
+          ref={el => { inputs.current[i] = el }}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] ?? ''}
+          onChange={e => handleChange(i, e.target.value)}
+          onKeyDown={e => handleKey(i, e)}
+          className="w-11 h-12 text-center text-lg font-mono font-semibold border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition"
+        />
+      ))}
+    </div>
+  )
+}
+
+type View = 'login' | 'register' | 'forgot' | 'otp'
 
 export default function LoginPage() {
-  const { signInWithEmail, signInWithGoogle, signInWithApple } = useAuthContext()
-  const [view, setView] = useState<View>('login')
-  const [email, setEmail] = useState('')
+  const { signInWithEmail, signInWithGoogle, signInWithApple, sendPasswordResetOtp, verifyPasswordResetOtp } = useAuthContext()
+
+  const [view, setView]         = useState<View>('login')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [otpCode, setOtpCode]   = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  const goto = (v: View) => { setView(v); setError(null); setSuccessMsg(null) }
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,16 +100,31 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const handleForgot = async (e: React.FormEvent) => {
+  // Step 1 of OTP reset: send code
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/nova-senha`,
-    })
-    if (error) setError('Não foi possível enviar o e-mail.')
-    else setSuccessMsg('Link enviado! Verifique sua caixa de entrada.')
+    const { error } = await sendPasswordResetOtp(email)
     setLoading(false)
+    if (error) {
+      setError('Não foi possível enviar o código. Verifique o e-mail informado.')
+    } else {
+      setOtpCode('')
+      goto('otp')
+    }
+  }
+
+  // Step 2 of OTP reset: verify code → AuthContext sets recoveryMode → NovaSenhaPage
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (otpCode.length < 6) { setError('Digite os 6 dígitos do código.'); return }
+    setError(null)
+    setLoading(true)
+    const { error } = await verifyPasswordResetOtp(email, otpCode)
+    setLoading(false)
+    if (error) setError('Código inválido ou expirado. Tente novamente.')
+    // On success: App.tsx re-renders with recoveryMode=true → NovaSenhaPage
   }
 
   const SocialButton = ({ onClick, icon, label }: { onClick: () => void; icon: React.ReactNode; label: string }) => (
@@ -66,10 +141,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-6">
-          <Stethoscope size={24} className="text-blue-600" />
-          <span className="text-lg font-semibold text-gray-800">Consultin</span>
+
+        {/* Logo + back to home */}
+        <div className="flex items-center justify-between mb-6">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Stethoscope size={16} weight="bold" className="text-white" />
+            </div>
+            <span className="text-base font-bold text-gray-900">Consultin</span>
+          </Link>
+          <Link to="/" className="text-xs text-gray-400 hover:text-blue-600 flex items-center gap-1 transition">
+            <ArrowLeft size={13} />
+            Início
+          </Link>
         </div>
 
         {/* ── LOGIN ─────────────────────────────────────────── */}
@@ -100,7 +184,7 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-sm font-medium text-gray-700">Senha</label>
-                  <button type="button" onClick={() => { setView('forgot'); setError(null) }}
+                  <button type="button" onClick={() => goto('forgot')}
                     className="text-xs text-blue-600 hover:underline">
                     Esqueceu?
                   </button>
@@ -119,7 +203,7 @@ export default function LoginPage() {
 
             <p className="text-center text-xs text-gray-400 mt-5">
               Não tem conta?{' '}
-              <button onClick={() => { setView('register'); setError(null) }} className="text-blue-600 hover:underline">
+              <button onClick={() => goto('register')} className="text-blue-600 hover:underline">
                 Cadastre-se
               </button>
             </p>
@@ -132,45 +216,97 @@ export default function LoginPage() {
           </>
         )}
 
-        {/* ── FORGOT PASSWORD ───────────────────────────────── */}
+        {/* ── FORGOT — step 1: enter email ──────────────────── */}
         {view === 'forgot' && (
           <>
-            <h1 className="text-lg font-semibold text-gray-800 mb-1">Recuperar senha</h1>
-            <p className="text-sm text-gray-400 mb-6">Enviaremos um link para seu e-mail</p>
-            {successMsg ? (
-              <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">{successMsg}</div>
-            ) : (
-              <form onSubmit={handleForgot} className="space-y-3">
+            <h1 className="text-lg font-semibold text-gray-800 mb-1">Recuperar acesso</h1>
+            <p className="text-sm text-gray-400 mb-6">
+              Enviaremos um código de 6 dígitos para o seu e-mail
+            </p>
+            <form onSubmit={handleSendOtp} className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="seu@email.com"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {error && <p className="text-xs text-red-500">{error}</p>}
-                <button type="submit" disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50">
-                  {loading ? 'Enviando...' : 'Enviar link'}
-                </button>
-              </form>
-            )}
-            <button onClick={() => setView('login')}
-              className="block text-center text-xs text-blue-600 hover:underline mt-4 w-full">
+              </div>
+              {error && <p className="text-xs text-red-500">{error}</p>}
+              <button type="submit" disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50">
+                {loading ? 'Enviando...' : 'Enviar código'}
+              </button>
+            </form>
+            <button onClick={() => goto('login')}
+              className="flex items-center justify-center gap-1 text-xs text-blue-600 hover:underline mt-4 w-full">
+              <ArrowLeft size={12} />
               Voltar para login
             </button>
           </>
         )}
 
-        {/* ── REGISTER ─────────────────────────────────────── */}
+        {/* ── OTP — step 2: enter 6-digit code ─────────────── */}
+        {view === 'otp' && (
+          <>
+            <h1 className="text-lg font-semibold text-gray-800 mb-1">Digite o código</h1>
+            <p className="text-sm text-gray-400 mb-2">
+              Enviamos um código de 6 dígitos para
+            </p>
+            <p className="text-sm font-medium text-gray-700 mb-6 truncate">{email}</p>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <OtpInput value={otpCode} onChange={setOtpCode} />
+              {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+              {successMsg && <p className="text-xs text-green-600 text-center">{successMsg}</p>}
+              <button type="submit" disabled={loading || otpCode.length < 6}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50">
+                {loading ? 'Verificando...' : 'Confirmar código'}
+              </button>
+            </form>
+
+            <div className="flex items-center justify-between mt-4">
+              <button onClick={() => goto('forgot')}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                <ArrowLeft size={12} />
+                Trocar e-mail
+              </button>
+              <button
+                onClick={async () => {
+                  setLoading(true)
+                  await sendPasswordResetOtp(email)
+                  setLoading(false)
+                  setSuccessMsg('Código reenviado!')
+                  setTimeout(() => setSuccessMsg(null), 4000)
+                }}
+                disabled={loading}
+                className="text-xs text-blue-600 hover:underline disabled:opacity-50">
+                Reenviar código
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── REGISTER ───────────────────────────────────── */}
         {view === 'register' && (
           <>
             <h1 className="text-lg font-semibold text-gray-800 mb-1">Criar conta</h1>
-            <p className="text-sm text-gray-400 mb-5">Profissionais são cadastrados pela clínica</p>
+            <p className="text-sm text-gray-400 mb-5">
+              Profissionais são convidados pela clínica
+            </p>
             <div className="flex flex-col gap-2 mb-5">
               <SocialButton onClick={signInWithGoogle} icon={<GoogleIcon />} label="Cadastrar com Google" />
               <SocialButton onClick={signInWithApple} icon={<AppleIcon />} label="Cadastrar com Apple" />
             </div>
+            <p className="text-xs text-gray-400 text-center mb-2">
+              Ou{' '}
+              <Link to="/cadastro-clinica" className="text-blue-600 hover:underline font-medium">
+                cadastre sua clínica
+              </Link>
+              {' '}para ter acesso completo
+            </p>
             <p className="text-xs text-gray-400 text-center">
               Já tem conta?{' '}
-              <button onClick={() => setView('login')} className="text-blue-600 hover:underline">Entrar</button>
+              <button onClick={() => goto('login')} className="text-blue-600 hover:underline">Entrar</button>
             </p>
           </>
         )}
