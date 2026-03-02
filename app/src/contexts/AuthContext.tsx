@@ -159,7 +159,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithApple = () =>
     supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin } }).then(() => undefined)
 
-  const signOut = () => supabase.auth.signOut().then(() => undefined)
+  const signOut = async () => {
+    // Clear local state immediately — never wait for network (can hang silently)
+    setSession(null)
+    setProfile(null)
+    setCachedProfile(null)
+    supabase.auth.signOut().catch(() => { /* ignore */ })
+  }
   const clearRecoveryMode = () => setRecoveryMode(false)
 
   // Step 1: send 6-digit OTP to the user's email
