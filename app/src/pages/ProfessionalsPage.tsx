@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Plus, PencilSimple, ToggleRight, ToggleLeft, Envelope, Trash, Bank } from '@phosphor-icons/react'
+import { Plus, PencilSimple, ToggleRight, ToggleLeft, Envelope, Trash, Bank, PaperPlaneTilt } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useProfessionals } from '../hooks/useProfessionals'
-import { usePendingInvites, useCreateInvite, useDeleteInvite } from '../hooks/useInvites'
+import { usePendingInvites, useCreateInvite, useDeleteInvite, useResendInviteEmail } from '../hooks/useInvites'
 import ProfessionalModal from '../components/professionals/ProfessionalModal'
 import ProfessionalBankAccountModal from '../components/professionals/ProfessionalBankAccountModal'
 import { useClinic } from '../hooks/useClinic'
@@ -12,8 +12,9 @@ export default function ProfessionalsPage() {
   const { data: professionals = [], isLoading, toggleActive } = useProfessionals()
   const { data: pendingInvites = [], isLoading: loadingInvites } = usePendingInvites()
   const { data: clinic } = useClinic()
-  const createInvite = useCreateInvite()
-  const deleteInvite = useDeleteInvite()
+  const createInvite     = useCreateInvite()
+  const deleteInvite     = useDeleteInvite()
+  const resendEmail      = useResendInviteEmail()
 
   const [modalOpen, setModalOpen]   = useState(false)
   const [editing, setEditing]       = useState<Professional | null>(null)
@@ -47,11 +48,32 @@ export default function ProfessionalsPage() {
     e.preventDefault()
     if (!inviteEmail.trim()) return
     try {
-      await createInvite.mutateAsync({ email: inviteEmail.trim(), roles: inviteRoles, name: inviteName.trim() || undefined })
-      toast.success('Convite registrado')
+      const result = await createInvite.mutateAsync({ email: inviteEmail.trim(), roles: inviteRoles, name: inviteName.trim() || undefined })
+      if (result.emailSent) {
+        toast.success('Convite enviado por e-mail!')
+      } else if (result.emailReason === 'already_registered') {
+        toast.success('Convite criado. Usuário já tem conta — ficará disponível ao acessar o sistema.')
+      } else {
+        toast.success('Convite registrado')
+      }
       setInviteEmail(''); setInviteName(''); setInviteRoles(['professional']); setShowInviteForm(false)
     } catch {
       toast.error('Erro ao criar convite')
+    }
+  }
+
+  async function handleResendEmail(inviteId: string) {
+    try {
+      const result = await resendEmail.mutateAsync(inviteId)
+      if (result.sent) {
+        toast.success('E-mail reenviado!')
+      } else if (result.reason === 'already_registered') {
+        toast.info('Usuário já tem conta — convite disponível ao acessar o sistema.')
+      } else {
+        toast.warning('Não foi possível reenviar o e-mail agora.')
+      }
+    } catch {
+      toast.error('Erro ao reenviar e-mail')
     }
   }
 
@@ -210,6 +232,13 @@ export default function ProfessionalsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs bg-yellow-50 text-yellow-600 rounded-full px-2 py-0.5">Aguardando</span>
+                  <button
+                    onClick={() => handleResendEmail(inv.id)}
+                    disabled={resendEmail.isPending}
+                    className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg disabled:opacity-40"
+                    title="Reenviar e-mail de convite">
+                    <PaperPlaneTilt size={15} />
+                  </button>
                   <button onClick={() => handleDeleteInvite(inv.id)}
                     className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
                     title="Cancelar convite">

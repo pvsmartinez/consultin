@@ -77,6 +77,7 @@ export function useClinicsPublic() {
 
 // ─── useCreateInvite ──────────────────────────────────────────────────────────
 // Clinic admin creates an invite for a future professional/staff.
+// After inserting the DB record, calls send-clinic-invite to fire the email.
 export function useCreateInvite() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
@@ -85,7 +86,8 @@ export function useCreateInvite() {
       email: string
       roles?: UserRole[]
       name?: string
-    }) => {
+    }): Promise<{ invite: ClinicInvite; emailSent: boolean; emailReason?: string }> => {
+      // 1. Insert into clinic_invites
       const { data, error } = await supabase
         .from('clinic_invites')
         .insert({
@@ -97,9 +99,49 @@ export function useCreateInvite() {
         .select('*, clinics(name)')
         .single()
       if (error) throw error
-      return mapInviteRow(data as Record<string, unknown>)
+
+      const invite = mapInviteRow(data as Record<string, unknown>)
+
+      // 2. Send invite email via edge function (best-effort — don't throw on failure)
+      try {
+        const { data: emailResult } = await supabase.functions.invoke<{
+          sent: boolean
+          reason?: string
+          email: string
+        }>('send-clinic-invite', {
+          method: 'POST',
+          body:   { inviteId: invite.id },
+        })
+        return {
+          invite,
+          emailSent:   emailResult?.sent ?? false,
+          emailReason: emailResult?.reason,
+        }
+      } catch {
+        // Email failed but invite is created — return gracefully
+        return { invite, emailSent: false, emailReason: 'send_error' }
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pendingInvites'] }),
+  })
+}
+
+// ─── useResendInviteEmail ─────────────────────────────────────────────────────
+// Clinic admin resends invite email for an existing pending invite.
+export function useResendInviteEmail() {
+  return useMutation({
+    mutationFn: async (inviteId: string): Promise<{ sent: boolean; reason?: string }> => {
+      const { data, error } = await supabase.functions.invoke<{
+        sent: boolean
+        reason?: string
+        email: string
+      }>('send-clinic-invite', {
+        method: 'POST',
+        body:   { inviteId },
+      })
+      if (error) throw error
+      return { sent: data?.sent ?? false, reason: data?.reason }
+    },
   })
 }
 

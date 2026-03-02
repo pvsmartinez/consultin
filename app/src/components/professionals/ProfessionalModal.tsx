@@ -78,12 +78,18 @@ export default function ProfessionalModal({ open, onClose, professional }: Props
         // Optionally send a system-access invite when email is provided
         if (createAccess && values.email) {
           try {
-            await createInvite.mutateAsync({
+            const inviteResult = await createInvite.mutateAsync({
               email: values.email,
               roles: ['professional'],
               name: values.name,
             })
-            toast.success('Profissional cadastrado e convite enviado')
+            if (inviteResult.emailSent) {
+              toast.success('Profissional cadastrado e convite enviado por e-mail')
+            } else if (inviteResult.emailReason === 'already_registered') {
+              toast.success('Profissional cadastrado. Usuário já tem conta — convite ficará disponível ao acessar o sistema.')
+            } else {
+              toast.success('Profissional cadastrado e convite criado')
+            }
           } catch {
             // Don't fail the whole save if only the invite fails
             toast.success('Profissional cadastrado')
