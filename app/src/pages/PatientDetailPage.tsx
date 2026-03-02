@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, PencilSimple, CalendarBlank, Phone, Envelope, MapPin, ClipboardText } from '@phosphor-icons/react'
+import { ArrowLeft, PencilSimple, CalendarBlank, Phone, Envelope, MapPin, ClipboardText, WhatsappLogo, Copy } from '@phosphor-icons/react'
 import { usePatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
 import { useClinic } from '../hooks/useClinic'
@@ -7,17 +7,29 @@ import Badge from '../components/ui/Badge'
 import { formatDate, formatDateTime } from '../utils/date'
 import PatientRecordsPanel from '../components/patients/PatientRecordsPanel'
 import PatientFilesPanel from '../components/patients/PatientFilesPanel'
+import { toast } from 'sonner'
 import {
   SEX_LABELS,
   APPOINTMENT_STATUS_LABELS,
   APPOINTMENT_STATUS_COLORS,
 } from '../types'
 
-function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
+function InfoRow({ label, value, copyable }: { label: string; value: string | null | undefined; copyable?: boolean }) {
+  function copy() {
+    if (!value) return
+    navigator.clipboard.writeText(value)
+    toast.success(`${label} copiado!`)
+  }
   return (
     <div>
       <dt className="text-xs text-gray-400 mb-0.5">{label}</dt>
-      <dd className="text-sm text-gray-800">{value || '—'}</dd>
+      <dd className={`text-sm text-gray-800 flex items-center gap-1.5 ${copyable && value ? 'cursor-pointer group' : ''}`}
+          onClick={copyable && value ? copy : undefined}>
+        {value || '—'}
+        {copyable && value && (
+          <Copy size={12} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+        )}
+      </dd>
     </div>
   )
 }
@@ -77,32 +89,46 @@ export default function PatientDetailPage() {
             </div>
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/pacientes/${patient.id}/editar`)}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
-        >
-          <PencilSimple size={15} />
-          Editar
-        </button>
-        <Link
-          to={`/pacientes/${patient.id}/anamnese`}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
-        >
-          <ClipboardText size={15} />
-          Anamnese
-        </Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => navigate(`/pacientes/${patient.id}/editar`)}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
+          >
+            <PencilSimple size={15} />
+            Editar
+          </button>
+          <Link
+            to={`/pacientes/${patient.id}/anamnese`}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
+          >
+            <ClipboardText size={15} />
+            Anamnese
+          </Link>
+        </div>
       </div>
 
       {/* Quick contact */}
       <div className="flex flex-wrap gap-3 mb-4">
         {patient.phone && (
-          <a
-            href={`tel:${patient.phone}`}
-            className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
-          >
-            <Phone size={15} className="text-green-500" />
-            {patient.phone}
-          </a>
+          <>
+            <a
+              href={`tel:${patient.phone}`}
+              className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+            >
+              <Phone size={15} className="text-green-500" />
+              {patient.phone}
+            </a>
+            <a
+              href={`https://wa.me/55${patient.phone.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition"
+              title="Abrir WhatsApp"
+            >
+              <WhatsappLogo size={15} weight="fill" className="text-green-500" />
+              WhatsApp
+            </a>
+          </>
         )}
         {patient.email && (
           <a
@@ -118,8 +144,8 @@ export default function PatientDetailPage() {
       {/* Dados pessoais */}
       <Section title="Dados Pessoais">
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <InfoRow label="CPF" value={patient.cpf} />
-          <InfoRow label="RG" value={patient.rg} />
+          <InfoRow label="CPF" value={patient.cpf} copyable />
+          <InfoRow label="RG" value={patient.rg} copyable />
           <InfoRow label="Data de nascimento" value={patient.birthDate ? formatDate(patient.birthDate + 'T00:00:00') : null} />
         </dl>
       </Section>

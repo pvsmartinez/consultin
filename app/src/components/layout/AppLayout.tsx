@@ -72,10 +72,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
         {/* Logo + role badge */}
         <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-2 mb-2">
-            <Stethoscope size={22} className="text-blue-600" />
+          <div className="flex items-center gap-2 mb-1">
+            <Stethoscope size={22} className="text-blue-600 flex-shrink-0" />
             <span className="font-semibold text-gray-800">Consultin</span>
           </div>
+          {clinic?.name && (
+            <p className="text-xs text-gray-500 truncate mb-1.5" title={clinic.name}>{clinic.name}</p>
+          )}
           {role && ROLE_BADGE_COLORS[role] && (
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_BADGE_COLORS[role]}`}>
               {USER_ROLE_LABELS[role]}

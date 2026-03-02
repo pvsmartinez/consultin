@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MagnifyingGlass, Plus, User, UploadSimple } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus, User, UploadSimple, X } from '@phosphor-icons/react'
 import { usePatients } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
 import { formatDate } from '../utils/date'
@@ -38,15 +38,26 @@ export default function PatientsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative mb-4">
+      <div className="relative mb-4 max-w-md">
         <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por nome, CPF ou telefone..."
-          className="w-full max-w-md border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            title="Limpar busca"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* Table */}

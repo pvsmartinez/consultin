@@ -85,6 +85,7 @@ export default function AppointmentModal({
   const { create, update, cancel } = useAppointmentMutations()
   const { data: rooms = [] } = useRooms()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [patientSearch, setPatientSearch] = useState('')
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -103,7 +104,7 @@ export default function AppointmentModal({
   }, [durationMinVal])
 
   useEffect(() => {
-    if (!open) { setConfirmCancel(false); return }
+    if (!open) { setConfirmCancel(false); setPatientSearch(''); return }
 
     if (appointment) {
       const start   = parseISO(appointment.startsAt)
@@ -213,6 +214,12 @@ export default function AppointmentModal({
   const activeProfessionals = professionals.filter(p => p.active)
   const hasNoProfessionals  = !isEditing && activeProfessionals.length === 0
   const hasNoPatients       = !isEditing && patients.length === 0
+  const filteredPatients    = patientSearch.trim()
+    ? patients.filter(p =>
+        p.name.toLowerCase().includes(patientSearch.toLowerCase()) ||
+        (p.cpf ?? '').includes(patientSearch)
+      )
+    : patients
 
   return (
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
@@ -264,15 +271,25 @@ export default function AppointmentModal({
             {/* Patient */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+              <input
+                type="text"
+                value={patientSearch}
+                onChange={e => setPatientSearch(e.target.value)}
+                placeholder="Buscar por nome ou CPF..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1"
+              />
               <select
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 {...register('patientId')}
               >
                 <option value="">Selecione o paciente...</option>
-                {patients.map(p => (
+                {filteredPatients.map(p => (
                   <option key={p.id} value={p.id}>{p.name}{p.cpf ? ` · ${p.cpf}` : ''}</option>
                 ))}
               </select>
+              {filteredPatients.length === 0 && patientSearch && (
+                <p className="text-xs text-gray-400 mt-1">Nenhum paciente encontrado</p>
+              )}
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}
             </div>
 

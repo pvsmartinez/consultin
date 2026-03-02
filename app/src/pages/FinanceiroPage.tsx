@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { format, addMonths, subMonths, parseISO } from 'date-fns'
+import { useState, useRef } from 'react'
+import { format, addMonths, subMonths, parseISO, isThisMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CaretLeft, CaretRight, CheckCircle, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ export default function FinanceiroPage() {
   const [payingAmount, setPayingAmount] = useState('')
   const [payingMethod, setPayingMethod] = useState<AppointmentPaymentMethod>('pix')
   const [chargingAppointment, setChargingAppointment] = useState<Appointment | null>(null)
+  const monthInputRef = useRef<HTMLInputElement>(null)
 
   const { data = [], isLoading } = useFinancial(month)
   const { data: clinic }         = useClinic()
@@ -58,13 +59,41 @@ export default function FinanceiroPage() {
           >
             <CaretLeft size={16} />
           </button>
-          <span className="text-sm font-medium text-gray-700 capitalize w-40 text-center">{monthLabel}</span>
+          <button
+            onClick={() => monthInputRef.current?.showPicker?.()}
+            className="text-sm font-medium text-gray-700 capitalize w-40 text-center hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors"
+            title="Selecionar mês"
+          >
+            {monthLabel}
+          </button>
+          {/* Hidden month input for native picker */}
+          <input
+            ref={monthInputRef}
+            type="month"
+            value={format(month, 'yyyy-MM')}
+            onChange={e => {
+              if (e.target.value) {
+                const [y, m] = e.target.value.split('-').map(Number)
+                setMonth(new Date(y, m - 1, 1))
+              }
+            }}
+            className="sr-only"
+            tabIndex={-1}
+          />
           <button
             onClick={() => setMonth(m => addMonths(m, 1))}
             className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
           >
             <CaretRight size={16} />
           </button>
+          {!isThisMonth(month) && (
+            <button
+              onClick={() => setMonth(new Date())}
+              className="text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-50 transition-colors"
+            >
+              Mês atual
+            </button>
+          )}
         </div>
       </div>
 
