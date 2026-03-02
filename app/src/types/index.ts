@@ -279,7 +279,7 @@ export const ROLE_PERMISSIONS = {
     canManagePatients:     true,
     canManageAgenda:       true,
     canManageProfessionals: false,
-    canViewFinancial:      false,
+    canViewFinancial:      true,   // recepcionista opera o caixa da clínica
     canManageSettings:     false,
     canViewWhatsApp:       true,  // inbox: receptionist is primary user
     canManageOwnAvailability: false,
