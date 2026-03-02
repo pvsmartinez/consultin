@@ -3,7 +3,8 @@ import { format, addMonths, subMonths, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CaretLeft, CaretRight, CheckCircle, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { useFinancial, useMarkPaid } from '../hooks/useFinancial'
+import { useFinancial, useMarkPaid, PAYMENT_METHOD_LABELS } from '../hooks/useFinancial'
+import type { AppointmentPaymentMethod } from '../hooks/useFinancial'
 import { formatBRL } from '../utils/currency'
 import { useClinic } from '../hooks/useClinic'
 import Badge from '../components/ui/Badge'
@@ -15,6 +16,7 @@ export default function FinanceiroPage() {
   const [month, setMonth] = useState(new Date())
   const [payingId, setPayingId] = useState<string | null>(null)
   const [payingAmount, setPayingAmount] = useState('')
+  const [payingMethod, setPayingMethod] = useState<AppointmentPaymentMethod>('pix')
   const [chargingAppointment, setChargingAppointment] = useState<Appointment | null>(null)
 
   const { data = [], isLoading } = useFinancial(month)
@@ -32,10 +34,11 @@ export default function FinanceiroPage() {
       return
     }
     try {
-      await markPaid.mutateAsync({ id, paidAmountCents: cents })
+      await markPaid.mutateAsync({ id, paidAmountCents: cents, paymentMethod: payingMethod })
       toast.success('Pagamento registrado!')
       setPayingId(null)
       setPayingAmount('')
+      setPayingMethod('pix')
     } catch (err) {
       toast.error('Erro ao registrar pagamento.')
     }
@@ -88,6 +91,7 @@ export default function FinanceiroPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pago</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Forma</th>
                 <th className="px-4 py-3" />
                 {clinic?.paymentsEnabled && (
                   <th className="text-left px-4 py-3 text-xs font-semibold text-indigo-500 uppercase tracking-wide">Asaas</th>
@@ -122,30 +126,49 @@ export default function FinanceiroPage() {
                       <span className="text-gray-400">—</span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {row.paymentMethod
+                      ? PAYMENT_METHOD_LABELS[row.paymentMethod as AppointmentPaymentMethod] ?? row.paymentMethod
+                      : <span className="text-gray-300">—</span>
+                    }
+                  </td>
                   <td className="px-4 py-3 text-right">
                     {payingId === row.id ? (
-                      <div className="flex items-center gap-1 justify-end">
-                        <span className="text-gray-500 text-xs">R$</span>
-                        <input
-                          autoFocus
-                          type="text"
-                          inputMode="decimal"
-                          value={payingAmount}
-                          onChange={e => setPayingAmount(e.target.value)}
-                          placeholder="0,00"
-                          className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') handleMarkPaid(row.id)
-                            if (e.key === 'Escape') { setPayingId(null); setPayingAmount('') }
-                          }}
-                        />
-                        <button
-                          onClick={() => handleMarkPaid(row.id)}
-                          disabled={markPaid.isPending}
-                          className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                      <div className="flex flex-col gap-1.5 items-end">
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500 text-xs">R$</span>
+                          <input
+                            autoFocus
+                            type="text"
+                            inputMode="decimal"
+                            value={payingAmount}
+                            onChange={e => setPayingAmount(e.target.value)}
+                            placeholder="0,00"
+                            className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleMarkPaid(row.id)
+                              if (e.key === 'Escape') { setPayingId(null); setPayingAmount('') }
+                            }}
+                          />
+                          <button
+                            onClick={() => handleMarkPaid(row.id)}
+                            disabled={markPaid.isPending}
+                            className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                        </div>
+                        <select
+                          value={payingMethod}
+                          onChange={e => setPayingMethod(e.target.value as AppointmentPaymentMethod)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
                         >
-                          <CheckCircle size={18} />
-                        </button>
+                          {(Object.entries(PAYMENT_METHOD_LABELS) as [AppointmentPaymentMethod, string][]).map(
+                            ([val, label]) => (
+                              <option key={val} value={val}>{label}</option>
+                            ),
+                          )}
+                        </select>
                       </div>
                     ) : row.paidAmountCents == null ? (
                       <button

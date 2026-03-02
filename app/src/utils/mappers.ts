@@ -22,6 +22,7 @@ export function mapAppointment(row: Record<string, unknown>): Appointment {
     paidAmountCents:      (row.paid_amount_cents as number) ?? null,
     professionalFeeCents: (row.professional_fee_cents as number) ?? null,
     paidAt:               (row.paid_at as string) ?? null,
+    paymentMethod:        (row.payment_method as string) ?? null,
     createdAt:            row.created_at as string,
     patient:              row.patient as Appointment['patient'],
     professional:         row.professional as Appointment['professional'],

@@ -33,15 +33,30 @@ export function useFinancial(month: Date) {
   })
 }
 
+export type AppointmentPaymentMethod =
+  | 'cash' | 'pix' | 'credit_card' | 'debit_card' | 'insurance' | 'boleto' | 'other'
+
+export const PAYMENT_METHOD_LABELS: Record<AppointmentPaymentMethod, string> = {
+  cash:        'Dinheiro',
+  pix:         'PIX',
+  credit_card: 'Cartão de crédito',
+  debit_card:  'Cartão de débito',
+  insurance:   'Convênio',
+  boleto:      'Boleto',
+  other:       'Outro',
+}
+
 export function useMarkPaid() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       id,
       paidAmountCents,
+      paymentMethod,
     }: {
       id: string
       paidAmountCents: number
+      paymentMethod?: AppointmentPaymentMethod
     }) => {
       const { error } = await supabase
         .from('appointments')
@@ -49,6 +64,7 @@ export function useMarkPaid() {
           paid_amount_cents: paidAmountCents,
           paid_at: new Date().toISOString(),
           status: 'completed',
+          ...(paymentMethod ? { payment_method: paymentMethod } : {}),
         })
         .eq('id', id)
       if (error) throw error

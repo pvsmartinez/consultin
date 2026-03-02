@@ -196,6 +196,7 @@ export interface Appointment {
   paidAmountCents: number | null
   professionalFeeCents: number | null
   paidAt: string | null
+  paymentMethod: string | null  // manual payment method (cash, pix, credit_card, ...)
   createdAt: string
   // Joined relations (fetched with select)
   patient?: Pick<Patient, 'id' | 'name' | 'phone' | 'cpf'>
