@@ -14,6 +14,7 @@ import { useProfessionals } from '../../hooks/useProfessionals'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
 import { usePatients } from '../../hooks/usePatients'
 import { useRooms } from '../../hooks/useRooms'
+import { useDebounce } from '../../hooks/useDebounce'
 import {
   APPOINTMENT_STATUS_LABELS,
   type Appointment,
@@ -81,11 +82,12 @@ export default function AppointmentModal({
 }: Props) {
   const isEditing = !!appointment
   const { data: professionals = [] } = useProfessionals()
-  const { patients = [] } = usePatients('')
   const { create, update, cancel } = useAppointmentMutations()
   const { data: rooms = [] } = useRooms()
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
+  const debouncedPatientSearch = useDebounce(patientSearch, 300)
+  const { patients = [] } = usePatients(debouncedPatientSearch)
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -213,13 +215,7 @@ export default function AppointmentModal({
 
   const activeProfessionals = professionals.filter(p => p.active)
   const hasNoProfessionals  = !isEditing && activeProfessionals.length === 0
-  const hasNoPatients       = !isEditing && patients.length === 0
-  const filteredPatients    = patientSearch.trim()
-    ? patients.filter(p =>
-        p.name.toLowerCase().includes(patientSearch.toLowerCase()) ||
-        (p.cpf ?? '').includes(patientSearch)
-      )
-    : patients
+  const hasNoPatients       = !isEditing && patients.length === 0 && !patientSearch.trim()
 
   return (
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
@@ -283,11 +279,11 @@ export default function AppointmentModal({
                 {...register('patientId')}
               >
                 <option value="">Selecione o paciente...</option>
-                {filteredPatients.map(p => (
+                {patients.map(p => (
                   <option key={p.id} value={p.id}>{p.name}{p.cpf ? ` · ${p.cpf}` : ''}</option>
                 ))}
               </select>
-              {filteredPatients.length === 0 && patientSearch && (
+              {patients.length === 0 && patientSearch.trim() && (
                 <p className="text-xs text-gray-400 mt-1">Nenhum paciente encontrado</p>
               )}
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MagnifyingGlass, Plus, User, UploadSimple, X } from '@phosphor-icons/react'
-import { usePatients } from '../hooks/usePatients'
+import { usePatients, PATIENTS_PAGE_SIZE } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
 import { formatDate } from '../utils/date'
 import { SEX_LABELS } from '../types'
@@ -11,8 +11,11 @@ export default function PatientsPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [importOpen, setImportOpen] = useState(false)
+  const [page, setPage] = useState(0)
   const debouncedSearch = useDebounce(search, 300)
-  const { patients, loading, refetch } = usePatients(debouncedSearch)
+  // Reset to first page whenever the search term changes
+  useEffect(() => { setPage(0) }, [debouncedSearch])
+  const { patients, loading, refetch, total, pageCount } = usePatients(debouncedSearch, page)
 
   return (
     <div>
@@ -109,8 +112,27 @@ export default function PatientsPage() {
         )}
       </div>
 
-      {!loading && patients.length > 0 && (
-        <p className="text-xs text-gray-400 mt-2 px-1">{patients.length} paciente{patients.length !== 1 ? 's' : ''}</p>
+      {!loading && total > 0 && (
+        <div className="flex items-center justify-between mt-2 px-1">
+          <p className="text-xs text-gray-400">
+            {page * PATIENTS_PAGE_SIZE + 1}–{Math.min((page + 1) * PATIENTS_PAGE_SIZE, total)} de {total} paciente{total !== 1 ? 's' : ''}
+          </p>
+          {pageCount > 1 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 0}
+                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600 disabled:cursor-not-allowed transition-colors"
+              >← Anterior</button>
+              <span className="text-xs text-gray-500">Pág. {page + 1} / {pageCount}</span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page >= pageCount - 1}
+                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600 disabled:cursor-not-allowed transition-colors"
+              >Próxima →</button>
+            </div>
+          )}
+        </div>
       )}
 
       <ImportModal

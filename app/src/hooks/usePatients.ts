@@ -12,6 +12,8 @@ const PATIENT_LIST_COLS =
   'address_street,address_number,address_complement,address_neighborhood,' +
   'address_city,address_state,address_zip,notes,custom_fields,created_at'
 
+export const PATIENTS_PAGE_SIZE = 50
+
 // Map camelCase PatientInput -> snake_case for DB
 function mapInput(input: PatientInput) {
   return {
@@ -35,23 +37,29 @@ function mapInput(input: PatientInput) {
   }
 }
 
-export function usePatients(search = '') {
+export function usePatients(search = '', page = 0) {
   const { profile } = useAuthContext()
   const qc = useQueryClient()
 
   const query = useQuery({
-    queryKey: ['patients', search],
+    queryKey: ['patients', search, page],
     queryFn: async () => {
+      const from = page * PATIENTS_PAGE_SIZE
+      const to   = from + PATIENTS_PAGE_SIZE - 1
       let q = supabase
         .from('patients')
-        .select(PATIENT_LIST_COLS)
+        .select(PATIENT_LIST_COLS, { count: 'exact' })
         .order('name')
+        .range(from, to)
       if (search.trim()) {
         q = q.or(`name.ilike.%${search}%,cpf.ilike.%${search}%,phone.ilike.%${search}%`)
       }
-      const { data, error } = await q
+      const { data, error, count } = await q
       if (error) throw new Error(error.message)
-      return ((data ?? []) as unknown[]).map(r => mapPatient(r as Record<string, unknown>))
+      return {
+        patients: ((data ?? []) as unknown[]).map(r => mapPatient(r as Record<string, unknown>)),
+        total: count ?? 0,
+      }
     },
     enabled: !!profile?.clinicId,
   })
@@ -94,7 +102,9 @@ export function usePatients(search = '') {
   })
 
   return {
-    patients:      query.data ?? [],
+    patients:      query.data?.patients ?? [],
+    total:         query.data?.total ?? 0,
+    pageCount:     Math.ceil((query.data?.total ?? 0) / PATIENTS_PAGE_SIZE),
     loading:       query.isLoading,
     error:         query.error?.message ?? null,
     refetch:       query.refetch,
@@ -161,30 +171,31 @@ export function useMyPatient() {
       const userId = session!.user.id
       const email  = session!.user.email
 
-      // Primary: direct user_id link
-      const { data: byUserId } = await supabase
+      // Single query: fetch by user_id OR email in one roundtrip
+      const orFilter = email
+        ? `user_id.eq.${userId},email.eq.${email}`
+        : `user_id.eq.${userId}`
+      const { data, error } = await supabase
         .from('patients')
         .select('*')
-        .eq('user_id', userId)
-        .maybeSingle()
-      if (byUserId) return mapPatient(byUserId as Record<string, unknown>)
+        .or(orFilter)
+        .limit(2)
+      if (error) throw new Error(error.message)
+      if (!data?.length) return null
 
-      // Fallback: email (staff-created records have user_id = NULL)
-      if (!email) return null
-      const { data: byEmail } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle()
-      if (!byEmail) return null
+      // Prefer the row directly linked by user_id
+      const byUserId = data.find(r => (r as Record<string, unknown>).user_id === userId)
+      const row = (byUserId ?? data[0]) as Record<string, unknown>
 
-      // Link user_id so future lookups are instant (fire-and-forget)
-      void supabase
-        .from('patients')
-        .update({ user_id: userId })
-        .eq('id', byEmail.id as string)
+      // If matched only by email, backfill user_id so future lookups hit the index (fire-and-forget)
+      if (!byUserId) {
+        void supabase
+          .from('patients')
+          .update({ user_id: userId })
+          .eq('id', row.id as string)
+      }
 
-      return mapPatient(byEmail as Record<string, unknown>)
+      return mapPatient(row)
     },
   })
 

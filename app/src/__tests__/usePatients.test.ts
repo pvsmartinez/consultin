@@ -73,6 +73,7 @@ describe('usePatients', () => {
     mockFrom.mockReturnValue({
       select: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
       then: vi.fn(), // never calls back
     })
@@ -86,11 +87,12 @@ describe('usePatients', () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
     } as Record<string, unknown>
     Object.assign(chainable, {
       then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: [MOCK_DB_ROW], error: null }).then(resolve, reject)
+        return Promise.resolve({ data: [MOCK_DB_ROW], error: null, count: 1 }).then(resolve, reject)
       },
     })
     mockFrom.mockReturnValue(chainable)
@@ -117,6 +119,7 @@ describe('usePatients', () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
     } as Record<string, unknown>
     Object.assign(chainable, {
@@ -137,11 +140,12 @@ describe('usePatients', () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
     } as Record<string, unknown>
     Object.assign(chainable, {
       then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: null, error: null }).then(resolve, reject)
+        return Promise.resolve({ data: null, error: null, count: 0 }).then(resolve, reject)
       },
     })
     mockFrom.mockReturnValue(chainable)
@@ -157,11 +161,12 @@ describe('usePatients', () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
+      range: vi.fn().mockReturnThis(),
       or: orMock,
     } as Record<string, unknown>
     Object.assign(chainable, {
       then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: [], error: null }).then(resolve, reject)
+        return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve, reject)
       },
     })
     mockFrom.mockReturnValue(chainable)
