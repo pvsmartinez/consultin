@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
-import { UserCircle, Trash, Check, X, SlidersHorizontal } from '@phosphor-icons/react'
+import { UserCircle, Trash, Check, X, SlidersHorizontal, Clock, EnvelopeSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { useClinicMembers, useUpdateMemberRole, useRemoveClinicMember } from '../../hooks/useClinic'
+import { useClinicMembers, useUpdateMemberRole, useRemoveClinicMember, useClinicInvites, useResendInvite, useCancelInvite } from '../../hooks/useClinic'
+import type { ClinicInvite } from '../../hooks/useClinic'
 import { useAuthContext } from '../../contexts/AuthContext'
 import {
   USER_ROLE_LABELS,
@@ -38,8 +39,11 @@ function computeOverrides(
 export default function UsuariosTab() {
   const { profile } = useAuthContext()
   const { data: members = [], isLoading } = useClinicMembers()
-  const updateRole   = useUpdateMemberRole()
-  const removeMember = useRemoveClinicMember()
+  const updateRole    = useUpdateMemberRole()
+  const removeMember  = useRemoveClinicMember()
+  const { data: invites = [] } = useClinicInvites()
+  const resendInvite  = useResendInvite()
+  const cancelInvite  = useCancelInvite()
 
   const [editingId,      setEditingId]      = useState<string | null>(null)
   const [pendingRoles,   setPendingRoles]   = useState<UserRole[]>(['professional'])
@@ -113,6 +117,26 @@ export default function UsuariosTab() {
     }
   }
 
+  async function handleResend(invite: ClinicInvite) {
+    try {
+      await resendInvite.mutateAsync(invite.id)
+      toast.success(`Convite reenviado para ${invite.email}!`)
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao reenviar convite')
+    }
+  }
+
+  async function handleCancelInvite(invite: ClinicInvite) {
+    if (!confirm(`Cancelar convite para "${invite.email}"?`)) return
+    try {
+      await cancelInvite.mutateAsync(invite.id)
+      toast.success('Convite cancelado.')
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao cancelar convite')
+    }
+  }
+
+
   if (isLoading) {
     return <p className="text-sm text-gray-400 py-6 text-center">Carregando membros…</p>
   }
@@ -125,6 +149,11 @@ export default function UsuariosTab() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-gray-700">
           {members.length} membro{members.length !== 1 ? 's' : ''} nesta clínica
+          {invites.length > 0 && (
+            <span className="text-amber-500 ml-1.5">
+              · {invites.length} convite{invites.length !== 1 ? 's' : ''} pendente{invites.length !== 1 ? 's' : ''}
+            </span>
+          )}
         </h2>
         <p className="text-xs text-gray-400">
           Para convidar novos membros, use a opção de convite por e-mail.
@@ -292,10 +321,60 @@ export default function UsuariosTab() {
           )
         })}
 
-        {others.length === 0 && (
+        {others.length === 0 && invites.length === 0 && (
           <p className="text-sm text-gray-400 text-center py-6">
             Nenhum outro membro nesta clínica ainda.
           </p>
+        )}
+
+        {/* Pending invites */}
+        {invites.length > 0 && (
+          <>
+            <div className="pt-2 pb-1">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+                <Clock size={12} />
+                Convites pendentes ({invites.length})
+              </p>
+            </div>
+            {invites.map(inv => (
+              <div key={inv.id}
+                className="flex items-center justify-between px-4 py-3 bg-amber-50 border border-amber-100 rounded-xl">
+                <div className="flex items-center gap-3 min-w-0">
+                  <UserCircle size={20} className="text-amber-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      {inv.name ?? inv.email}
+                      {inv.name && <span className="text-xs text-gray-400 ml-1.5">{inv.email}</span>}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[inv.role as UserRole] ?? 'bg-gray-100 text-gray-500'}`}>
+                        {USER_ROLE_LABELS[inv.role as UserRole] ?? inv.role}
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-600 flex items-center gap-0.5">
+                        <Clock size={10} />
+                        Aguardando confirmação
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleResend(inv)}
+                    disabled={resendInvite.isPending}
+                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-40">
+                    <EnvelopeSimple size={13} />
+                    Reenviar
+                  </button>
+                  <button
+                    onClick={() => handleCancelInvite(inv)}
+                    disabled={cancelInvite.isPending}
+                    className="p-1.5 text-red-400 hover:text-red-600 border border-red-100 hover:border-red-300 rounded-lg transition-colors">
+                    <Trash size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>
         )}
       </div>
     </div>

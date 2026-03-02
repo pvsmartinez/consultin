@@ -147,3 +147,71 @@ export function useRemoveClinicMember() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-members', profile?.clinicId] }),
   })
 }
+
+// ─── Clinic invites (pending) ─────────────────────────────────────────────────
+
+export interface ClinicInvite {
+  id:        string
+  email:     string
+  name:      string | null
+  role:      string
+  createdAt: string
+}
+
+export function useClinicInvites() {
+  const { profile } = useAuthContext()
+  const clinicId = profile?.clinicId
+
+  return useQuery<ClinicInvite[]>({
+    queryKey: ['clinic-invites', clinicId],
+    enabled: !!clinicId,
+    staleTime: 2 * 60_000,
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('clinic_invites')
+        .select('id, email, name, role, created_at')
+        .eq('clinic_id', clinicId!)
+        .is('used_at', null)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return ((data ?? []) as Record<string, unknown>[]).map(r => ({
+        id:        r.id as string,
+        email:     r.email as string,
+        name:      (r.name as string | null) ?? null,
+        role:      (r.role as string) ?? 'professional',
+        createdAt: r.created_at as string,
+      }))
+    },
+  })
+}
+
+export function useResendInvite() {
+  const qc = useQueryClient()
+  const { profile } = useAuthContext()
+  return useMutation({
+    mutationFn: async (inviteId: string) => {
+      const { error } = await supabase.functions.invoke('send-clinic-invite', {
+        body: { inviteId },
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-invites', profile?.clinicId] }),
+  })
+}
+
+export function useCancelInvite() {
+  const qc = useQueryClient()
+  const { profile } = useAuthContext()
+  return useMutation({
+    mutationFn: async (inviteId: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('clinic_invites')
+        .delete()
+        .eq('id', inviteId)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-invites', profile?.clinicId] }),
+  })
+}
