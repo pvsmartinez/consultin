@@ -3,6 +3,12 @@ project_id = "nxztzehgnkdmluogxehi"
 [functions.asaas-webhook]
 verify_jwt = false
 
+[functions.admin-users]
+verify_jwt = false
+
+[functions.send-clinic-invite]
+verify_jwt = false
+
 [api]
 enabled = true
 port = 54321
