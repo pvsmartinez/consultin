@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
 import { useClinic } from './hooks/useClinic'
 import { useProfessionals } from './hooks/useProfessionals'
@@ -79,6 +79,22 @@ function App() {
       <ErrorBoundary>
         <Suspense fallback={<FullScreenLoader />}>
           <OnboardingRoutes />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
+
+  // ── SuperAdmin sem clínica → apenas painel /admin ──────────────────────────
+  // Quando não há clinicId activo (fora do modo teste), o superadmin não tem
+  // nada de clínica para ver — redireciona tudo para /admin.
+  if (isSuperAdmin && !profile.clinicId) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<FullScreenLoader />}>
+          <Routes>
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Routes>
         </Suspense>
       </ErrorBoundary>
     )
