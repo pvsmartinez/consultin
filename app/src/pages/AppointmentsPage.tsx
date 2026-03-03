@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -10,8 +10,12 @@ import { Plus } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
+import { useClinic } from '../hooks/useClinic'
 import AppointmentModal from '../components/appointments/AppointmentModal'
 import type { Appointment } from '../types'
+
+const DAY_FC: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
+const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 // Distinct muted palette for multi-clinic colour-coding in the professional view
 const CLINIC_PALETTE = ['#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6']
@@ -33,7 +37,30 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   })
 
   const { role } = useAuthContext()
+  const { data: clinic } = useClinic()
   const { data: myProfRecords = [] } = useMyProfessionalRecords()
+
+  // Derive businessHours + slot limits from clinic working hours
+  const { businessHours, slotMin, slotMax, todayOpen, todayLabel } = useMemo(() => {
+    const wh = clinic?.workingHours ?? {}
+    const entries = Object.entries(wh)
+    const bh = entries.map(([day, h]) => ({
+      daysOfWeek: [DAY_FC[day] ?? 0],
+      startTime: h!.start,
+      endTime: h!.end,
+    }))
+    const starts = entries.map(([, h]) => h!.start).sort()
+    const ends   = entries.map(([, h]) => h!.end).sort()
+    const todayKey = DAY_ORDER[today.getDay()]
+    const todayHours = wh[todayKey as keyof typeof wh]
+    return {
+      businessHours: bh.length ? bh : false,
+      slotMin: starts[0] ?? '07:00',
+      slotMax: ends[ends.length - 1] ?? '20:00',
+      todayOpen: !!todayHours,
+      todayLabel: todayHours ? `Aberta · ${todayHours.start}–${todayHours.end}` : 'Fechada hoje',
+    }
+  }, [clinic?.workingHours])
   // Personal view: role=professional always; or any role visiting /minha-agenda
   const isPersonalView = myOnly || role === 'professional'
   // Personal view: filter by this user's professional IDs.
@@ -111,6 +138,15 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           {isPersonalView ? 'Minha Agenda' : 'Agenda'}
         </h1>
         <div className="flex items-center gap-2">
+          {clinic?.workingHours && Object.keys(clinic.workingHours).length > 0 && (
+            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+              todayOpen
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-red-50 text-red-600 border border-red-200'
+            }`}>
+              {todayLabel}
+            </span>
+          )}
           {!isPersonalView && (
             <button onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
@@ -140,9 +176,10 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           locale="pt-br"
           headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
           buttonText={{ today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' }}
-          slotMinTime="07:00:00"
-          slotMaxTime="20:00:00"
+          slotMinTime={`${slotMin}:00`}
+          slotMaxTime={`${slotMax}:00`}
           slotDuration="00:30:00"
+          businessHours={businessHours}
           allDaySlot={false}
           nowIndicator
           editable={!isPersonalView}
