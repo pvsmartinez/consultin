@@ -7,11 +7,12 @@ interface ProfileForm {
   name: string
   phone: string
   email: string
+  cpf: string
 }
 
 export default function MeuPerfilPage() {
   const { patient, loading, updatePatient, updating } = useMyPatient()
-  const [form, setForm] = useState<ProfileForm>({ name: '', phone: '', email: '' })
+  const [form, setForm] = useState<ProfileForm>({ name: '', phone: '', email: '', cpf: '' })
 
   // Sync form once patient data loads
   useEffect(() => {
@@ -20,6 +21,7 @@ export default function MeuPerfilPage() {
         name:  patient.name ?? '',
         phone: patient.phone ?? '',
         email: patient.email ?? '',
+        cpf:   patient.cpf ?? '',
       })
     }
   }, [patient])
@@ -27,7 +29,7 @@ export default function MeuPerfilPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await updatePatient({ name: form.name, phone: form.phone, email: form.email })
+      await updatePatient({ name: form.name, phone: form.phone, email: form.email, cpf: form.cpf || null })
       toast.success('Perfil atualizado!')
     } catch {
       toast.error('Erro ao salvar perfil.')
@@ -63,7 +65,17 @@ export default function MeuPerfilPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+            <IMaskInput
+              mask="000.000.000-00"
+              value={form.cpf}
+              onAccept={(val: string) => setForm(p => ({ ...p, cpf: val }))}
+              placeholder="000.000.000-00"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
             <IMaskInput
               mask="{(}00{)} 00000-0000"
               value={form.phone}

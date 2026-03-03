@@ -48,11 +48,17 @@ function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record
     ...(defined(input.waProfessionalAgenda)   && { wa_professional_agenda:     input.waProfessionalAgenda }),
     ...(defined(input.waAttendantInbox)       && { wa_attendant_inbox:         input.waAttendantInbox }),
     ...(defined(input.waAiModel)              && { wa_ai_model:                input.waAiModel }),
+    ...(defined(input.waAiCustomPrompt)       && { wa_ai_custom_prompt:        input.waAiCustomPrompt }),
+    ...(defined(input.waAiAllowSchedule)      && { wa_ai_allow_schedule:       input.waAiAllowSchedule }),
+    ...(defined(input.waAiAllowConfirm)       && { wa_ai_allow_confirm:        input.waAiAllowConfirm }),
+    ...(defined(input.waAiAllowCancel)        && { wa_ai_allow_cancel:         input.waAiAllowCancel }),
     // Patient registration & payment policies
     ...(defined(input.allowSelfRegistration)  && { allow_self_registration:    input.allowSelfRegistration }),
     ...(defined(input.acceptedPaymentMethods) && { accepted_payment_methods:   input.acceptedPaymentMethods }),
     ...(defined(input.paymentTiming)          && { payment_timing:             input.paymentTiming }),
     ...(defined(input.cancellationHours)      && { cancellation_hours:         input.cancellationHours }),
+    // Booking config
+    ...(defined(input.allowProfessionalSelection) && { allow_professional_selection: input.allowProfessionalSelection }),
   }
 }
 

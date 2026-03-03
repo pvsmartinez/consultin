@@ -114,6 +114,7 @@ export interface AppointmentInput {
   roomId?: string | null
   chargeAmountCents?: number | null
   professionalFeeCents?: number | null
+  serviceTypeId?: string | null
 }
 
 export function useAppointmentMutations() {
@@ -136,6 +137,7 @@ export function useAppointmentMutations() {
           room_id:                 input.roomId ?? null,
           charge_amount_cents:     input.chargeAmountCents ?? null,
           professional_fee_cents:  input.professionalFeeCents ?? null,
+          service_type_id:         input.serviceTypeId ?? null,
         })
         .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty), clinic_room:clinic_rooms(id,name,color)`)
         .single()

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { format, addDays, parseISO, addMinutes, getISOWeek } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
-import { CalendarCheck, ArrowLeft, CheckCircle, ArrowRight } from '@phosphor-icons/react'
+import { CalendarCheck, ArrowLeft, CheckCircle, ArrowRight, Stethoscope, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -12,33 +12,47 @@ import { useAvailabilitySlots } from '../hooks/useAvailabilitySlots'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useAppointmentMutations } from '../hooks/useAppointmentsMutations'
 import { useMyPatient } from '../hooks/usePatients'
+import { useServiceTypes } from '../hooks/useServiceTypes'
+import { formatBRL } from '../utils/currency'
 
 export default function AgendarConsultaPage() {
   const navigate = useNavigate()
 
   const { data: clinic }  = useClinic()
-  const slotDuration      = clinic?.slotDurationMinutes ?? 30
+  const allowProfSelection   = clinic?.allowProfessionalSelection ?? true
+  const slotDuration         = clinic?.slotDurationMinutes ?? 30
 
-  const { patient: myPatient }                      = useMyPatient()
+  const { patient: myPatient }              = useMyPatient()
   const { data: allProfessionals = [],
-          isLoading: loadingProfs }              = useProfessionals()
+          isLoading: loadingProfs }          = useProfessionals()
   const professionals = allProfessionals.filter(p => p.active)
-  const { create }                               = useAppointmentMutations()
+  const { data: serviceTypes = [] }          = useServiceTypes()
+  const activeServiceTypes = serviceTypes.filter(s => s.active)
+  const { create }                           = useAppointmentMutations()
 
-  const [selectedProf, setSelectedProf]   = useState<string>('')
-  const [selectedDate, setSelectedDate]   = useState<string>('')
-  const [selectedTime, setSelectedTime]   = useState<string>('')
-  const [notes, setNotes]                 = useState<string>('')
-  const [saving, setSaving]               = useState(false)
-  const [confirmed, setConfirmed]         = useState<{ profName: string; date: string; time: string } | null>(null)
+  const [selectedProf,        setSelectedProf]        = useState<string>('')
+  const [selectedDate,        setSelectedDate]        = useState<string>('')
+  const [selectedTime,        setSelectedTime]        = useState<string>('')
+  const [selectedServiceType, setSelectedServiceType] = useState<string>('')
+  const [notes,               setNotes]               = useState<string>('')
+  const [saving,              setSaving]               = useState(false)
+  const [confirmed, setConfirmed] = useState<{ profName: string; date: string; time: string; serviceName?: string } | null>(null)
+
+  // When professional selection is disabled, default to first professional
+  const autoProf = !allowProfSelection ? professionals[0]?.id ?? '' : ''
+  const effectiveProf = allowProfSelection ? selectedProf : autoProf
+
+  const selectedService = activeServiceTypes.find(s => s.id === selectedServiceType) ?? null
+  // Use service type duration if selected, otherwise use clinic default
+  const effectiveSlotDuration = selectedService?.durationMinutes ?? slotDuration
 
   const minDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
   const maxDate = format(addDays(new Date(), 90), 'yyyy-MM-dd')
 
   // Booked appointments for selected prof+date — prevents double-booking occupied slots
   const { data: bookedRanges = [], isLoading: loadingBooked } = useQuery({
-    queryKey: ['booked-slots', selectedProf, selectedDate],
-    enabled: !!selectedProf && !!selectedDate,
+    queryKey: ['booked-slots', effectiveProf, selectedDate],
+    enabled: !!effectiveProf && !!selectedDate,
     queryFn: async () => {
       const TZ = 'America/Sao_Paulo'
       const dayStartUTC = fromZonedTime(`${selectedDate}T00:00:00`, TZ).toISOString()
@@ -46,7 +60,7 @@ export default function AgendarConsultaPage() {
       const { data } = await supabase
         .from('appointments')
         .select('starts_at, ends_at')
-        .eq('professional_id', selectedProf)
+        .eq('professional_id', effectiveProf)
         .gte('starts_at', dayStartUTC)
         .lte('starts_at', dayEndUTC)
         .neq('status', 'cancelled')
@@ -57,14 +71,12 @@ export default function AgendarConsultaPage() {
     },
   })
 
-  // Availability slots for the selected professional (React Query cache)
-  const { data: availSlots = [] } = useAvailabilitySlots(selectedProf)
-
-  // Fetch already-booked appointments when professional or date changes — now handled by useQuery above
+  // Availability slots for the effective professional
+  const { data: availSlots = [] } = useAvailabilitySlots(effectiveProf)
 
   // Derive available times from professional's weekly schedule for selectedDate
   const availableTimes = useMemo(() => {
-    if (!selectedDate || !selectedProf || availSlots.length === 0) return []
+    if (!selectedDate || !effectiveProf || availSlots.length === 0) return []
     const dt = new Date(`${selectedDate}T12:00:00`)
     const weekday = dt.getDay() // 0=Sun…6=Sat
     const weekNum = getISOWeek(dt)
@@ -79,15 +91,15 @@ export default function AgendarConsultaPage() {
       const [eh, em] = slot.endTime.split(':').map(Number)
       let cur = sh * 60 + sm
       const end = eh * 60 + em
-      while (cur + slotDuration <= end) {
+      while (cur + effectiveSlotDuration <= end) {
         times.push(
           `${String(Math.floor(cur / 60)).padStart(2, '0')}:${String(cur % 60).padStart(2, '0')}`
         )
-        cur += slotDuration
+        cur += effectiveSlotDuration
       }
     }
     return times
-  }, [selectedDate, selectedProf, availSlots, slotDuration])
+  }, [selectedDate, effectiveProf, availSlots, effectiveSlotDuration])
 
   // Returns true if a slot time string (HH:mm) overlaps with any booked appointment.
   // Checks the FULL interval [slotStart, slotStart + slotDuration) — not just the start time.
@@ -95,33 +107,35 @@ export default function AgendarConsultaPage() {
     if (bookedRanges.length === 0 || !selectedDate) return false
     const TZ = 'America/Sao_Paulo'
     const slotStartMs = fromZonedTime(`${selectedDate}T${timeHHMM}:00`, TZ).getTime()
-    const slotEndMs   = slotStartMs + slotDuration * 60_000
+    const slotEndMs   = slotStartMs + effectiveSlotDuration * 60_000
     return bookedRanges.some(r => r.startsMs < slotEndMs && r.endsMs > slotStartMs)
   }
 
-  // Clear time choice whenever the prof or date changes
-  useEffect(() => { setSelectedTime('') }, [selectedProf, selectedDate])
+  // Clear time choice whenever the effective prof, date, or service type changes
+  useEffect(() => { setSelectedTime('') }, [effectiveProf, selectedDate, selectedServiceType])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!myPatient || !selectedProf || !selectedDate || !selectedTime) return
+    if (!myPatient || !effectiveProf || !selectedDate || !selectedTime) return
 
     setSaving(true)
 
     const TZ = 'America/Sao_Paulo'
     const startsAt = fromZonedTime(`${selectedDate}T${selectedTime}:00`, TZ)
-    const endsAt   = addMinutes(startsAt, slotDuration)
+    const endsAt   = addMinutes(startsAt, effectiveSlotDuration)
 
     try {
       await create.mutateAsync({
-        patientId:      myPatient.id,
-        professionalId: selectedProf,
-        startsAt:       startsAt.toISOString(),
-        endsAt:         endsAt.toISOString(),
-        status:         'scheduled',
-        notes:          notes || null,
+        patientId:       myPatient.id,
+        professionalId:  effectiveProf,
+        startsAt:        startsAt.toISOString(),
+        endsAt:          endsAt.toISOString(),
+        status:          'scheduled',
+        notes:           notes || null,
+        serviceTypeId:   selectedServiceType || null,
       })
-      setConfirmed({ profName: selectedProfName, date: selectedDate, time: selectedTime })
+      const profName = professionals.find(p => p.id === effectiveProf)?.name ?? ''
+      setConfirmed({ profName, date: selectedDate, time: selectedTime, serviceName: selectedService?.name })
     } catch (err) {
       const code = (err as { code?: string }).code
       if (code === '23P01') {
@@ -134,7 +148,7 @@ export default function AgendarConsultaPage() {
     }
   }
 
-  const selectedProfName = professionals.find(p => p.id === selectedProf)?.name ?? ''
+  const selectedProfName   = professionals.find(p => p.id === effectiveProf)?.name ?? ''
 
   // ── Confirmation screen ─────────────────────────────────────────────────────
   if (confirmed) {
@@ -148,9 +162,15 @@ export default function AgendarConsultaPage() {
           <p className="text-sm text-gray-500 mt-1">Você receberá uma confirmação em breve.</p>
         </div>
         <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-sm text-left space-y-2">
+          {confirmed.serviceName && (
+            <div className="flex items-center justify-between">
+              <span className="text-gray-500">Serviço</span>
+              <span className="font-medium text-gray-800">{confirmed.serviceName}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Profissional</span>
-            <span className="font-medium text-gray-800">{confirmed.profName}</span>
+            <span className="font-medium text-gray-800">{confirmed.profName || 'A definir'}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-500">Data</span>
@@ -176,6 +196,7 @@ export default function AgendarConsultaPage() {
               setSelectedProf('')
               setSelectedDate('')
               setSelectedTime('')
+              setSelectedServiceType('')
               setNotes('')
             }}
             className="text-sm text-gray-400 hover:text-gray-600 py-2 transition"
@@ -215,29 +236,59 @@ export default function AgendarConsultaPage() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
 
-        {/* Professional */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
-          {loadingProfs ? (
-            <p className="text-sm text-gray-400">Carregando profissionais...</p>
-          ) : professionals.length === 0 ? (
-            <p className="text-sm text-gray-400">Nenhum profissional disponível.</p>
-          ) : (
-            <select
-              required
-              value={selectedProf}
-              onChange={e => setSelectedProf(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">Selecione um profissional</option>
-              {professionals.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        {/* Service type — optional, only shown if clinic has active service types */}
+        {activeServiceTypes.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tipo de serviço <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <div className="relative">
+              <Stethoscope size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <select
+                value={selectedServiceType}
+                onChange={e => setSelectedServiceType(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Selecione um serviço</option>
+                {activeServiceTypes.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            {selectedService?.priceCents && (
+              <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
+                <CurrencyCircleDollar size={13} className="text-green-500" />
+                Valor estimado: <span className="font-medium text-gray-700">{formatBRL(selectedService.priceCents)}</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Professional — only shown if clinic allows patient choice */}
+        {allowProfSelection && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
+            {loadingProfs ? (
+              <p className="text-sm text-gray-400">Carregando profissionais...</p>
+            ) : professionals.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhum profissional disponível.</p>
+            ) : (
+              <select
+                required
+                value={selectedProf}
+                onChange={e => setSelectedProf(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Selecione um profissional</option>
+                {professionals.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
         {/* Date */}
         <div>
@@ -258,11 +309,15 @@ export default function AgendarConsultaPage() {
           )}
         </div>
 
-        {/* Time — derived from professional's availability + clinic slot duration */}
+        {/* Time — derived from availability + clinic slot duration */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Horário</label>
-          {!selectedProf || !selectedDate ? (
-            <p className="text-xs text-gray-400">Selecione o profissional e a data para ver os horários.</p>
+          {!effectiveProf || !selectedDate ? (
+            <p className="text-xs text-gray-400">
+              {allowProfSelection
+                ? 'Selecione o profissional e a data para ver os horários.'
+                : 'Selecione a data para ver os horários disponíveis.'}
+            </p>
           ) : loadingBooked ? (
             <p className="text-xs text-gray-400">Carregando horários disponíveis...</p>
           ) : availableTimes.length === 0 ? (
@@ -308,21 +363,30 @@ export default function AgendarConsultaPage() {
         </div>
 
         {/* Summary */}
-        {selectedProf && selectedDate && selectedTime && (
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-blue-700 space-y-0.5">
+        {effectiveProf && selectedDate && selectedTime && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-blue-700 space-y-1">
             <p className="font-medium flex items-center gap-1.5">
               <CalendarCheck size={15} /> Resumo do agendamento
             </p>
+            {selectedService && (
+              <p className="text-xs">
+                Serviço: <span className="font-medium">{selectedService.name}</span>
+                {selectedService.priceCents ? ` — ${formatBRL(selectedService.priceCents)}` : ''}
+              </p>
+            )}
             <p className="text-xs">
-              <span className="font-medium">{selectedProfName}</span> — {' '}
-              {format(new Date(selectedDate + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })} às {selectedTime}
+              {allowProfSelection
+                ? <><span className="font-medium">{selectedProfName}</span> — </>
+                : 'Profissional será alocado automaticamente — '
+              }
+              {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })} às {selectedTime}
             </p>
           </div>
         )}
 
         <button
           type="submit"
-          disabled={saving || !selectedProf || !selectedDate || !selectedTime}
+          disabled={saving || !effectiveProf || !selectedDate || !selectedTime}
           className="w-full bg-green-600 hover:bg-green-700 text-white rounded-lg py-2.5 text-sm font-semibold transition disabled:opacity-40"
         >
           {saving ? 'Agendando...' : 'Confirmar agendamento'}

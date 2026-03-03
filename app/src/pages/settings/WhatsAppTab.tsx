@@ -1,10 +1,16 @@
 import { useState } from 'react'
-import { WhatsappLogo, Copy, ArrowClockwise } from '@phosphor-icons/react'
+import { WhatsappLogo, Copy, ArrowClockwise, Robot, BookOpen, Plus, Trash, PencilSimple, Check } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useClinic } from '../../hooks/useClinic'
 import { storeWhatsAppToken } from '../../services/whatsapp'
 import { WA_AI_MODELS } from '../../types'
 import type { Clinic } from '../../types'
+import {
+  useWhatsappFaqs,
+  useCreateWhatsappFaq,
+  useUpdateWhatsappFaq,
+  useDeleteWhatsappFaq,
+} from '../../hooks/useWhatsappFaqs'
 
 const WEBHOOK_STEPS = [
   { n: 1, text: 'No Meta for Developers, crie um App do tipo "Business".' },
@@ -22,7 +28,19 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
   const [phoneDisplay, setPhoneDisplay] = useState(clinic.whatsappPhoneDisplay ?? '')
   const [wabaId,       setWabaId]       = useState(clinic.whatsappWabaId ?? '')
   const [aiModel,      setAiModel]      = useState(clinic.waAiModel ?? 'openai/gpt-4o-mini')
+  const [customPrompt, setCustomPrompt] = useState(clinic.waAiCustomPrompt ?? '')
   const [saving,       setSaving]       = useState(false)
+
+  // FAQ hooks
+  const { data: faqs = [] }   = useWhatsappFaqs()
+  const createFaq             = useCreateWhatsappFaq()
+  const updateFaq             = useUpdateWhatsappFaq()
+  const deleteFaq             = useDeleteWhatsappFaq()
+  const [faqQ,    setFaqQ]    = useState('')
+  const [faqA,    setFaqA]    = useState('')
+  const [editId,  setEditId]  = useState<string | null>(null)
+  const [editQ,   setEditQ]   = useState('')
+  const [editA,   setEditA]   = useState('')
 
   const verifyToken = clinic.whatsappVerifyToken
     ?? `consultin_${clinic.id.replace(/-/g, '').slice(0, 16)}`
@@ -65,6 +83,14 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
 
   async function handleToggleReminders(
     field: 'waRemindersd1' | 'waRemindersd0' | 'waProfessionalAgenda' | 'waAttendantInbox',
+    value: boolean,
+  ) {
+    await update.mutateAsync({ [field]: value })
+    toast.success('Configuração salva')
+  }
+
+  async function handleToggleAi(
+    field: 'waAiAllowSchedule' | 'waAiAllowConfirm' | 'waAiAllowCancel',
     value: boolean,
   ) {
     await update.mutateAsync({ [field]: value })
@@ -130,6 +156,148 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* AI personality */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            <Robot size={15} weight="fill" className="text-violet-500" /> Personalidade da IA
+          </p>
+          <p className="text-xs text-gray-400">
+            Instruções adicionais para o assistente. Exemplo: &ldquo;Seja sempre gentil e termine com o nome da clínica.&rdquo;
+          </p>
+          <textarea
+            value={customPrompt}
+            onChange={e => setCustomPrompt(e.target.value)}
+            onBlur={() => update.mutateAsync({ waAiCustomPrompt: customPrompt || null })}
+            rows={3}
+            placeholder="Instruções de tom e personalidade..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 resize-none"
+          />
+        </div>
+
+        {/* AI command toggles */}
+        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <p className="text-sm font-semibold text-gray-700 px-4 pt-3 pb-2">Ações permitidas para a IA</p>
+          {([
+            { field: 'waAiAllowConfirm'  as const, label: 'IA pode confirmar consultas',     desc: 'Confirma agendamentos via WhatsApp automaticamente' },
+            { field: 'waAiAllowCancel'   as const, label: 'IA pode cancelar consultas',       desc: 'Cancela consultas a pedido do paciente' },
+            { field: 'waAiAllowSchedule' as const, label: 'IA pode agendar novas consultas',  desc: 'Fluxo de agendamento completo via WhatsApp' },
+          ]).map(({ field, label, desc }) => {
+            const value = clinic[field] as boolean
+            return (
+              <div key={field} className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">{label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                </div>
+                <button
+                  onClick={() => handleToggleAi(field, !value)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-gray-200'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* FAQ knowledge base */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            <BookOpen size={15} weight="fill" className="text-blue-500" /> Base de conhecimento (FAQ)
+          </p>
+          <p className="text-xs text-gray-400">Perguntas e respostas que a IA usará para responder dúvidas frequentes.</p>
+
+          {/* Existing FAQs */}
+          <div className="space-y-2">
+            {faqs.map(faq => (
+              <div key={faq.id} className="border border-gray-100 rounded-lg p-3 space-y-1">
+                {editId === faq.id ? (
+                  <div className="space-y-2">
+                    <input
+                      value={editQ}
+                      onChange={e => setEditQ(e.target.value)}
+                      placeholder="Pergunta"
+                      className="w-full border border-blue-300 rounded-lg px-3 py-1.5 text-sm"
+                    />
+                    <textarea
+                      value={editA}
+                      onChange={e => setEditA(e.target.value)}
+                      placeholder="Resposta"
+                      rows={2}
+                      className="w-full border border-blue-300 rounded-lg px-3 py-1.5 text-sm resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          await updateFaq.mutateAsync({ id: faq.id, question: editQ, answer: editA })
+                          setEditId(null)
+                          toast.success('FAQ atualizado')
+                        }}
+                        className="flex items-center gap-1 text-xs text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700"
+                      >
+                        <Check size={12} /> Salvar
+                      </button>
+                      <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-700">{faq.question}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{faq.answer}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => { setEditId(faq.id); setEditQ(faq.question); setEditA(faq.answer) }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                      >
+                        <PencilSimple size={13} />
+                      </button>
+                      <button
+                        onClick={async () => { await deleteFaq.mutateAsync(faq.id); toast.success('FAQ removido') }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+                      >
+                        <Trash size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* New FAQ form */}
+          <div className="border border-dashed border-gray-200 rounded-lg p-3 space-y-2">
+            <input
+              value={faqQ}
+              onChange={e => setFaqQ(e.target.value)}
+              placeholder="Nova pergunta..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm"
+            />
+            <textarea
+              value={faqA}
+              onChange={e => setFaqA(e.target.value)}
+              placeholder="Resposta..."
+              rows={2}
+              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm resize-none"
+            />
+            <button
+              onClick={async () => {
+                if (!faqQ.trim() || !faqA.trim()) return
+                await createFaq.mutateAsync({ question: faqQ.trim(), answer: faqA.trim() })
+                setFaqQ(''); setFaqA('')
+                toast.success('FAQ adicionado')
+              }}
+              disabled={!faqQ.trim() || !faqA.trim()}
+              className="flex items-center gap-1.5 text-xs text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+            >
+              <Plus size={12} /> Adicionar
+            </button>
+          </div>
         </div>
 
         <button onClick={handleDisconnect}

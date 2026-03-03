@@ -17,14 +17,19 @@ const SLOT_DURATIONS = [15, 20, 30, 45, 60]
 
 export default function AgendaTab({ clinic }: { clinic: Clinic }) {
   const { update } = useClinic()
-  const [slotDuration, setSlotDuration] = useState(clinic.slotDurationMinutes)
+  const [slotDuration,         setSlotDuration]         = useState(clinic.slotDurationMinutes)
+  const [allowProfSelection,   setAllowProfSelection]   = useState(clinic.allowProfessionalSelection ?? true)
   const [hours, setHours] = useState<Partial<Record<string, WorkingHours>>>(clinic.workingHours ?? {})
   const [saving, setSaving] = useState(false)
 
   async function save() {
     setSaving(true)
     try {
-      await update.mutateAsync({ slotDurationMinutes: slotDuration, workingHours: hours as Record<string, WorkingHours> })
+      await update.mutateAsync({
+        slotDurationMinutes:        slotDuration,
+        workingHours:               hours as Record<string, WorkingHours>,
+        allowProfessionalSelection: allowProfSelection,
+      })
       toast.success('Configurações de agenda salvas')
     } catch {
       toast.error('Erro ao salvar')
@@ -48,6 +53,28 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
 
   return (
     <div className="space-y-6">
+      {/* Booking options */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Opções de agendamento online</label>
+        <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-700">Paciente escolhe o profissional</p>
+            <p className="text-xs text-gray-400 mt-0.5">Quando desativado, o profissional é alocado automaticamente pela disponibilidade</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAllowProfSelection(v => !v)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              allowProfSelection ? 'bg-blue-500' : 'bg-gray-200'
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              allowProfSelection ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
+      </div>
+
       {/* Slot duration */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Duração padrão da consulta</label>

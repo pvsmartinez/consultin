@@ -51,11 +51,20 @@ serve(async (req) => {
   // ── Fetch clinic context ──────────────────────────────────────────────────
   const { data: clinic } = await supabase
     .from('clinics')
-    .select('name, phone, address, city, state, wa_ai_model, working_hours, slot_duration_minutes')
+    .select('name, phone, address, city, state, wa_ai_model, working_hours, slot_duration_minutes, wa_ai_custom_prompt, wa_ai_allow_schedule, wa_ai_allow_confirm, wa_ai_allow_cancel')
     .eq('id', clinicId)
     .single()
 
   if (!clinic) return jsonError('Clinic not found', 404)
+
+  // ── Fetch FAQ knowledge base ──────────────────────────────────────────────
+  const { data: faqRows } = await supabase
+    .from('whatsapp_faqs')
+    .select('question, answer')
+    .eq('clinic_id', clinicId)
+    .eq('active', true)
+    .order('sort_order')
+    .order('created_at')
 
   // ── Fetch upcoming appointments for this patient (context for confirm/cancel)
   const pendingAppts: { id: string; starts_at: string; professional_name: string }[] = []
@@ -81,12 +90,42 @@ serve(async (req) => {
   }
 
   // ── Build system prompt ───────────────────────────────────────────────────
+  const allowConfirm  = clinic.wa_ai_allow_confirm  !== false   // default true
+  const allowCancel   = clinic.wa_ai_allow_cancel   !== false   // default true
+  const allowSchedule = clinic.wa_ai_allow_schedule === true    // default false
+
+  const faqSection = faqRows && faqRows.length > 0
+    ? [
+        '',
+        'Informações frequentes (use para responder perguntas dos pacientes):',
+        ...(faqRows as { question: string; answer: string }[]).map(f => `P: ${f.question}\nR: ${f.answer}`),
+      ].join('\n')
+    : ''
+
+  const allowedActions = [
+    `- { "action": "reply", "replyText": "..." } — responder ao paciente`,
+    allowConfirm  && `- { "action": "confirm_appointment", "appointmentId": "...", "replyText": "..." } — confirmar consulta`,
+    allowCancel   && `- { "action": "cancel_appointment", "appointmentId": "...", "replyText": "..." } — cancelar consulta`,
+    `- { "action": "escalate", "replyText": "..." } — transferir para atendente humano`,
+  ].filter(Boolean).join('\n')
+
+  const rules = [
+    allowConfirm  ? `1. Se o paciente responder SIM/CONFIRMAR → confirme a consulta mais próxima.` : `1. Se o paciente responder SIM/CONFIRMAR → informe que um atendente irá confirmar e use action escalate.`,
+    allowCancel   ? `2. Se o paciente responder NÃO/CANCELAR → cancele a consulta mais próxima.` : `2. Se o paciente quiser cancelar → informe que um atendente irá ajudar e use action escalate.`,
+    allowSchedule ? `3. Se pedir para agendar uma nova consulta → informe os próximos passos do agendamento.` : `3. Se pedir para agendar uma nova consulta → responda que um atendente entrará em contato e use action escalate.`,
+    `4. Se a pergunta for complexa, sensível ou médica → use action escalate.`,
+    `5. Nunca invente horários ou profissionais. Apenas confirme ou cancele consultas existentes.`,
+    `6. Responda APENAS com o JSON, sem texto extra.`,
+  ].join('\n')
+
   const systemPrompt = [
     `Você é o assistente virtual de WhatsApp da clínica "${clinic.name}" no Brasil.`,
     `Responda sempre em Português do Brasil, de forma breve e amigável.`,
-    `Informações da clínica:`,
+    clinic.wa_ai_custom_prompt ? `\n${clinic.wa_ai_custom_prompt}` : '',
+    `\nInformações da clínica:`,
     `- Endereço: ${clinic.address ?? 'não informado'}, ${clinic.city ?? ''} - ${clinic.state ?? ''}`,
     `- Telefone: ${clinic.phone ?? 'não informado'}`,
+    faqSection,
     ``,
     `Próximas consultas do paciente:`,
     pendingAppts.length
@@ -94,18 +133,10 @@ serve(async (req) => {
       : '- Nenhuma consulta agendada',
     ``,
     `Você pode executar as seguintes ações retornando JSON estruturado:`,
-    `- { "action": "reply", "replyText": "..." } — responder ao paciente`,
-    `- { "action": "confirm_appointment", "appointmentId": "...", "replyText": "..." } — confirmar consulta`,
-    `- { "action": "cancel_appointment", "appointmentId": "...", "replyText": "..." } — cancelar consulta`,
-    `- { "action": "escalate", "replyText": "..." } — transferir para atendente humano`,
+    allowedActions,
     ``,
     `Regras:`,
-    `1. Se o paciente responder SIM/CONFIRMAR → confirme a consulta mais próxima.`,
-    `2. Se o paciente responder NÃO/CANCELAR → cancele a consulta mais próxima.`,
-    `3. Se pedir para agendar uma nova consulta → responda que um atendente entrará em contato e use action escalate.`,
-    `4. Se a pergunta for complexa, sensível ou médica → use action escalate.`,
-    `5. Nunca invente horários ou profissionais. Apenas confirme ou cancele consultas existentes.`,
-    `6. Responda APENAS com o JSON, sem texto extra.`,
+    rules,
   ].join('\n')
 
   // ── Build messages for OpenRouter ─────────────────────────────────────────

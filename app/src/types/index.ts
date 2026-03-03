@@ -47,6 +47,12 @@ export interface Clinic {
   waProfessionalAgenda: boolean
   waAttendantInbox: boolean
   waAiModel: string
+  waAiCustomPrompt: string | null
+  waAiAllowSchedule: boolean
+  waAiAllowConfirm: boolean
+  waAiAllowCancel: boolean
+  // Booking config
+  allowProfessionalSelection: boolean
 }
 
 // ─── Custom fields (clinic-defined) ──────────────────────────────────────────
@@ -218,6 +224,16 @@ export interface ClinicRoom {
   name: string
   color: string  // hex, e.g. #6366f1
   active: boolean
+  createdAt: string
+}
+
+export interface WhatsappFaq {
+  id: string
+  clinicId: string
+  question: string
+  answer: string
+  active: boolean
+  sortOrder: number
   createdAt: string
 }
 
