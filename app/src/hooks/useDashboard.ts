@@ -178,20 +178,26 @@ export function useProfessionalsToday() {
         .neq('status', 'cancelled')
         .order('starts_at', { ascending: true })
 
+      const nowStr = now.toISOString()
       const map = new Map<string, ProfessionalToday>()
       for (const row of data ?? []) {
         const prof = Array.isArray(row.professional) ? row.professional[0] : row.professional
         if (!prof) continue
         const existing = map.get(prof.id as string)
+        const isFuture = (row.starts_at as string) >= nowStr
         if (existing) {
           existing.appointmentCount++
+          // Update nextAt only if this is the earliest future appointment
+          if (isFuture && !existing.nextAt) {
+            existing.nextAt = row.starts_at as string
+          }
         } else {
           map.set(prof.id as string, {
             id:               prof.id as string,
             name:             prof.name as string,
             specialty:        (prof.specialty as string) ?? null,
             appointmentCount: 1,
-            nextAt:           row.starts_at as string,
+            nextAt:           isFuture ? (row.starts_at as string) : null,
           })
         }
       }

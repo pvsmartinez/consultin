@@ -136,7 +136,7 @@ function ClinicDashboard() {
             <Link to="/agenda" className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
               Ver calendário <ArrowRight size={12} />
             </Link>
-        </div>
+          </div>
 
         {todayLoading ? (
           <p className="text-sm text-gray-400">Carregando...</p>
