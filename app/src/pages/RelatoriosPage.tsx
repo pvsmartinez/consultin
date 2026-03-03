@@ -312,7 +312,7 @@ export default function RelatoriosPage() {
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="consultas" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="consultas" fill="#0d9488" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -325,7 +325,7 @@ export default function RelatoriosPage() {
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number | undefined) => v != null ? `R$ ${v.toFixed(2)}` : ''} />
-                <Line type="monotone" dataKey="faturamento" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="faturamento" stroke="#0d9488" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>

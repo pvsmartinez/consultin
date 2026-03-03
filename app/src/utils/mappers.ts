@@ -85,7 +85,7 @@ export function mapServiceType(row: Record<string, unknown>): ServiceType {
     name:            row.name as string,
     durationMinutes: (row.duration_minutes as number) ?? 30,
     priceCents:      (row.price_cents as number) ?? null,
-    color:           (row.color as string) ?? '#3b82f6',
+    color:           (row.color as string) ?? '#0d9488',
     active:          (row.active as boolean) ?? true,
     createdAt:       row.created_at as string,
   }

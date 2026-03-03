@@ -18,10 +18,10 @@ import type { Appointment } from '../types'
 const CLINIC_PALETTE = ['#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6']
 
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: '#3b82f6',
-  confirmed: '#22c55e',
-  completed: '#6b7280',
-  cancelled: '#ef4444',
+  scheduled: '#0d9488',
+  confirmed: '#10b981',
+  completed: '#94a3b8',
+  cancelled: '#f43f5e',
   no_show: '#f59e0b',
 }
 
@@ -59,7 +59,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
     // Multi-clinic professional: colour by clinic; single-clinic: colour by room/status
     const color = multiClinic
       ? (clinicColorMap[a.clinicId] ?? '#6366f1')
-      : (a.clinicRoom?.color ?? STATUS_COLORS[a.status] ?? '#3b82f6')
+      : (a.clinicRoom?.color ?? STATUS_COLORS[a.status] ?? '#0d9488')
     const title = multiClinic && a.clinicName
       ? `[${a.clinicName}] ${a.patient?.name ?? 'Paciente'}`
       : (a.patient?.name ?? 'Paciente')

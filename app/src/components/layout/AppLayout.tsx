@@ -42,10 +42,10 @@ const navItems = [
 ]
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
-  admin:         'text-blue-600 bg-blue-50',
-  receptionist:  'text-teal-600 bg-teal-50',
-  professional:  'text-violet-600 bg-violet-50',
-  patient:       'text-gray-600 bg-gray-100',
+  admin:         'text-teal-300 bg-teal-900/60',
+  receptionist:  'text-cyan-300 bg-cyan-900/60',
+  professional:  'text-violet-300 bg-violet-900/60',
+  patient:       'text-gray-300 bg-gray-700',
 }
 
 interface AppLayoutProps {
@@ -79,17 +79,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
   })
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-56 bg-gray-950 border-r border-gray-800 flex flex-col">
         {/* Logo + role badge */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-800">
           <div className="flex items-center gap-2 mb-1">
-            <Stethoscope size={22} className="text-blue-600 flex-shrink-0" />
-            <span className="font-semibold text-gray-800">Consultin</span>
+            <Stethoscope size={22} className="text-teal-400 flex-shrink-0" />
+            <span className="font-semibold text-white tracking-tight">Consultin</span>
           </div>
           {clinic?.name && (
-            <p className="text-xs text-gray-500 truncate mb-1.5" title={clinic.name}>{clinic.name}</p>
+            <p className="text-xs text-gray-400 truncate mb-1.5" title={clinic.name}>{clinic.name}</p>
           )}
           {role && ROLE_BADGE_COLORS[role] && (
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_BADGE_COLORS[role]}`}>
@@ -103,7 +103,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="px-3 pb-2">
             <button
               onClick={() => setNewApptOpen(true)}
-              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 w-full bg-teal-500 hover:bg-teal-400 text-white text-sm font-medium px-3 py-2.5 rounded-lg transition-colors shadow-sm shadow-teal-900/40"
             >
               <Plus size={16} weight="bold" />
               Nova consulta
@@ -119,8 +119,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               to={to}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-teal-500/15 text-teal-300 font-medium'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                 }`
               }
             >
@@ -139,7 +139,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               to="/minha-agenda"
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                  isActive ? 'bg-teal-500/15 text-teal-300 font-medium' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                 }`
               }
             >
@@ -150,11 +150,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </nav>
 
         {/* User + sign out */}
-        <div className="p-3 border-t border-gray-200 space-y-1">
+        <div className="p-3 border-t border-gray-800 space-y-1">
           {isSuperAdmin && (
             <NavLink to="/admin"
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-amber-50 text-amber-700 font-medium' : 'text-amber-600 hover:bg-amber-50'}`
+                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-amber-500/15 text-amber-300 font-medium' : 'text-amber-400 hover:bg-amber-500/10'}`
               }>
               <Shield size={18} />
               Admin
@@ -165,20 +165,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
               to="/minha-conta"
               className={({ isActive }) =>
                 `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                  isActive ? 'bg-gray-100' : 'hover:bg-gray-50'
+                  isActive ? 'bg-white/10' : 'hover:bg-white/5'
                 }`
               }
             >
               {profile.avatarUrl
                 ? <img src={profile.avatarUrl} alt="avatar" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                : <UserCircle size={18} className="text-gray-400 flex-shrink-0" />
+                : <UserCircle size={18} className="text-gray-500 flex-shrink-0" />
               }
-              <p className="text-xs font-medium text-gray-600 truncate">{profile.name}</p>
+              <p className="text-xs font-medium text-gray-300 truncate">{profile.name}</p>
             </NavLink>
           )}
           <button
             onClick={signOut}
-            className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-500 hover:bg-white/5 hover:text-gray-300 transition-colors"
           >
             <SignOut size={18} />
             Sair
