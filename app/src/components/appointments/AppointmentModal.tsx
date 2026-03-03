@@ -263,9 +263,10 @@ export default function AppointmentModal({
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 focus:outline-none max-h-[90vh] overflow-y-auto">
+        <Dialog.Content className="fixed inset-y-0 right-0 z-50 bg-white shadow-2xl w-full max-w-lg flex flex-col focus:outline-none data-[state=open]:animate-slide-in-right">
 
-          <div className="flex items-center justify-between mb-5">
+          {/* Drawer header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
             <Dialog.Title className="text-base font-semibold text-gray-800">
               {isEditing ? 'Editar consulta' : 'Nova consulta'}
             </Dialog.Title>
@@ -273,6 +274,9 @@ export default function AppointmentModal({
               <button className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
             </Dialog.Close>
           </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
 
           {/* Empty-state warnings — shown only when creating and clinic is fresh */}
           {(hasNoProfessionals || hasNoPatients) && (
@@ -509,7 +513,7 @@ export default function AppointmentModal({
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-2 pb-2">
               {isEditing && !confirmCancel && (
                 <button type="button" onClick={() => setConfirmCancel(true)}
                   className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
@@ -539,6 +543,8 @@ export default function AppointmentModal({
               )}
             </div>
           </form>
+
+          </div>{/* end scrollable body */}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

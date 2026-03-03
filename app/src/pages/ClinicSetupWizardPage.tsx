@@ -16,6 +16,7 @@ import {
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useClinic } from '../hooks/useClinic'
+import { useProfessionals } from '../hooks/useProfessionals'
 import { useAuthContext } from '../contexts/AuthContext'
 import Input from '../components/ui/Input'
 import type { Clinic } from '../types'
@@ -384,6 +385,7 @@ function StepAgenda({
 function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) {
   const { update } = useClinic()
   const { profile } = useAuthContext()
+  const { data: professionals = [], create: createProfessional } = useProfessionals()
   const qc         = useQueryClient()
   const navigate   = useNavigate()
   const [saving, setSaving] = useState(false)
@@ -392,6 +394,22 @@ function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) 
     setSaving(true)
     try {
       await update.mutateAsync({ onboardingCompleted: true })
+      // Auto-register clinic owner as first professional if none exist
+      if (professionals.length === 0) {
+        try {
+          await createProfessional.mutateAsync({
+            name:         profile?.name ?? clinic.name,
+            specialty:    null,
+            councilId:    null,
+            phone:        null,
+            email:        null,
+            active:       true,
+            customFields: {},
+          })
+        } catch {
+          // Non-critical: professional creation failed, user can add later
+        }
+      }
       // Update cache immediately so App.tsx guard re-evaluates before navigation
       qc.setQueryData(['clinic', profile?.clinicId], (old: Clinic | undefined) =>
         old ? { ...old, onboardingCompleted: true } : old

@@ -1,12 +1,10 @@
 import { useState, useRef, useMemo } from 'react'
 import FullCalendar from '@fullcalendar/react'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
-import { format, startOfWeek, endOfWeek } from 'date-fns'
-import { Plus, DoorOpen, UserCircle, CalendarBlank, X } from '@phosphor-icons/react'
+import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
+import { Plus, DoorOpen, UserCircle, X, Lock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -19,7 +17,26 @@ import type { Appointment } from '../types'
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = typeof DAY_ORDER[number]
 const DAY_FC: Record<DayKey, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
-type AgendaView = 'default' | 'room' | 'prof'
+const PT_DAY_LABELS: Record<DayKey, string> = {
+  sun: 'Domingo', mon: 'Segunda', tue: 'Terça', wed: 'Quarta',
+  thu: 'Quinta', fri: 'Sexta', sat: 'Sábado',
+}
+type AgendaView = 'room' | 'prof'
+
+/** Returns false if the date falls on a closed day or outside business hours */
+function isInsideBusinessHours(
+  date: Date,
+  workingHours: Record<string, { start: string; end: string }> | null | undefined,
+): boolean {
+  if (!workingHours || Object.keys(workingHours).length === 0) return true
+  const dayKey = DAY_ORDER[date.getDay() as 0|1|2|3|4|5|6]
+  const hours = workingHours[dayKey]
+  if (!hours) return false
+  const [sh, sm] = hours.start.split(':').map(Number)
+  const [eh, em] = hours.end.split(':').map(Number)
+  const timeMin = date.getHours() * 60 + date.getMinutes()
+  return timeMin >= sh * 60 + sm && timeMin < eh * 60 + em
+}
 
 // Distinct muted palette for multi-clinic colour-coding in the professional view
 const CLINIC_PALETTE = ['#6366f1', '#0ea5e9', '#f59e0b', '#10b981', '#ec4899', '#8b5cf6']
@@ -30,6 +47,62 @@ const STATUS_COLORS: Record<string, string> = {
   completed: '#94a3b8',
   cancelled: '#f43f5e',
   no_show:   '#f59e0b',
+}
+
+// ─── closed-slot unlock modal ─────────────────────────────────────────────
+
+interface ClosedSlotPending {
+  startDate: Date
+  date: string      // yyyy-MM-dd
+  time: string      // HH:mm
+  durationMin: number
+  dayKey: DayKey
+}
+
+function ClosedSlotModal({
+  pending, onJustThis, onOpenRecurring, onCancel, clinic,
+}: {
+  pending: ClosedSlotPending
+  onJustThis: () => void
+  onOpenRecurring: () => void
+  onCancel: () => void
+  clinic: { workingHours?: Record<string, { start: string; end: string }> | null } | undefined
+}) {
+  const dayLabel = PT_DAY_LABELS[pending.dayKey]
+  const dayHours = clinic?.workingHours?.[pending.dayKey]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl p-6 w-80">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+            <Lock size={16} className="text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Horário fechado</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {dayLabel} às {pending.time} está fora do horário de funcionamento
+              {dayHours ? ` (${dayHours.start}–${dayHours.end})` : ' (dia fechado)'}.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button onClick={onJustThis}
+            className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            Agendar só desta vez
+          </button>
+          <button onClick={onOpenRecurring}
+            className="w-full px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+            Abrir toda {dayLabel} a partir das {pending.time}
+          </button>
+          <button onClick={onCancel}
+            className="w-full px-4 py-2 text-sm text-gray-400 hover:text-gray-600">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── extend-hours modal ────────────────────────────────────────────────────
@@ -132,9 +205,10 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
     end: endOfWeek(today).toISOString(),
   })
 
-  const [agendaView, setAgendaView]       = useState<AgendaView>('default')
-  const [extendConfirm, setExtendConfirm] = useState<ExtendConfirm | null>(null)
-  const [addRoomOpen, setAddRoomOpen]     = useState(false)
+  const [agendaView, setAgendaView]         = useState<AgendaView>('room')
+  const [extendConfirm, setExtendConfirm]   = useState<ExtendConfirm | null>(null)
+  const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
+  const [addRoomOpen, setAddRoomOpen]       = useState(false)
 
   const { role }                          = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
@@ -180,18 +254,18 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number } | null>(null)
 
   // Resources for resource views
-  const resources: { id: string; title: string; eventColor?: string }[] | undefined = useMemo(() => {
+  const resources: { id: string; title: string; eventColor?: string }[] = useMemo(() => {
     if (agendaView === 'room') {
       const active = rooms.filter(r => r.active)
       return active.length
         ? active.map(r => ({ id: r.id, title: r.name, eventColor: r.color }))
         : [{ id: '__no_room__', title: 'Sem sala' }]
     }
-    if (agendaView === 'prof') {
-      const active = professionals.filter(p => p.active)
-      return active.length ? active.map(p => ({ id: p.id, title: p.name })) : undefined
-    }
-    return undefined
+    // agendaView === 'prof'
+    const active = professionals.filter(p => p.active)
+    return active.length
+      ? active.map(p => ({ id: p.id, title: p.name }))
+      : [{ id: '__no_prof__', title: 'Sem profissional' }]
   }, [agendaView, rooms, professionals])
 
   const events: EventInput[] = (appointments as (Appointment & { clinicName?: string | null })[]).map(a => {
@@ -203,7 +277,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
       : (a.patient?.name ?? 'Paciente')
     const resourceId = agendaView === 'room'
       ? (a.roomId ?? '__no_room__')
-      : agendaView === 'prof' ? a.professionalId : undefined
+      : a.professionalId
     return {
       id: a.id, title,
       start: a.startsAt, end: a.endsAt,
@@ -214,9 +288,65 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   })
 
   function handleDateSelect(arg: { start: Date; end: Date; startStr: string; endStr: string; allDay: boolean }) {
-    setEditingAppt(null)
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
+    // Owner/admin can schedule outside hours but must confirm
+    if (!isPersonalView && clinic?.workingHours && !isInsideBusinessHours(arg.start, clinic.workingHours)) {
+      const dayKey = DAY_ORDER[arg.start.getDay() as 0|1|2|3|4|5|6]
+      setClosedSlotPending({
+        startDate: arg.start,
+        date: format(arg.start, 'yyyy-MM-dd'),
+        time: format(arg.start, 'HH:mm'),
+        durationMin,
+        dayKey,
+      })
+      return
+    }
+    setEditingAppt(null)
     setInitialSlot({ date: format(arg.start, 'yyyy-MM-dd'), time: format(arg.start, 'HH:mm'), durationMin })
+    setModalOpen(true)
+  }
+
+  function handleClosedSlotScheduleOnce() {
+    if (!closedSlotPending) return
+    const { date, time, durationMin } = closedSlotPending
+    setClosedSlotPending(null)
+    setEditingAppt(null)
+    setInitialSlot({ date, time, durationMin })
+    setModalOpen(true)
+  }
+
+  async function handleClosedSlotOpenRecurring() {
+    if (!closedSlotPending || !clinic) return
+    const { startDate, dayKey, durationMin } = closedSlotPending
+    const time = format(startDate, 'HH:mm')
+    const wh = (clinic.workingHours ?? {}) as Record<string, { start: string; end: string }>
+    const current = wh[dayKey]
+    let newStart = current?.start ?? time
+    let newEnd   = current?.end   ?? format(addMinutes(startDate, durationMin), 'HH:mm')
+    if (!current) {
+      newStart = time
+      newEnd   = format(addMinutes(startDate, durationMin), 'HH:mm')
+    } else {
+      const clickedMin = startDate.getHours() * 60 + startDate.getMinutes()
+      const [sh, sm]   = current.start.split(':').map(Number)
+      if (clickedMin < sh * 60 + sm) {
+        newStart = time
+      } else {
+        newEnd = format(addMinutes(startDate, durationMin), 'HH:mm')
+      }
+    }
+    try {
+      await clinicUpdate.mutateAsync({
+        workingHours: { ...wh, [dayKey]: { start: newStart, end: newEnd } },
+      })
+      toast.success(`Horário de ${PT_DAY_LABELS[dayKey]} atualizado`)
+    } catch {
+      toast.error('Erro ao atualizar horário')
+    }
+    const { date, time: t, durationMin: dur } = closedSlotPending
+    setClosedSlotPending(null)
+    setEditingAppt(null)
+    setInitialSlot({ date, time: t, durationMin: dur })
     setModalOpen(true)
   }
 
@@ -300,12 +430,11 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
     }
   }
 
-  // View config
-  const isResourceView = agendaView !== 'default'
-  const fcPlugins     = isResourceView ? [resourceTimeGridPlugin, interactionPlugin] : [timeGridPlugin, dayGridPlugin, interactionPlugin]
-  const fcInitialView = isResourceView ? 'resourceTimeGridWeek' : 'timeGridWeek'
-  const headerRight   = isResourceView ? 'resourceTimeGridWeek,resourceTimeGridDay' : 'dayGridMonth,timeGridWeek,timeGridDay'
-  const fcButtonText  = { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia', resourceTimeGridWeek: 'Semana', resourceTimeGridDay: 'Dia' }
+  // View config — always resource view
+  const fcPlugins    = [resourceTimeGridPlugin, interactionPlugin]
+  const fcInitialView = 'resourceTimeGridWeek'
+  const headerRight  = 'resourceTimeGridWeek,resourceTimeGridDay'
+  const fcButtonText = { today: 'Hoje', week: 'Semana', day: 'Dia', resourceTimeGridWeek: 'Semana', resourceTimeGridDay: 'Dia' }
 
   return (
     <div className="space-y-4">
@@ -326,9 +455,8 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           {!isPersonalView && (
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
               {([
-                ['default', CalendarBlank, 'Padrão'],
-                ['room',    DoorOpen,      'Por sala'],
-                ['prof',    UserCircle,    'Profissional'],
+                ['room', DoorOpen,     'Por sala'],
+                ['prof', UserCircle,   'Profissional'],
               ] as const).map(([v, Icon, label]) => (
                 <button key={v} onClick={() => setAgendaView(v)}
                   className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors ${
@@ -396,6 +524,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           contentHeight={620}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
           slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         />
       </div>
 
@@ -419,6 +548,16 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
 
       {addRoomOpen && (
         <AddRoomModal onClose={() => setAddRoomOpen(false)} />
+      )}
+
+      {closedSlotPending && (
+        <ClosedSlotModal
+          pending={closedSlotPending}
+          clinic={clinic}
+          onJustThis={handleClosedSlotScheduleOnce}
+          onOpenRecurring={handleClosedSlotOpenRecurring}
+          onCancel={() => setClosedSlotPending(null)}
+        />
       )}
     </div>
   )

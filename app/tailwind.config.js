@@ -27,9 +27,14 @@ export default {
           '0%':   { backgroundPosition: '200% center' },
           '100%': { backgroundPosition: '-200% center' },
         },
+        'slide-in-right': {
+          from: { transform: 'translateX(100%)' },
+          to:   { transform: 'translateX(0)' },
+        },
       },
       animation: {
-        shimmer: 'shimmer 1.4s ease-in-out infinite',
+        shimmer:          'shimmer 1.4s ease-in-out infinite',
+        'slide-in-right': 'slide-in-right 0.25s ease-out',
       },
     },
   },
