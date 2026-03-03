@@ -87,11 +87,21 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   return null
 }
 
+// True when Supabase has stored a session in localStorage (user was previously logged in).
+// We detect it synchronously so we can skip the loading state on page reload.
+function hasCachedSession(): boolean {
+  try {
+    return Object.keys(localStorage).some(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+  } catch { return false }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   // Seed profile from cache so UI renders instantly on reload
   const [profile, setProfile] = useState<UserProfile | null>(getCachedProfile)
-  const [loading, setLoading] = useState(true)
+  // If we have both a cached session AND a cached profile, skip the loading state entirely.
+  // This prevents the "Carregando…" flash on every page reload for logged-in users.
+  const [loading, setLoading] = useState(() => !(getCachedProfile() !== null && hasCachedSession()))
   // True when Supabase fires PASSWORD_RECOVERY — forces NovaSenhaPage regardless of route
   const [recoveryMode, setRecoveryMode] = useState(false)
 
