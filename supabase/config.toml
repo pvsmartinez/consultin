@@ -31,6 +31,10 @@ refresh_token_reuse_interval = 10
 enable_signup = true
 enable_manual_linking = true
 
+[auth.email.template.magic_link]
+subject = "Seu código de acesso — Consultin"
+content_path = "./supabase/templates/magic_link.html"
+
 [auth.email.template.invite]
 subject = "Você foi convidado para o Consultin"
 content_path = "./supabase/templates/invite.html"
@@ -42,3 +46,17 @@ content_path = "./supabase/templates/recovery.html"
 [auth.email.template.email_change]
 subject = "Confirme seu novo e-mail — Consultin"
 content_path = "./supabase/templates/email_change.html"
+
+# IMPORTANT: Always keep these sections in config.toml.
+# Running `supabase config push --experimental` without them will DISABLE the providers remotely.
+# Secrets are managed via Dashboard / gen_apple_secret.py — do NOT add secret= here.
+
+[auth.external.apple]
+enabled = true
+client_id = "com.pvsmartinez.consultin.siwa"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+
+[auth.external.google]
+enabled = true
+client_id = "110911460411-rafg4tn00906bs07f5asn1hpotdnicd9.apps.googleusercontent.com"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
