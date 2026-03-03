@@ -5,8 +5,7 @@
 # Sobe os templates de e-mail do Consultin para o Supabase via Management API.
 # Executa localmente — não faz parte do CI/CD (os templates mudam raramente).
 #
-# Pré-requisito: SUPABASE_ACCESS_TOKEN deve estar no ambiente ou em pedrin/.env
-# Para obter: https://supabase.com/dashboard/account/tokens
+# Pré-requisito: SUPABASE_PAT em pedrin/.env (já existe — mesmo token usado por deploy-features.sh)
 #
 # Uso:
 #   cd consultin && bash scripts/push-email-templates.sh
@@ -18,21 +17,16 @@ PROJECT_REF="nxztzehgnkdmluogxehi"
 TEMPLATES_DIR="$(cd "$(dirname "$0")/../supabase/templates" && pwd)"
 API="https://api.supabase.com/v1/projects/${PROJECT_REF}/config/auth"
 
-# ── Load access token ─────────────────────────────────────────────────────────
-if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
-  PEDRIN_ENV="$(cd "$(dirname "$0")" && cd ../../pedrin && pwd)/.env"
-  if [[ -f "$PEDRIN_ENV" ]]; then
-    # shellcheck disable=SC1090
-    source "$PEDRIN_ENV"
-  fi
-fi
-
-if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
-  echo "❌ SUPABASE_ACCESS_TOKEN não definido."
-  echo "   Gere um em: https://supabase.com/dashboard/account/tokens"
-  echo "   Depois rode: export SUPABASE_ACCESS_TOKEN=<token> && bash scripts/push-email-templates.sh"
+# ── Load credentials from pedrin/.env (source of truth, never committed) ──────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PEDRIN_ENV="$SCRIPT_DIR/../../pedrin/.env"
+if [[ ! -f "$PEDRIN_ENV" ]]; then
+  echo "❌ pedrin/.env não encontrado em $PEDRIN_ENV"
   exit 1
 fi
+set -a; source "$PEDRIN_ENV"; set +a
+
+TOKEN="${SUPABASE_PAT:?SUPABASE_PAT não definido em pedrin/.env}"
 
 # ── Read templates ─────────────────────────────────────────────────────────────
 invite_html=$(cat "${TEMPLATES_DIR}/invite.html")
@@ -71,7 +65,7 @@ PYEOF
 # ── Patch auth config ──────────────────────────────────────────────────────────
 response=$(curl -s -w "\n%{http_code}" \
   -X PATCH "${API}" \
-  -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+  -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "${payload}"
 )
