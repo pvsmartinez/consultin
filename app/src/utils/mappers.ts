@@ -2,7 +2,7 @@
  * Shared row-mappers: convert Supabase snake_case DB rows → camelCase domain types.
  * Single source of truth — import these instead of defining local mapRow functions.
  */
-import type { Appointment, Clinic, Patient } from '../types'
+import type { Appointment, Clinic, Patient, ServiceType } from '../types'
 
 // ─── Appointment ──────────────────────────────────────────────────────────────
 
@@ -17,6 +17,7 @@ export function mapAppointment(row: Record<string, unknown>): Appointment {
     status:               row.status as Appointment['status'],
     notes:                (row.notes as string) ?? null,
     roomId:               (row.room_id as string) ?? null,
+    serviceTypeId:        (row.service_type_id as string) ?? null,
     chargeAmountCents:    (row.charge_amount_cents as number) ?? null,
     paidAmountCents:      (row.paid_amount_cents as number) ?? null,
     professionalFeeCents: (row.professional_fee_cents as number) ?? null,
@@ -64,6 +65,24 @@ export function mapClinic(r: Record<string, unknown>): Clinic {
     waProfessionalAgenda:     (r.wa_professional_agenda as boolean) ?? false,
     waAttendantInbox:         (r.wa_attendant_inbox as boolean) ?? true,
     waAiModel:                (r.wa_ai_model as string) ?? 'openai/gpt-4o-mini',
+    allowSelfRegistration:    (r.allow_self_registration as boolean) ?? true,
+    acceptedPaymentMethods:   (r.accepted_payment_methods as string[]) ?? ['cash','pix','credit_card','debit_card'],
+    paymentTiming:            (r.payment_timing as Clinic['paymentTiming']) ?? 'flexible',
+    cancellationHours:        (r.cancellation_hours as number) ?? 24,
+  }
+}
+
+// ─── ServiceType ───────────────────────────────────────────────
+export function mapServiceType(row: Record<string, unknown>): ServiceType {
+  return {
+    id:              row.id as string,
+    clinicId:        row.clinic_id as string,
+    name:            row.name as string,
+    durationMinutes: (row.duration_minutes as number) ?? 30,
+    priceCents:      (row.price_cents as number) ?? null,
+    color:           (row.color as string) ?? '#3b82f6',
+    active:          (row.active as boolean) ?? true,
+    createdAt:       row.created_at as string,
   }
 }
 

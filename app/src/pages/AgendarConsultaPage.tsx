@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { format, addDays, parseISO, addMinutes } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
-import { CalendarCheck, ArrowLeft } from '@phosphor-icons/react'
+import { CalendarCheck, ArrowLeft, CheckCircle, ArrowRight } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { useClinic } from '../hooks/useClinic'
@@ -30,6 +30,7 @@ export default function AgendarConsultaPage() {
   const [selectedTime, setSelectedTime]   = useState<string>('')
   const [notes, setNotes]                 = useState<string>('')
   const [saving, setSaving]               = useState(false)
+  const [confirmed, setConfirmed]         = useState<{ profName: string; date: string; time: string } | null>(null)
 
   const minDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
   const maxDate = format(addDays(new Date(), 90), 'yyyy-MM-dd')
@@ -115,8 +116,7 @@ export default function AgendarConsultaPage() {
         status:         'scheduled',
         notes:          notes || null,
       })
-      toast.success('Consulta agendada com sucesso!')
-      navigate('/minhas-consultas')
+      setConfirmed({ profName: selectedProfName, date: selectedDate, time: selectedTime })
     } catch (err) {
       const code = (err as { code?: string }).code
       if (code === '23P01') {
@@ -130,6 +130,57 @@ export default function AgendarConsultaPage() {
   }
 
   const selectedProfName = professionals.find(p => p.id === selectedProf)?.name ?? ''
+
+  // ── Confirmation screen ─────────────────────────────────────────────────────
+  if (confirmed) {
+    return (
+      <div className="max-w-md mx-auto py-16 text-center space-y-5">
+        <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
+          <CheckCircle size={36} className="text-green-500" weight="fill" />
+        </div>
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Consulta agendada!</h1>
+          <p className="text-sm text-gray-500 mt-1">Você receberá uma confirmação em breve.</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 text-sm text-left space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Profissional</span>
+            <span className="font-medium text-gray-800">{confirmed.profName}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Data</span>
+            <span className="font-medium text-gray-800 capitalize">
+              {format(new Date(confirmed.date + 'T12:00:00'), "dd 'de' MMMM yyyy", { locale: ptBR })}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-500">Horário</span>
+            <span className="font-medium text-gray-800">{confirmed.time}</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Link
+            to="/minhas-consultas"
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition"
+          >
+            Ver minhas consultas <ArrowRight size={15} />
+          </Link>
+          <button
+            onClick={() => {
+              setConfirmed(null)
+              setSelectedProf('')
+              setSelectedDate('')
+              setSelectedTime('')
+              setNotes('')
+            }}
+            className="text-sm text-gray-400 hover:text-gray-600 py-2 transition"
+          >
+            Agendar outra consulta
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Edge case: user logged in but no patient record linked to this account
   if (!myPatient && !loadingProfs) {

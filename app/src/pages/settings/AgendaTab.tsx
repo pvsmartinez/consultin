@@ -64,7 +64,11 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
 
       {/* Working hours */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">Dias e horários de funcionamento</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Dias e horários de funcionamento</label>
+        <p className="text-xs text-gray-400 mb-3">
+          Define quando a clínica está aberta. A disponibilidade de cada profissional
+          é configurada separadamente em <strong>Horários</strong> e deve ficar dentro desses limites.
+        </p>
         <div className="space-y-2">
           {WEEKDAYS.map(({ key, label }) => {
             const active = !!hours[key]

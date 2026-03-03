@@ -23,6 +23,11 @@ export interface Clinic {
   professionalFieldConfig: FieldConfig
   // Anamnese configurável
   anamnesisFields: CustomFieldDef[]
+  // Patient registration & payment policies
+  allowSelfRegistration: boolean
+  acceptedPaymentMethods: string[]  // ['cash','pix','credit_card','debit_card']
+  paymentTiming: 'before_appointment' | 'after_appointment' | 'flexible'
+  cancellationHours: number         // hours before appt. 0=always, -1=never
   // Onboarding
   onboardingCompleted: boolean
   createdAt: string
@@ -171,6 +176,41 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, string> = {
   no_show:    'bg-yellow-100 text-yellow-700',
 }
 
+// ─── Service Type (appointment type with price + duration + color) ──────────
+export interface ServiceType {
+  id: string
+  clinicId: string
+  name: string
+  durationMinutes: number
+  priceCents: number | null   // null = define at booking
+  color: string               // hex
+  active: boolean
+  createdAt: string
+}
+
+export type ServiceTypeInput = Omit<ServiceType, 'id' | 'clinicId' | 'createdAt'>
+
+export const SERVICE_TYPE_COLORS = [
+  '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
+  '#f97316', '#f59e0b', '#22c55e', '#14b8a6', '#64748b',
+]
+
+// Accepted payment method options (configurable per clinic)
+export const PAYMENT_METHOD_OPTIONS: { value: string; label: string }[] = [
+  { value: 'cash',          label: 'Dinheiro' },
+  { value: 'pix',           label: 'Pix' },
+  { value: 'credit_card',   label: 'Cartão de crédito' },
+  { value: 'debit_card',    label: 'Cartão de débito' },
+  { value: 'transfer',      label: 'Transferência bancária' },
+  { value: 'insurance',     label: 'Convênio' },
+]
+
+export const PAYMENT_TIMING_LABELS: Record<string, string> = {
+  before_appointment: 'Antes da consulta (no agendamento)',
+  after_appointment:  'Após a consulta',
+  flexible:           'Flexível (a combinar)',
+}
+
 // ─── Clinic Room ────────────────────────────────────────────────────────────
 export interface ClinicRoom {
   id: string
@@ -191,6 +231,7 @@ export interface Appointment {
   status: AppointmentStatus
   notes: string | null
   roomId: string | null         // FK to clinic_rooms
+  serviceTypeId: string | null  // FK to service_types
   chargeAmountCents: number | null
   paidAmountCents: number | null
   professionalFeeCents: number | null

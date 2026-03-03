@@ -19,6 +19,7 @@ const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidad
 const PatientAnamnesisPage    = lazy(() => import('../pages/PatientAnamnesisPage'))
 const MinhaContaPage         = lazy(() => import('../pages/MinhaContaPage'))
 const AccessDeniedPage       = lazy(() => import('../pages/AccessDeniedPage'))
+const SalaDeEsperaPage       = lazy(() => import('../pages/SalaDeEsperaPage'))
 
 // ─── Staff routes (rendered inside <AppLayout>) ───────────────────────────────
 // Suspense boundary lives in App.tsx so the sidebar stays visible during
@@ -44,6 +45,11 @@ export default function StaffRoutes() {
       } />
       <Route path="/pacientes/:id/anamnese" element={
         <RequireAuth permission="canViewPatients"><PatientAnamnesisPage /></RequireAuth>
+      } />
+
+      {/* Sala de espera */}
+      <Route path="/sala-de-espera" element={
+        <RequireAuth permission="canViewPatients"><SalaDeEsperaPage /></RequireAuth>
       } />
 
       {/* Agenda */}

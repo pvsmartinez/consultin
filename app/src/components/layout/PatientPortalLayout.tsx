@@ -1,5 +1,5 @@
 import { NavLink, Navigate } from 'react-router-dom'
-import { Stethoscope, SignOut, CalendarBlank, User, CalendarPlus } from '@phosphor-icons/react'
+import { Stethoscope, SignOut, CalendarBlank, User, CalendarPlus, Phone, MapPin } from '@phosphor-icons/react'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
 
@@ -76,6 +76,27 @@ export default function PatientPortalLayout({ children }: PatientPortalLayoutPro
       <main className="max-w-2xl mx-auto px-4 py-8">
         {children}
       </main>
+
+      {/* Footer — clinic contact info */}
+      {(clinic?.phone || clinic?.address || clinic?.email) && (
+        <footer className="border-t border-gray-200 bg-white mt-8 py-5 px-4">
+          <div className="max-w-2xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-3 text-xs text-gray-400">
+            <span className="font-medium text-gray-500">{clinic?.name}</span>
+            {(clinic?.address || clinic?.city) && (
+              <span className="flex items-center gap-1">
+                <MapPin size={12} />
+                {[clinic.address, clinic.city, clinic.state].filter(Boolean).join(', ')}
+              </span>
+            )}
+            {clinic?.phone && (
+              <a href={`tel:${clinic.phone}`} className="flex items-center gap-1 hover:text-blue-500 transition">
+                <Phone size={12} />
+                {clinic.phone}
+              </a>
+            )}
+          </div>
+        </footer>
+      )}
     </div>
   )
 }

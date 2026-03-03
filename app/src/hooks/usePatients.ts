@@ -114,6 +114,34 @@ export function usePatients(search = '', page = 0) {
 }
 
 /**
+ * Standalone create-patient mutation — useful for quick inline patient creation.
+ */
+export function useCreatePatient() {
+  const { profile } = useAuthContext()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: Pick<PatientInput, 'name' | 'phone'> & Partial<PatientInput>): Promise<Patient> => {
+      const { data, error } = await supabase
+        .from('patients')
+        .insert({
+          clinic_id: profile!.clinicId!,
+          name:      input.name,
+          phone:     input.phone ?? null,
+          user_id:   null,
+          cpf:       input.cpf ?? null,
+          email:     input.email ?? null,
+          custom_fields: {},
+        })
+        .select()
+        .single()
+      if (error) throw new Error(error.message)
+      return mapPatient(data as Record<string, unknown>)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['patients'] }),
+  })
+}
+
+/**
  * Look up whether a portal account exists for a given CPF.
  * Calls the `find_user_by_cpf` SECURITY DEFINER RPC.
  * Returns { userId, displayName } or null if not found.

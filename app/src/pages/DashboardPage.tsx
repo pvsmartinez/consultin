@@ -1,9 +1,9 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
-import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy } from '@phosphor-icons/react'
+import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar } from '@phosphor-icons/react'
 import { useAuthContext } from '../contexts/AuthContext'
-import { useClinicKPIs, useProfessionalKPIs, useTodayAppointments } from '../hooks/useDashboard'
+import { useClinicKPIs, useProfessionalKPIs, useTodayAppointments, useProfessionalsToday, useClinicAlerts } from '../hooks/useDashboard'
 import type { TodayAppointment } from '../hooks/useDashboard'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
 import { useUpdateAppointmentStatus } from '../hooks/useAppointmentsMutations'
@@ -24,7 +24,8 @@ interface UpcomingRow {
   id: string
   starts_at: string
   status: string
-  patient: { name: string } | { name: string }[] | null
+  patient_id: string | null
+  patient: { id?: string; name: string } | { id?: string; name: string }[] | null
 }
 
 function getPatientName(patient: UpcomingRow['patient'] | TodayAppointment['patient']): string {
@@ -46,6 +47,8 @@ const STATUS_PRIORITY: Record<string, number> = { confirmed: 0, scheduled: 1, no
 function ClinicDashboard() {
   const { data, isLoading } = useClinicKPIs()
   const { data: todayList = [], isLoading: todayLoading } = useTodayAppointments()
+  const { data: profsToday = [] } = useProfessionalsToday()
+  const { data: alerts = [] } = useClinicAlerts()
   const updateStatus = useUpdateAppointmentStatus()
   const todayLabel = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
 
@@ -73,7 +76,30 @@ function ClinicDashboard() {
         <p className="text-sm text-gray-400 capitalize mt-0.5">{todayLabel}</p>
       </div>
 
-      {/* KPI cards — clicáveis */}
+      {/* Alerts — shown when there are action items */}
+      {alerts.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {alerts.map(alert => {
+            const isRed = alert.type === 'overdue_payment'
+            const Icon  = alert.type === 'overdue_payment' ? CurrencyDollar : alert.type === 'no_show' ? Warning : CheckCircle
+            return (
+              <Link key={alert.type} to={alert.link}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm transition-colors ${
+                  isRed
+                    ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                    : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                }`}
+              >
+                <Icon size={16} className="flex-shrink-0" />
+                <span className="flex-1">{alert.label}</span>
+                <ArrowRight size={14} />
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <Link to="/agenda">
           <KpiCard
@@ -101,13 +127,15 @@ function ClinicDashboard() {
         </Link>
       </div>
 
-      {/* Agenda de hoje */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Agenda de hoje</h2>
-          <Link to="/agenda" className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
-            Ver calendário <ArrowRight size={12} />
-          </Link>
+      {/* Agenda de hoje + Profissionais hoje */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Agenda de hoje — 2/3 width */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Agenda de hoje</h2>
+            <Link to="/agenda" className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+              Ver calendário <ArrowRight size={12} />
+            </Link>
         </div>
 
         {todayLoading ? (
@@ -165,6 +193,38 @@ function ClinicDashboard() {
             })}
           </div>
         )}
+      </div>
+
+        {/* Profissionais hoje \u2014 1/3 width */}
+        <div className="lg:col-span-1">
+          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Profissionais hoje</h2>
+          {profsToday.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 py-6 text-center">
+              <p className="text-sm text-gray-400">Nenhum profissional com consultas hoje.</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {profsToday.map(p => (
+                <li key={p.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                      {p.specialty && <p className="text-xs text-gray-400 truncate">{p.specialty}</p>}
+                    </div>
+                    <span className="flex-shrink-0 text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      {p.appointmentCount} {p.appointmentCount === 1 ? 'consulta' : 'consultas'}
+                    </span>
+                  </div>
+                  {p.nextAt && (
+                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                      <Clock size={10} /> pr\u00f3xima \u00e0s {format(new Date(p.nextAt), 'HH:mm')}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -236,25 +296,50 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
           </p>
         ) : (
           <ul className="space-y-2">
-            {(data?.upcoming as unknown as UpcomingRow[]).map((appt) => {
+            {(data?.upcoming as unknown as UpcomingRow[]).map((appt, idx) => {
+              const isNext = idx === 0
               const statusClasses = APPOINTMENT_STATUS_COLORS[appt.status as keyof typeof APPOINTMENT_STATUS_COLORS] ?? 'bg-gray-100 text-gray-500'
               const statusLabel = APPOINTMENT_STATUS_LABELS[appt.status as keyof typeof APPOINTMENT_STATUS_LABELS] ?? appt.status
-              const dateLabel = format(new Date(appt.starts_at), "dd/MM/yyyy")
+              const isToday = format(new Date(appt.starts_at), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+              const dateLabel = isToday ? 'Hoje' : format(new Date(appt.starts_at), "dd/MM/yyyy")
               const timeLabel = format(new Date(appt.starts_at), 'HH:mm')
+              const patientId = appt.patient_id
               return (
-                <li key={appt.id} className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-gray-800">
+                <li key={appt.id} className={`rounded-xl p-4 flex items-start justify-between gap-4 ${
+                  isNext
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                    : 'bg-white border border-gray-100'
+                }`}>
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    {isNext && (
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${
+                        isNext ? 'text-blue-200' : 'text-gray-400'
+                      }`}>Próxima</p>
+                    )}
+                    <p className={`text-sm font-semibold ${isNext ? 'text-white' : 'text-gray-800'}`}>
                       {getPatientName(appt.patient)}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className={`flex items-center gap-3 text-xs ${isNext ? 'text-blue-100' : 'text-gray-500'}`}>
                       <span className="flex items-center gap-1"><CalendarBlank size={11} /> {dateLabel}</span>
                       <span className="flex items-center gap-1"><Clock size={11} /> {timeLabel}</span>
                     </div>
                   </div>
-                  <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${statusClasses}`}>
-                    {statusLabel}
-                  </span>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    {isNext ? (
+                      patientId ? (
+                        <Link
+                          to={`/pacientes/${patientId}`}
+                          className="flex items-center gap-1.5 text-xs font-semibold bg-white text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                        >
+                          <Stethoscope size={13} /> Iniciar consulta
+                        </Link>
+                      ) : null
+                    ) : (
+                      <span className={`text-[11px] font-medium px-2 py-1 rounded-full ${statusClasses}`}>
+                        {statusLabel}
+                      </span>
+                    )}
+                  </div>
                 </li>
               )
             })}

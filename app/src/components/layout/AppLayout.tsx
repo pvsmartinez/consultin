@@ -17,6 +17,7 @@ import {
   SignIn,
   UserCircle,
   Plus,
+  Armchair,
 } from '@phosphor-icons/react'
 import AppointmentModal from '../appointments/AppointmentModal'
 import type { UserRole } from '../../types'
@@ -29,8 +30,9 @@ import { useClinicNotifications } from '../../hooks/useClinicNotifications'
 import ErrorBoundary from '../ErrorBoundary'
 
 const navItems = [
-  { to: '/dashboard',     icon: ChartBar,             label: 'Dashboard',      labelProfissional: 'Meu Painel',     permission: null },
-  { to: '/agenda',        icon: CalendarBlank,         label: 'Agenda',         labelProfissional: 'Minha Agenda',   permission: null },
+  { to: '/dashboard',         icon: ChartBar,             label: 'Dashboard',        labelProfissional: 'Meu Painel',     permission: null },
+  { to: '/sala-de-espera',    icon: Armchair,             label: 'Sala de espera',   labelProfissional: null,             permission: 'canViewPatients' as const },
+  { to: '/agenda',            icon: CalendarBlank,         label: 'Agenda',           labelProfissional: 'Minha Agenda',   permission: null },
   { to: '/minha-disponibilidade', icon: Clock,           label: 'Meus Horários',   labelProfissional: 'Meus Horários',         permission: 'canManageOwnAvailability' as const },
   { to: '/pacientes',     icon: Users,                 label: 'Pacientes',      labelProfissional: 'Pacientes',      permission: 'canViewPatients' as const },
   { to: '/profissionais', icon: UsersFour,             label: 'Profissionais',  labelProfissional: 'Profissionais',  permission: 'canManageProfessionals' as const },
@@ -71,9 +73,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     enterClinic.mutate({ userId: profile.id, clinicId: null })
   }
 
-  const visibleNav = navItems.filter(item =>
-    item.permission == null || hasPermission(item.permission)
-  )
+  const visibleNav = navItems.filter(item => {
+    if (isProfessional && item.labelProfissional === null) return false
+    return item.permission == null || hasPermission(item.permission)
+  })
 
   return (
     <div className="flex h-screen bg-gray-50">

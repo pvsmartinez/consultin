@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 
@@ -129,7 +129,7 @@ export function useProfessionalKPIs(email: string | undefined, userId: string | 
 
         supabase
           .from('appointments')
-          .select('id, starts_at, status, patient:patients(name)')
+          .select('id, starts_at, status, patient_id, patient:patients(id, name)')
           .eq('professional_id', prof.id)
           .gte('starts_at', now.toISOString())
           .in('status', ['scheduled', 'confirmed'])
@@ -147,6 +147,117 @@ export function useProfessionalKPIs(email: string | undefined, userId: string | 
         patientsCount: uniquePatients,
         upcoming:      upcomingResult.data ?? [],
       }
+    },
+  })
+}
+
+// ─── Professionals working today (admin dashboard widget) ─────────────────────
+
+export interface ProfessionalToday {
+  id: string
+  name: string
+  specialty: string | null
+  appointmentCount: number
+  nextAt: string | null
+}
+
+export function useProfessionalsToday() {
+  const { profile } = useAuthContext()
+  return useQuery<ProfessionalToday[]>({
+    queryKey: ['professionals-today', profile?.clinicId ?? null],
+    enabled: !!profile?.clinicId,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const now = new Date()
+      const { data } = await supabase
+        .from('appointments')
+        .select('professional_id, starts_at, professional:professionals(id, name, specialty)')
+        .gte('starts_at', startOfDay(now).toISOString())
+        .lte('starts_at', endOfDay(now).toISOString())
+        .neq('status', 'cancelled')
+        .order('starts_at', { ascending: true })
+
+      const map = new Map<string, ProfessionalToday>()
+      for (const row of data ?? []) {
+        const prof = Array.isArray(row.professional) ? row.professional[0] : row.professional
+        if (!prof) continue
+        const existing = map.get(prof.id as string)
+        if (existing) {
+          existing.appointmentCount++
+        } else {
+          map.set(prof.id as string, {
+            id:               prof.id as string,
+            name:             prof.name as string,
+            specialty:        (prof.specialty as string) ?? null,
+            appointmentCount: 1,
+            nextAt:           row.starts_at as string,
+          })
+        }
+      }
+      return Array.from(map.values())
+    },
+  })
+}
+
+// ─── Clinic alerts (action-required items) ────────────────────────────────────
+
+export interface ClinicAlert {
+  type: 'unconfirmed' | 'no_show' | 'overdue_payment'
+  count: number
+  label: string
+  link: string
+}
+
+export function useClinicAlerts() {
+  const { profile } = useAuthContext()
+  return useQuery<ClinicAlert[]>({
+    queryKey: ['clinic-alerts', profile?.clinicId ?? null],
+    enabled: !!profile?.clinicId,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const now = new Date()
+      const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000)
+      const yesterday = subDays(now, 1)
+
+      const [unconfirmedRes, noShowRes, overdueRes] = await Promise.all([
+        // Scheduled (not yet confirmed) appointments created more than 2h ago
+        supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'scheduled')
+          .gte('starts_at', startOfDay(now).toISOString())
+          .lte('starts_at', endOfDay(now).toISOString())
+          .lte('created_at', twoHoursAgo.toISOString()),
+
+        // No-shows from yesterday
+        supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'no_show')
+          .gte('starts_at', startOfDay(yesterday).toISOString())
+          .lte('starts_at', endOfDay(yesterday).toISOString()),
+
+        // Completed appointments with unpaid charge (charge > 0, paid = null)
+        supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'completed')
+          .not('charge_amount_cents', 'is', null)
+          .is('paid_amount_cents', null),
+      ])
+
+      const alerts: ClinicAlert[] = []
+      const unc = unconfirmedRes.count ?? 0
+      const nos = noShowRes.count ?? 0
+      const ovd = overdueRes.count ?? 0
+
+      if (unc > 0) alerts.push({ type: 'unconfirmed', count: unc, label: `${unc} consulta${unc > 1 ? 's' : ''} de hoje ainda sem confirmação`, link: '/agenda' })
+      if (nos > 0) alerts.push({ type: 'no_show', count: nos, label: `${nos} falta${nos > 1 ? 's' : ''} ontem sem retorno`, link: '/agenda' })
+      if (ovd > 0) alerts.push({ type: 'overdue_payment', count: ovd, label: `${ovd} consulta${ovd > 1 ? 's' : ''} realizada${ovd > 1 ? 's' : ''} com pagamento pendente`, link: '/financeiro' })
+
+      return alerts
     },
   })
 }

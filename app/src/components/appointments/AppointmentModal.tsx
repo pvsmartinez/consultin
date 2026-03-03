@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Trash, RepeatOnce, Warning } from '@phosphor-icons/react'
+import { X, Trash, RepeatOnce, Warning, UserPlus } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
@@ -12,9 +12,10 @@ import Input from '../ui/Input'
 import TextArea from '../ui/TextArea'
 import { useProfessionals } from '../../hooks/useProfessionals'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
-import { usePatients } from '../../hooks/usePatients'
+import { usePatients, useCreatePatient } from '../../hooks/usePatients'
 import { useRooms } from '../../hooks/useRooms'
 import { useDebounce } from '../../hooks/useDebounce'
+import { useServiceTypes } from '../../hooks/useServiceTypes'
 import {
   APPOINTMENT_STATUS_LABELS,
   type Appointment,
@@ -88,12 +89,17 @@ export default function AppointmentModal({
   const { data: professionals = [] } = useProfessionals()
   const { create, update, cancel } = useAppointmentMutations()
   const { data: rooms = [] } = useRooms()
+  const { data: serviceTypes = [] } = useServiceTypes()
+  const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
+  const [showQuickPatient, setShowQuickPatient] = useState(false)
+  const [quickName, setQuickName] = useState('')
+  const [quickPhone, setQuickPhone] = useState('')
   const debouncedPatientSearch = useDebounce(patientSearch, 300)
   const { patients = [] } = usePatients(debouncedPatientSearch)
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { durationMin: '30', status: 'scheduled', recurrenceType: 'none', recurrenceCount: '4' },
   })
@@ -101,6 +107,8 @@ export default function AppointmentModal({
   const recurrenceType  = watch('recurrenceType')
   const recurrenceCount = watch('recurrenceCount')
   const durationMinVal  = watch('durationMin')
+
+  const activeServiceTypes = serviceTypes.filter(s => s.active)
 
   // Build duration options — include any custom value from drag selection or existing appointment
   const durationOptions = useMemo(() => {
@@ -110,7 +118,7 @@ export default function AppointmentModal({
   }, [durationMinVal])
 
   useEffect(() => {
-    if (!open) { setConfirmCancel(false); setPatientSearch(''); return }
+    if (!open) { setConfirmCancel(false); setPatientSearch(''); setShowQuickPatient(false); setQuickName(''); setQuickPhone(''); return }
 
     if (appointment) {
       const start   = parseISO(appointment.startsAt)
@@ -207,6 +215,30 @@ export default function AppointmentModal({
     }
   }
 
+  function onServiceTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const st = activeServiceTypes.find(s => s.id === e.target.value)
+    if (st) {
+      setValue('durationMin', String(st.durationMinutes))
+      if (st.priceCents != null) {
+        setValue('chargeAmount', (st.priceCents / 100).toFixed(2).replace('.', ','))
+      }
+    }
+  }
+
+  async function handleQuickPatient() {
+    if (!quickName.trim()) { toast.error('Informe o nome do paciente'); return }
+    try {
+      const created = await createPatient.mutateAsync({ name: quickName.trim(), phone: quickPhone.trim() || null, userId: null, cpf: null, rg: null, birthDate: null, sex: null, email: null, addressStreet: null, addressNumber: null, addressComplement: null, addressNeighborhood: null, addressCity: null, addressState: null, addressZip: null, notes: null, customFields: {} })
+      setValue('patientId', created.id)
+      setPatientSearch(created.name)
+      setShowQuickPatient(false)
+      setQuickName(''); setQuickPhone('')
+      toast.success('Paciente criado e selecionado')
+    } catch {
+      toast.error('Erro ao criar paciente')
+    }
+  }
+
   async function handleCancel() {
     if (!appointment) return
     try {
@@ -289,7 +321,45 @@ export default function AppointmentModal({
                 ))}
               </select>
               {patients.length === 0 && patientSearch.trim() && (
-                <p className="text-xs text-gray-400 mt-1">Nenhum paciente encontrado</p>
+                <div className="mt-1">
+                  <p className="text-xs text-gray-400 mb-1">Nenhum paciente encontrado.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setShowQuickPatient(true); setQuickName(patientSearch) }}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                  >
+                    <UserPlus size={13} /> Criar paciente "{patientSearch}"
+                  </button>
+                </div>
+              )}
+              {showQuickPatient && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+                  <p className="text-xs font-medium text-blue-700">Cadastro rápido de paciente</p>
+                  <input
+                    type="text"
+                    value={quickName}
+                    onChange={e => setQuickName(e.target.value)}
+                    placeholder="Nome *"
+                    className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                  />
+                  <input
+                    type="tel"
+                    value={quickPhone}
+                    onChange={e => setQuickPhone(e.target.value)}
+                    placeholder="Telefone / WhatsApp (opcional)"
+                    className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                  />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handleQuickPatient} disabled={createPatient.isPending}
+                      className="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+                      {createPatient.isPending ? 'Criando...' : 'Criar e selecionar'}
+                    </button>
+                    <button type="button" onClick={() => setShowQuickPatient(false)}
+                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               )}
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}
             </div>
@@ -311,7 +381,25 @@ export default function AppointmentModal({
               {errors.professionalId && <p className="text-xs text-red-500 mt-1">{errors.professionalId.message}</p>}
             </div>
 
-            {/* Date + time + duration */}
+            {/* Service type — optional, auto-fills duration + price */}
+            {!isEditing && activeServiceTypes.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de atendimento</label>
+                <select
+                  onChange={onServiceTypeChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  defaultValue=""
+                >
+                  <option value="">Selecionar serviço... (opcional)</option>
+                  {activeServiceTypes.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} · {s.durationMinutes}min{s.priceCents != null ? ` · R$${(s.priceCents/100).toFixed(2).replace('.',',')}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-0.5">Selecionar preenche automaticamente duração e valor.</p>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-3">
               <Input label="Data *" type="date" error={errors.date?.message} {...register('date')} />
               <Input label="Horário *" type="time" error={errors.startTime?.message} {...register('startTime')} />
