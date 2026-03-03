@@ -47,12 +47,15 @@ function computeOverrides(
 // ─── Profissionais tab ────────────────────────────────────────────────────────
 
 function ProfissionaisTab() {
-  const { data: professionals = [], isLoading, toggleActive } = useProfessionals()
+  const { data: professionals = [], isLoading, toggleActive, create: createProfessional } = useProfessionals()
   const { data: pendingInvites = [], isLoading: loadingInvites } = usePendingInvites()
   const { data: clinic } = useClinic()
+  const { profile } = useAuthContext()
   const createInvite = useCreateInvite()
   const deleteInvite = useDeleteInvite()
   const resendEmail  = useResendInviteEmail()
+
+  const ownerLinked = professionals.some(p => p.userId === profile?.id)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing]     = useState<Professional | null>(null)
@@ -86,8 +89,39 @@ function ProfissionaisTab() {
     } catch { toast.error('Erro ao criar convite') }
   }
 
+  async function handleAddSelfAsProfessional() {
+    try {
+      await createProfessional.mutateAsync({
+        name:         profile?.name ?? '',
+        specialty:    null,
+        councilId:    null,
+        phone:        null,
+        email:        null,
+        active:       true,
+        customFields: {},
+        userId:       profile?.id ?? null,
+      })
+      toast.success('Você foi adicionado como profissional!')
+    } catch {
+      toast.error('Erro ao adicionar como profissional')
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {!isLoading && !ownerLinked && profile && (
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-amber-800">
+            <span className="font-medium">Você também atende pacientes?</span> Adicione-se como profissional para aparecer na agenda.
+          </p>
+          <button
+            onClick={handleAddSelfAsProfessional}
+            disabled={createProfessional.isPending}
+            className="ml-4 shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 disabled:opacity-60">
+            Me adicionar
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-400">{professionals.length} cadastrado{professionals.length !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-2">

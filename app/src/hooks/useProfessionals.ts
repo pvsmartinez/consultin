@@ -50,6 +50,7 @@ export function useProfessionals() {
           email:         input.email,
           active:        input.active,
           custom_fields: (input.customFields ?? {}) as Json,
+          ...(input.userId !== undefined ? { user_id: input.userId } : {}),
         })
         .select()
         .single()

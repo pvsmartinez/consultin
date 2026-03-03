@@ -145,7 +145,7 @@ export interface Professional {
   createdAt: string
 }
 
-export type ProfessionalInput = Omit<Professional, 'id' | 'clinicId' | 'userId' | 'createdAt'>
+export type ProfessionalInput = Omit<Professional, 'id' | 'clinicId' | 'createdAt'> & { userId?: string | null }
 
 // Junction: one user ↔ one clinic (professionals can work at multiple clinics)
 export interface UserClinicMembership {

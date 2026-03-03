@@ -394,8 +394,9 @@ function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) 
     setSaving(true)
     try {
       await update.mutateAsync({ onboardingCompleted: true })
-      // Auto-register clinic owner as first professional if none exist
-      if (professionals.length === 0) {
+      // Auto-register clinic owner as professional if they don't have a record yet
+      const ownerAlreadyLinked = professionals.some(p => p.userId === profile?.id)
+      if (!ownerAlreadyLinked) {
         try {
           await createProfessional.mutateAsync({
             name:         profile?.name ?? clinic.name,
@@ -405,6 +406,7 @@ function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) 
             email:        null,
             active:       true,
             customFields: {},
+            userId:       profile?.id ?? null,
           })
         } catch {
           // Non-critical: professional creation failed, user can add later
