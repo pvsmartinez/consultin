@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   CalendarBlank,
   CalendarCheck,
@@ -62,7 +62,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const hasLinkedProfessional = !isProfessional && myProfRecords.length > 0
   // Only admin/receptionist have RLS access to clinic_notifications
   const canSeeNotifications = role === 'admin' || role === 'receptionist'
-  const { unreadCount } = useClinicNotifications()
+  const navigate = useNavigate()
+  const { unreadCount } = useClinicNotifications(navigate)
   const notifBadge = canSeeNotifications ? unreadCount : 0
   const isTestMode = isSuperAdmin && !!profile?.clinicId
   const [newApptOpen, setNewApptOpen] = useState(false)

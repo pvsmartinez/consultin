@@ -21,6 +21,8 @@ import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { Database } from '../types/database'
 
+type NavigateFn = (path: string) => void
+
 type ClinicNotification = Database['public']['Tables']['clinic_notifications']['Row']
 
 const TOAST_LABELS: Record<string, string> = {
@@ -29,7 +31,7 @@ const TOAST_LABELS: Record<string, string> = {
   appointment_confirmed:  '✅ Consulta confirmada pelo paciente',
 }
 
-export function useClinicNotifications() {
+export function useClinicNotifications(navigate?: NavigateFn) {
   const { profile, role } = useAuthContext()
   const clinicId = profile?.clinicId ?? null
   const qc = useQueryClient()
@@ -78,7 +80,7 @@ export function useClinicNotifications() {
             duration: 8_000,
             action: {
               label:   'Ver mensagens',
-              onClick: () => { window.location.href = '/whatsapp' },
+              onClick: () => { if (navigate) navigate('/whatsapp'); else window.location.href = '/whatsapp' },
             },
           })
 
