@@ -131,6 +131,20 @@ export default function AgendarConsultaPage() {
 
   const selectedProfName = professionals.find(p => p.id === selectedProf)?.name ?? ''
 
+  // Edge case: user logged in but no patient record linked to this account
+  if (!myPatient && !loadingProfs) {
+    return (
+      <div className="max-w-md mx-auto py-16 text-center space-y-3">
+        <CalendarCheck size={40} className="text-gray-300 mx-auto" />
+        <p className="text-sm text-gray-500 font-medium">Cadastro de paciente não encontrado</p>
+        <p className="text-xs text-gray-400 max-w-xs mx-auto">
+          Seu e-mail de acesso não está vinculado a nenhum paciente nesta clínica.
+          Entre em contato com a recepção para regularizar seu cadastro.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-md mx-auto space-y-6">
       <div className="flex items-center gap-3">
