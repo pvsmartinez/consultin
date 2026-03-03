@@ -1,7 +1,7 @@
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
-import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, Armchair, MagnifyingGlass } from '@phosphor-icons/react'
+import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, MagnifyingGlass, Phone, WhatsappLogo } from '@phosphor-icons/react'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
 import { useQuery } from '@tanstack/react-query'
@@ -41,6 +41,13 @@ function getProfName(prof: TodayAppointment['professional']): string {
   if (!prof) return '—'
   if (Array.isArray(prof)) return prof[0]?.name ?? '—'
   return prof.name
+}
+
+function getPatientPhone(patient: TodayAppointment['patient']): string | null {
+  const raw = Array.isArray(patient) ? patient[0]?.phone : patient?.phone
+  if (!raw) return null
+  const digits = raw.replace(/\D/g, '')
+  return digits.startsWith('55') ? digits : `55${digits}`
 }
 
 // ─── Clinic Dashboard ─────────────────────────────────────────────────────────
@@ -140,13 +147,6 @@ function ClinicDashboard() {
           Nova consulta
         </Link>
         <Link
-          to="/sala-de-espera"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 text-sm font-medium transition-colors"
-        >
-          <Armchair size={15} />
-          Sala de espera
-        </Link>
-        <Link
           to="/pacientes"
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 text-sm font-medium transition-colors"
         >
@@ -187,7 +187,21 @@ function ClinicDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{getPatientName(appt.patient)}</p>
-                    <p className="text-xs text-gray-400 truncate">{getProfName(appt.professional)}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-gray-400 truncate">{getProfName(appt.professional)}</p>
+                      {getPatientPhone(appt.patient) && (
+                        <>
+                          <a href={`tel:+${getPatientPhone(appt.patient)}`} title="Ligar"
+                            className="text-gray-300 hover:text-blue-500 transition-colors flex-shrink-0" onClick={e => e.stopPropagation()}>
+                            <Phone size={12} />
+                          </a>
+                          <a href={`https://wa.me/${getPatientPhone(appt.patient)}`} target="_blank" rel="noopener noreferrer" title="WhatsApp"
+                            className="text-gray-300 hover:text-green-500 transition-colors flex-shrink-0" onClick={e => e.stopPropagation()}>
+                            <WhatsappLogo size={12} />
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </div>
                   <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${statusClasses}`}>
                     {statusLabel}

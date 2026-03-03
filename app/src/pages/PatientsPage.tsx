@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MagnifyingGlass, Plus, User, UploadSimple, X } from '@phosphor-icons/react'
+import PatientDrawer from '../components/patients/PatientDrawer'
 import { usePatients, PATIENTS_PAGE_SIZE } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
 import { formatDate } from '../utils/date'
@@ -11,6 +12,7 @@ export default function PatientsPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [importOpen, setImportOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [page, setPage] = useState(0)
   const debouncedSearch = useDebounce(search, 300)
   // Reset to first page whenever the search term changes
@@ -31,7 +33,7 @@ export default function PatientsPage() {
             Importar CSV
           </button>
           <button
-            onClick={() => navigate('/pacientes/novo')}
+            onClick={() => setDrawerOpen(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
           >
             <Plus size={16} />
@@ -139,6 +141,12 @@ export default function PatientsPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onImported={() => refetch()}
+      />
+
+      <PatientDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSaved={(id) => { setDrawerOpen(false); navigate(`/pacientes/${id}`) }}
       />
     </div>
   )

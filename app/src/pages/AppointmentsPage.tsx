@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -112,12 +111,6 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           {isPersonalView ? 'Minha Agenda' : 'Agenda'}
         </h1>
         <div className="flex items-center gap-2">
-          {isPersonalView && (
-            <Link to="/minha-disponibilidade"
-              className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50">
-              Minha disponibilidade
-            </Link>
-          )}
           {!isPersonalView && (
             <button onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">

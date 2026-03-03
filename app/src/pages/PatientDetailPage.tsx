@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, PencilSimple, CalendarBlank, CalendarPlus, Phone, Envelope, MapPin, ClipboardText, WhatsappLogo, Copy } from '@phosphor-icons/react'
+import PatientDrawer from '../components/patients/PatientDrawer'
 import { usePatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
 import { useClinic } from '../hooks/useClinic'
@@ -52,6 +53,7 @@ export default function PatientDetailPage() {
   const { appointments, loading: loadingApts } = usePatientAppointments(id!)
   const { data: clinic } = useClinic()
   const [scheduling, setScheduling] = useState(false)
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false)
 
   if (loading) {
     return <div className="text-center text-gray-400 text-sm mt-20">Carregando...</div>
@@ -101,7 +103,7 @@ export default function PatientDetailPage() {
             Agendar
           </button>
           <button
-            onClick={() => navigate(`/pacientes/${patient.id}/editar`)}
+            onClick={() => setEditDrawerOpen(true)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
           >
             <PencilSimple size={15} />
@@ -236,6 +238,13 @@ export default function PatientDetailPage() {
         onClose={() => setScheduling(false)}
         initialPatientId={patient.id}
         initialPatientName={patient.name}
+      />
+
+      <PatientDrawer
+        open={editDrawerOpen}
+        patientId={patient.id}
+        onClose={() => setEditDrawerOpen(false)}
+        onSaved={() => setEditDrawerOpen(false)}
       />
     </div>
   )

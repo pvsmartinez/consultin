@@ -8,10 +8,9 @@ import RequireAuth from '../components/auth/RequireAuth'
 
 const DashboardPage          = lazy(() => import('../pages/DashboardPage'))
 const PatientsPage           = lazy(() => import('../pages/PatientsPage'))
-const CadastroPage           = lazy(() => import('../pages/CadastroPage'))
 const PatientDetailPage      = lazy(() => import('../pages/PatientDetailPage'))
 const AppointmentsPage       = lazy(() => import('../pages/AppointmentsPage'))
-const ProfessionalsPage      = lazy(() => import('../pages/ProfessionalsPage'))
+const EquipePage             = lazy(() => import('../pages/EquipePage'))
 const SettingsPage           = lazy(() => import('../pages/SettingsPage'))
 const FinanceiroPage         = lazy(() => import('../pages/FinanceiroPage'))
 const WhatsAppInboxPage      = lazy(() => import('../pages/WhatsAppInboxPage'))
@@ -19,7 +18,7 @@ const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidad
 const PatientAnamnesisPage    = lazy(() => import('../pages/PatientAnamnesisPage'))
 const MinhaContaPage         = lazy(() => import('../pages/MinhaContaPage'))
 const AccessDeniedPage       = lazy(() => import('../pages/AccessDeniedPage'))
-const SalaDeEsperaPage       = lazy(() => import('../pages/SalaDeEsperaPage'))
+const AssinaturaPage         = lazy(() => import('../pages/AssinaturaPage'))
 
 // ─── Staff routes (rendered inside <AppLayout>) ───────────────────────────────
 // Suspense boundary lives in App.tsx so the sidebar stays visible during
@@ -35,21 +34,16 @@ export default function StaffRoutes() {
         <RequireAuth permission="canViewPatients"><PatientsPage /></RequireAuth>
       } />
       <Route path="/pacientes/novo" element={
-        <RequireAuth permission="canManagePatients"><CadastroPage /></RequireAuth>
+        <RequireAuth permission="canManagePatients"><PatientsPage /></RequireAuth>
       } />
       <Route path="/pacientes/:id" element={
         <RequireAuth permission="canViewPatients"><PatientDetailPage /></RequireAuth>
       } />
       <Route path="/pacientes/:id/editar" element={
-        <RequireAuth permission="canManagePatients"><CadastroPage /></RequireAuth>
+        <RequireAuth permission="canManagePatients"><PatientDetailPage /></RequireAuth>
       } />
       <Route path="/pacientes/:id/anamnese" element={
         <RequireAuth permission="canViewPatients"><PatientAnamnesisPage /></RequireAuth>
-      } />
-
-      {/* Sala de espera */}
-      <Route path="/sala-de-espera" element={
-        <RequireAuth permission="canViewPatients"><SalaDeEsperaPage /></RequireAuth>
       } />
 
       {/* Agenda */}
@@ -63,16 +57,21 @@ export default function StaffRoutes() {
       } />
       <Route path="/relatorios" element={<Navigate to="/financeiro" replace />} />
 
-      {/* Profissionais / Config / WhatsApp */}
-      <Route path="/profissionais" element={
-        <RequireAuth permission="canManageProfessionals"><ProfessionalsPage /></RequireAuth>
+      {/* Equipe (Profissionais + Usuários) */}
+      <Route path="/equipe" element={
+        <RequireAuth permission="canManageProfessionals"><EquipePage /></RequireAuth>
       } />
+      {/* keep old URL working */}
+      <Route path="/profissionais" element={<Navigate to="/equipe" replace />} />
+
+      {/* Config / WhatsApp / Assinatura */}
       <Route path="/configuracoes" element={
         <RequireAuth permission="canManageSettings"><SettingsPage /></RequireAuth>
       } />
       <Route path="/whatsapp" element={
         <RequireAuth permission="canViewWhatsApp"><WhatsAppInboxPage /></RequireAuth>
       } />
+      <Route path="/assinatura" element={<AssinaturaPage />} />
 
       <Route path="/acesso-negado" element={<AccessDeniedPage />} />
       <Route path="/minha-conta"   element={<MinhaContaPage />} />

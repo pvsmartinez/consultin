@@ -17,7 +17,7 @@ import {
   SignIn,
   UserCircle,
   Plus,
-  Armchair,
+  CreditCard,
 } from '@phosphor-icons/react'
 import AppointmentModal from '../appointments/AppointmentModal'
 import type { UserRole } from '../../types'
@@ -31,11 +31,10 @@ import ErrorBoundary from '../ErrorBoundary'
 
 const navItems = [
   { to: '/dashboard',         icon: ChartBar,             label: 'Dashboard',        labelProfissional: 'Meu Painel',     permission: null },
-  { to: '/sala-de-espera',    icon: Armchair,             label: 'Sala de espera',   labelProfissional: null,             permission: 'canViewPatients' as const },
   { to: '/agenda',            icon: CalendarBlank,         label: 'Agenda',           labelProfissional: 'Minha Agenda',   permission: null },
   { to: '/minha-disponibilidade', icon: Clock,           label: 'Meus Horários',   labelProfissional: 'Meus Horários',         permission: 'canManageOwnAvailability' as const },
   { to: '/pacientes',     icon: Users,                 label: 'Pacientes',      labelProfissional: 'Pacientes',      permission: 'canViewPatients' as const },
-  { to: '/profissionais', icon: UsersFour,             label: 'Profissionais',  labelProfissional: 'Profissionais',  permission: 'canManageProfessionals' as const },
+  { to: '/equipe',        icon: UsersFour,             label: 'Equipe',         labelProfissional: 'Equipe',         permission: 'canManageProfessionals' as const },
   { to: '/financeiro',    icon: CurrencyCircleDollar,  label: 'Financeiro',     labelProfissional: 'Financeiro',     permission: 'canViewFinancial' as const },
   { to: '/whatsapp',      icon: WhatsappLogo,          label: 'Mensagens',      labelProfissional: 'Mensagens',      permission: 'canViewWhatsApp' as const },
   { to: '/configuracoes', icon: Gear,                  label: 'Configurações',  labelProfissional: 'Configurações',  permission: 'canManageSettings' as const },
@@ -175,6 +174,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 : <UserCircle size={18} className="text-gray-500 flex-shrink-0" />
               }
               <p className="text-xs font-medium text-gray-300 truncate">{profile.name}</p>
+            </NavLink>
+          )}
+          {role === 'admin' && (
+            <NavLink to="/assinatura"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                  isActive ? 'text-indigo-300 bg-indigo-500/10' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
+                }`
+              }>
+              <CreditCard size={14} />
+              Meu plano
             </NavLink>
           )}
           <button
