@@ -77,6 +77,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (isProfessional && item.labelProfissional === null) return false
     // WA inbox only makes sense when the clinic has WhatsApp activated
     if (item.to === '/whatsapp' && !clinic?.whatsappEnabled) return false
+    // Financeiro só aparece quando pagamentos estão habilitados
+    if (item.to === '/financeiro' && !clinic?.paymentsEnabled) return false
     return item.permission == null || hasPermission(item.permission)
   })
 

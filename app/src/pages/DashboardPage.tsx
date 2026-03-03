@@ -1,9 +1,10 @@
 import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
-import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, MagnifyingGlass, Phone, WhatsappLogo } from '@phosphor-icons/react'
+import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, MagnifyingGlass, Phone, WhatsappLogo, Check } from '@phosphor-icons/react'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
+import type { Clinic } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { useClinicKPIs, useProfessionalKPIs, useTodayAppointments, useProfessionalsToday, useClinicAlerts } from '../hooks/useDashboard'
@@ -50,6 +51,100 @@ function getPatientPhone(patient: TodayAppointment['patient']): string | null {
   return digits.startsWith('55') ? digits : `55${digits}`
 }
 
+// ─── Onboarding Checklist ─────────────────────────────────────────────────────
+
+function OnboardingChecklist({
+  clinic,
+  totalPatients,
+  onDismiss,
+}: {
+  clinic: Clinic
+  totalPatients: number
+  onDismiss: () => void
+}) {
+  const steps = [
+    {
+      label: 'Configure os dados da clínica',
+      hint: 'Adicione telefone, endereço e horários de funcionamento',
+      done: !!clinic.phone,
+      to: '/configuracoes',
+      optional: false,
+    },
+    {
+      label: 'Agende a primeira consulta',
+      hint: 'Cadastre um paciente e marque uma consulta na agenda',
+      done: totalPatients > 0,
+      to: '/agenda',
+      optional: false,
+    },
+    {
+      label: 'Conecte o WhatsApp',
+      hint: 'Envie lembretes automáticos e gerencie mensagens',
+      done: clinic.whatsappEnabled,
+      to: '/configuracoes',
+      optional: true,
+    },
+  ]
+
+  const required     = steps.filter(s => !s.optional)
+  const requiredDone = required.filter(s => s.done).length
+  const allDone      = requiredDone === required.length
+
+  return (
+    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-8">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800">Primeiros passos</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{requiredDone} de {required.length} etapas concluídas</p>
+        </div>
+        <button
+          onClick={onDismiss}
+          className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+            allDone
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          {allDone ? 'Concluir ✓' : 'Pular'}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {steps.map((step, i) => (
+          <Link
+            key={i}
+            to={step.to}
+            className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 border transition-colors ${
+              step.done ? 'border-gray-100 opacity-60' : 'border-gray-200 hover:border-blue-300'
+            }`}
+          >
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+              step.done ? 'bg-green-500' : 'border-2 border-gray-200'
+            }`}>
+              {step.done
+                ? <Check size={13} weight="bold" className="text-white" />
+                : <span className="text-[10px] text-gray-400 font-semibold">{i + 1}</span>
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium ${
+                step.done ? 'text-gray-400 line-through' : 'text-gray-800'
+              }`}>
+                {step.label}
+              </p>
+              {!step.done && <p className="text-xs text-gray-400 mt-0.5">{step.hint}</p>}
+            </div>
+            {step.optional && !step.done && (
+              <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">Opcional</span>
+            )}
+            {!step.done && <ArrowRight size={14} className="text-gray-300 flex-shrink-0" />}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Clinic Dashboard ─────────────────────────────────────────────────────────
 
 const STATUS_PRIORITY: Record<string, number> = { confirmed: 0, scheduled: 1, no_show: 2, completed: 3 }
@@ -57,6 +152,7 @@ const STATUS_PRIORITY: Record<string, number> = { confirmed: 0, scheduled: 1, no
 function ClinicDashboard() {
   const { role } = useAuthContext()
   const isAdmin = role === 'admin'
+  const { data: clinic, update: updateClinic } = useClinic()
   const { data, isLoading } = useClinicKPIs()
   const { data: todayList = [], isLoading: todayLoading } = useTodayAppointments()
   const { data: profsToday = [] } = useProfessionalsToday()
@@ -109,6 +205,15 @@ function ClinicDashboard() {
             )
           })}
         </div>
+      )}
+
+      {/* Onboarding — mostrado até ser dispensado pelo admin */}
+      {clinic && !clinic.onboardingCompleted && (
+        <OnboardingChecklist
+          clinic={clinic}
+          totalPatients={data?.totalPatients ?? 0}
+          onDismiss={() => updateClinic.mutate({ onboardingCompleted: true })}
+        />
       )}
 
       {/* KPI cards */}
@@ -173,8 +278,14 @@ function ClinicDashboard() {
         {todayLoading ? (
           <p className="text-sm text-gray-400">Carregando...</p>
         ) : sorted.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 py-8 text-center">
+          <div className="bg-white rounded-xl border border-gray-100 py-10 text-center space-y-3">
             <p className="text-sm text-gray-400">Nenhuma consulta agendada para hoje.</p>
+            <Link
+              to="/agenda"
+              className="inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus size={14} weight="bold" /> Agendar consulta
+            </Link>
           </div>
         ) : (
           <div className="space-y-2">
