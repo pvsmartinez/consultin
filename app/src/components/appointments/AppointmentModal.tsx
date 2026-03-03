@@ -32,6 +32,7 @@ const schema = z.object({
   status:           z.string(),
   notes:            z.string().optional(),
   roomId:           z.string().optional(),
+  serviceTypeId:    z.string().optional(),
   chargeAmount:     z.string().optional(),
   professionalFee:  z.string().optional(),
   recurrenceType:   z.enum(['none', 'daily', 'weekly', 'monthly']),
@@ -101,7 +102,7 @@ export default function AppointmentModal({
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { durationMin: '30', status: 'scheduled', recurrenceType: 'none', recurrenceCount: '4' },
+    defaultValues: { durationMin: '30', status: 'scheduled', serviceTypeId: '', recurrenceType: 'none', recurrenceCount: '4' },
   })
 
   const recurrenceType  = watch('recurrenceType')
@@ -133,6 +134,7 @@ export default function AppointmentModal({
         status:          appointment.status,
         notes:           appointment.notes ?? '',
         roomId:          appointment.roomId ?? '',
+        serviceTypeId:   appointment.serviceTypeId ?? '',
         chargeAmount:    appointment.chargeAmountCents != null
                            ? (appointment.chargeAmountCents / 100).toFixed(2).replace('.', ',')
                            : '',
@@ -152,6 +154,7 @@ export default function AppointmentModal({
         status:          'scheduled',
         notes:           '',
         roomId:          '',
+        serviceTypeId:   '',
         chargeAmount:    '',
         professionalFee: '',
         recurrenceType:  'none',
@@ -179,6 +182,7 @@ export default function AppointmentModal({
         status:              values.status as AppointmentStatus,
         notes:               values.notes || null,
         roomId:              values.roomId || null,
+        serviceTypeId:       values.serviceTypeId || null,
         chargeAmountCents,
         professionalFeeCents,
       }
@@ -216,6 +220,7 @@ export default function AppointmentModal({
   }
 
   function onServiceTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    setValue('serviceTypeId', e.target.value || '')
     const st = activeServiceTypes.find(s => s.id === e.target.value)
     if (st) {
       setValue('durationMin', String(st.durationMinutes))

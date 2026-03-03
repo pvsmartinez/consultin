@@ -271,9 +271,9 @@ export function useUpdateAnamnesis() {
         .eq('id', patientId)
       if (error) throw new Error(error.message)
     },
+    // anamnesis_data is not in PATIENT_LIST_COLS — no need to bust the paginated list
     onSuccess: (_r, { patientId }) => {
       qc.invalidateQueries({ queryKey: ['patient', patientId] })
-      qc.invalidateQueries({ queryKey: ['patients'] })
     },
   })
 }

@@ -208,12 +208,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const refreshProfile = async () => {
-    // getUser() validates the token server-side (unlike getSession which is cached)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const p = await fetchProfile(user.id)
-    setProfile(p)
-    setCachedProfile(p)
+    try {
+      // getUser() validates the token server-side (unlike getSession which is cached)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const p = await fetchProfile(user.id)
+      setProfile(p)
+      setCachedProfile(p)
+    } catch (e) {
+      console.error('refreshProfile error:', e)
+    }
   }
 
   return (

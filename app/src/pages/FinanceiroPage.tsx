@@ -29,7 +29,8 @@ export default function FinanceiroPage() {
 
   const totalCharged = data.reduce((s, r) => s + (r.chargeAmountCents ?? 0), 0)
   const totalReceived = data.reduce((s, r) => s + (r.paidAmountCents ?? 0), 0)
-  const pending = data.filter(r => r.status !== 'completed' || r.paidAmountCents == null)
+  // Só consultas já realizadas sem pagamento registrado
+  const pending = data.filter(r => r.status === 'completed' && r.paidAmountCents == null)
 
   const monthLabel = format(month, "MMMM 'de' yyyy", { locale: ptBR })
 

@@ -159,6 +159,7 @@ export function useAppointmentMutations() {
           status:                  input.status,
           notes:                   input.notes ?? null,
           room_id:                 input.roomId ?? null,
+          service_type_id:         input.serviceTypeId ?? null,
           charge_amount_cents:     input.chargeAmountCents ?? null,
           professional_fee_cents:  input.professionalFeeCents ?? null,
         })
