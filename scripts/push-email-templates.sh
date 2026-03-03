@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/zsh
 # ─────────────────────────────────────────────────────────────────────────────
 # push-email-templates.sh
 #
@@ -11,7 +11,7 @@
 #   cd consultin && bash scripts/push-email-templates.sh
 # ─────────────────────────────────────────────────────────────────────────────
 
-set -euo pipefail
+set -e
 
 PROJECT_REF="nxztzehgnkdmluogxehi"
 TEMPLATES_DIR="$(cd "$(dirname "$0")/../supabase/templates" && pwd)"
@@ -63,15 +63,13 @@ PYEOF
 )
 
 # ── Patch auth config ──────────────────────────────────────────────────────────
-response=$(curl -s -w "\n%{http_code}" \
+http_code=$(curl -s -o /tmp/push_email_templates_resp.json -w "%{http_code}" \
   -X PATCH "${API}" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d "${payload}"
 )
-
-http_code=$(echo "$response" | tail -n1)
-body=$(echo "$response" | head -n-1)
+body=$(cat /tmp/push_email_templates_resp.json)
 
 if [[ "$http_code" == "200" ]]; then
   echo "✅ Templates publicados com sucesso!"
