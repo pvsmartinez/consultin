@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmar novo e-mail — Consultin</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .header { background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); padding: 32px; text-align: center; }
+    .logo-circle { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 12px; margin-bottom: 12px; }
+    .logo-text { color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .tagline { color: rgba(255,255,255,0.75); font-size: 13px; margin-top: 4px; }
+    .body { padding: 36px 40px 32px; }
+    .greeting { font-size: 18px; font-weight: 600; color: #111827; margin: 0 0 8px; }
+    .text { font-size: 15px; color: #4b5563; line-height: 1.65; margin: 0 0 16px; }
+    .email-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 18px; margin: 20px 0; }
+    .email-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #6b7280; margin: 0 0 4px; }
+    .email-value { font-size: 16px; font-weight: 600; color: #15803d; margin: 0; }
+    .cta-wrapper { text-align: center; margin: 32px 0; }
+    .cta-btn { display: inline-block; background: #2563eb; color: #ffffff !important; text-decoration: none; padding: 14px 36px; border-radius: 10px; font-size: 15px; font-weight: 600; }
+    .divider { border: none; border-top: 1px solid #e5e7eb; margin: 28px 0; }
+    .fallback { font-size: 13px; color: #9ca3af; line-height: 1.55; }
+    .fallback a { color: #2563eb; word-break: break-all; }
+    .footer { background: #f8fafc; padding: 20px 40px; border-top: 1px solid #e5e7eb; text-align: center; }
+    .footer-text { font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5; }
+    .footer-text a { color: #6b7280; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9; padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+        <tr><td>
+
+          <!-- Header -->
+          <div class="header">
+            <div class="logo-circle">
+              <svg width="24" height="24" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M80 24C53.5 24 32 45.5 32 72v64c0 39.8 32.2 72 72 72h8c39.8 0 72-32.2 72-72v-8a32 32 0 1 0-16 0v8c0 30.9-25.1 56-56 56h-8C74.1 192 49 166.9 49 136V72c0-13.3 10.7-24 24-24l8 0a56 56 0 0 0 111 0h9a24 24 0 1 0 0-16h-9A56.1 56.1 0 0 0 80 24z" fill="white"/>
+              </svg>
+            </div>
+            <p class="logo-text">Consultin</p>
+            <p class="tagline">Plataforma de gestão para clínicas</p>
+          </div>
+
+          <!-- Body -->
+          <div class="body">
+            <p class="greeting">Confirme seu novo e-mail ✉️</p>
+
+            <p class="text">
+              Você solicitou a alteração do e-mail da sua conta no Consultin.
+              Confirme o novo endereço clicando no botão abaixo:
+            </p>
+
+            <div class="email-box">
+              <p class="email-label">Novo e-mail</p>
+              <p class="email-value">{{ .NewEmail }}</p>
+            </div>
+
+            <p class="text">
+              O link é válido por <strong>1 hora</strong>. Após confirmar, seu login passará a ser feito com o novo e-mail.
+            </p>
+
+            <div class="cta-wrapper">
+              <a href="{{ .ConfirmationURL }}" class="cta-btn">
+                Confirmar novo e-mail
+              </a>
+            </div>
+
+            <p class="fallback" style="margin-top:0;">
+              Se você não solicitou essa alteração, ignore este e-mail — seu e-mail atual continuará sendo usado normalmente.
+            </p>
+
+            <hr class="divider" />
+
+            <p class="fallback">
+              Se o botão não funcionar, copie e cole este link no navegador:<br />
+              <a href="{{ .ConfirmationURL }}">{{ .ConfirmationURL }}</a>
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div class="footer">
+            <p class="footer-text">
+              Consultin — Gestão simplificada para clínicas brasileiras<br />
+              <a href="{{ .SiteURL }}">consultin.app</a>
+            </p>
+          </div>
+
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

@@ -29,3 +29,15 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 enable_signup = true
+
+[auth.email.template.invite]
+subject = "Você foi convidado para o Consultin"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.recovery]
+subject = "Redefinição de senha — Consultin"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirme seu novo e-mail — Consultin"
+content_path = "./supabase/templates/email_change.html"
