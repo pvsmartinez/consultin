@@ -105,7 +105,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
  */
 async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserProfile | null> {
   const doFetch = async () => {
-    const { data, error } = await supabase.rpc('get_startup_data')
+    const { data, error } = await (supabase as unknown as { rpc: (fn: string) => Promise<{ data: unknown; error: unknown }> }).rpc('get_startup_data')
     if (error) throw error
     const payload = data as { profile: Record<string, unknown> | null; clinic: Record<string, unknown> | null; professionals: Record<string, unknown>[] }
     if (!payload?.profile) return null

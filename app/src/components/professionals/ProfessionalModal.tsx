@@ -68,6 +68,7 @@ export default function ProfessionalModal({ open, onClose, professional }: Props
         phone: values.phone || null,
         email: values.email || null,
         active: values.active,
+        userId: null,
         customFields,
       }
       if (isEditing) {
