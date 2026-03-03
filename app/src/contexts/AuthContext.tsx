@@ -194,18 +194,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
   const clearRecoveryMode = () => setRecoveryMode(false)
 
-  // Step 1: send 6-digit OTP to the user's email
+  // Step 1: send 6-digit OTP to the user's email (recovery flow)
   const sendPasswordResetOtp = async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/nova-senha`,
     })
     return { error: error?.message ?? null }
   }
 
-  // Step 2: verify code → sets recoveryMode so App renders NovaSenhaPage
+  // Step 2: verify code → fires PASSWORD_RECOVERY → setRecoveryMode(true) via onAuthStateChange
   const verifyPasswordResetOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' })
     if (!error) setRecoveryMode(true)
     return { error: error?.message ?? null }
   }
