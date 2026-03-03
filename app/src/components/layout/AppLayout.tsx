@@ -57,7 +57,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isProfessional = role === 'professional'
   // admin/receptionist who also has a professional record gets an extra "Minha Agenda" link
   const hasLinkedProfessional = !isProfessional && myProfRecords.length > 0
+  // Only admin/receptionist have RLS access to clinic_notifications
+  const canSeeNotifications = role === 'admin' || role === 'receptionist'
   const { unreadCount } = useClinicNotifications()
+  const notifBadge = canSeeNotifications ? unreadCount : 0
   const isTestMode = isSuperAdmin && !!profile?.clinicId
 
   function handleExitTestMode() {
@@ -104,7 +107,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               <Icon size={18} />
               <span className="flex-1">{isProfessional ? labelProfissional : label}</span>
-              {to === '/whatsapp' && unreadCount > 0 && (
+              {to === '/whatsapp' && notifBadge > 0 && (
                 <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>

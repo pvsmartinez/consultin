@@ -30,14 +30,17 @@ const TOAST_LABELS: Record<string, string> = {
 }
 
 export function useClinicNotifications() {
-  const { profile } = useAuthContext()
+  const { profile, role } = useAuthContext()
   const clinicId = profile?.clinicId ?? null
   const qc = useQueryClient()
+
+  // Only admin and receptionist have RLS access to clinic_notifications
+  const enabled = !!clinicId && (role === 'admin' || role === 'receptionist')
 
   // ── Query: notificações não-lidas ──────────────────────────────────────────
   const query = useQuery({
     queryKey: ['clinic_notifications', clinicId],
-    enabled: !!clinicId,
+    enabled,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,7 +57,7 @@ export function useClinicNotifications() {
 
   // ── Realtime: INSERT → toast + refetch ────────────────────────────────────
   useEffect(() => {
-    if (!clinicId) return
+    if (!enabled) return
 
     const channel = supabase
       .channel(`clinic_notifications:${clinicId}`)
