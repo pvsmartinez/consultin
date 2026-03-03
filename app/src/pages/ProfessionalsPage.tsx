@@ -47,6 +47,10 @@ export default function ProfessionalsPage() {
   async function handleSendInvite(e: React.FormEvent) {
     e.preventDefault()
     if (!inviteEmail.trim()) return
+    if (inviteRoles.length === 0) {
+      toast.error('Selecione ao menos uma função para o convite.')
+      return
+    }
     try {
       const result = await createInvite.mutateAsync({ email: inviteEmail.trim(), roles: inviteRoles, name: inviteName.trim() || undefined })
       if (result.emailSent) {

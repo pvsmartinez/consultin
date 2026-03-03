@@ -76,6 +76,7 @@ export default function MeuPerfilPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
             <IMaskInput
               mask="{(}00{)} 00000-0000"
               value={form.phone}

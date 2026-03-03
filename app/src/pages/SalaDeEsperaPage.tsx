@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CheckCircle, Clock, UserCircle, UserMinus, Armchair, Phone, WhatsappLogo } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 import { useTodayAppointments } from '../hooks/useDashboard'
 import { useUpdateAppointmentStatus } from '../hooks/useAppointmentsMutations'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
@@ -34,14 +35,26 @@ export default function SalaDeEsperaPage() {
   // And show completed at the bottom (attended today)
   const done = all.filter(a => a.status === 'completed' || a.status === 'no_show')
 
-  function checkIn(id: string) {
-    updateStatus.mutate({ id, status: 'confirmed' })
+  async function checkIn(id: string) {
+    try {
+      await updateStatus.mutateAsync({ id, status: 'confirmed' })
+    } catch {
+      toast.error('Erro ao registrar chegada')
+    }
   }
-  function markNoShow(id: string) {
-    updateStatus.mutate({ id, status: 'no_show' })
+  async function markNoShow(id: string) {
+    try {
+      await updateStatus.mutateAsync({ id, status: 'no_show' })
+    } catch {
+      toast.error('Erro ao registrar falta')
+    }
   }
-  function markComplete(id: string) {
-    updateStatus.mutate({ id, status: 'completed' })
+  async function markComplete(id: string) {
+    try {
+      await updateStatus.mutateAsync({ id, status: 'completed' })
+    } catch {
+      toast.error('Erro ao concluir atendimento')
+    }
   }
 
   return (

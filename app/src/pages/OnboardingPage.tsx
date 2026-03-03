@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Stethoscope, Spinner } from '@phosphor-icons/react'
+import { IMaskInput } from 'react-imask'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useMyInvite, useClinicsPublic, useAcceptInvite } from '../hooks/useInvites'
@@ -222,7 +223,10 @@ export default function OnboardingPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-            <input type="text" value={patientCpf} onChange={e => setPatientCpf(e.target.value)}
+            <IMaskInput
+              mask="000.000.000-00"
+              value={patientCpf}
+              onAccept={(val: string) => setPatientCpf(val)}
               placeholder="000.000.000-00"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>

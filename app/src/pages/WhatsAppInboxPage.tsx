@@ -29,19 +29,24 @@ export default function WhatsAppInboxPage() {
   const selectedSession = sessions.find((s) => s.id === selectedId) ?? null
 
   // ── Load sessions ──────────────────────────────────────────────────────────
+  // Keep a ref so the auto-select logic can read the latest selectedId without
+  // making it a dep of useCallback (which would cause a refetch on every click).
+  const selectedIdRef = useRef(selectedId)
+  selectedIdRef.current = selectedId
+
   const loadSessions = useCallback(async () => {
     if (!clinic?.id) return
     try {
       const data = await fetchActiveSessions(clinic.id)
       setSessions(data)
       // Auto-select first if nothing selected
-      if (!selectedId && data.length > 0) setSelectedId(data[0].id)
+      if (!selectedIdRef.current && data.length > 0) setSelectedId(data[0].id)
     } catch {
       // silently retry via realtime
     } finally {
       setLoadingSessions(false)
     }
-  }, [clinic?.id, selectedId])
+  }, [clinic?.id])
 
   useEffect(() => { loadSessions() }, [loadSessions])
 
