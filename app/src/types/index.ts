@@ -298,6 +298,12 @@ export interface UserProfile {
   isSuperAdmin: boolean
   avatarUrl: string | null
   permissionOverrides: Partial<Record<string, boolean>>  // per-user overrides on top of role defaults
+  // Personal notification preferences (sent via clinic's WhatsApp Business number)
+  notificationPhone: string | null        // E.g. "5511999990000"
+  notifNewAppointment: boolean
+  notifCancellation: boolean
+  notifNoShow: boolean
+  notifPaymentOverdue: boolean
 }
 
 // Role priority for display and RLS fallback (highest first)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo, ClipboardText, Stethoscope, CaretDown, CaretRight } from '@phosphor-icons/react'
+import { Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo, ClipboardText, Stethoscope, CaretDown, CaretRight, Bell } from '@phosphor-icons/react'
 import { useClinic } from '../hooks/useClinic'
 import DadosTab from './settings/DadosTab'
 import AgendaTab from './settings/AgendaTab'
@@ -10,8 +10,9 @@ import ServicosTab from './settings/ServicosTab'
 import PagamentoTab from './settings/PagamentoTab'
 import WhatsAppTab from './settings/WhatsAppTab'
 import AnamnesisTab from './settings/AnamnesisTab'
+import NotificacoesTab from './settings/NotificacoesTab'
 
-type Tab = 'dados' | 'agenda' | 'servicos' | 'pagamento' | 'campos' | 'disponibilidade' | 'salas' | 'anamnese' | 'whatsapp'
+type Tab = 'dados' | 'agenda' | 'servicos' | 'pagamento' | 'campos' | 'disponibilidade' | 'salas' | 'anamnese' | 'whatsapp' | 'notificacoes'
 
 type TabGroup = {
   label: string
@@ -26,6 +27,7 @@ const TAB_GROUPS: TabGroup[] = [
       { id: 'dados',           label: 'Dados da clínica', icon: Gear         },
       { id: 'agenda',          label: 'Agenda',           icon: CalendarBlank },
       { id: 'disponibilidade', label: 'Horários',         icon: Clock         },
+      { id: 'notificacoes',    label: 'Notificações',     icon: Bell          },
     ],
   },
   {
@@ -144,6 +146,7 @@ export default function SettingsPage() {
           {tab === 'disponibilidade' && <DisponibilidadeTab />}
           {tab === 'anamnese'        && <AnamnesisTab clinic={clinic} />}
           {tab === 'whatsapp'        && <WhatsAppTab clinic={clinic} />}
+          {tab === 'notificacoes'    && <NotificacoesTab />}
         </div>
       </div>
     </div>

@@ -118,14 +118,13 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
           </button>
         </div>
 
-        {/* Feature toggles */}
+        {/* Feature toggles — Para pacientes */}
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-4 py-2.5">Para pacientes</p>
           {([
-            { key: 'waRemindersd1',        label: 'Lembrete D-1 (véspera)',             desc: 'Envia lembrete 1 dia antes da consulta com botões Confirmar / Cancelar' },
-            { key: 'waRemindersd0',        label: 'Lembrete D-0 (dia da consulta)',     desc: 'Envia lembrete no dia da consulta às 07:00' },
-            { key: 'waProfessionalAgenda', label: 'Agenda diária para profissionais',   desc: 'Envia a agenda do dia para cada profissional às 07:30' },
-            { key: 'waAttendantInbox',     label: 'Caixa de mensagens (atendentes)',    desc: 'Sessões que o AI não resolveu aparecem na caixa de mensagens' },
-          ] as { key: 'waRemindersd1'|'waRemindersd0'|'waProfessionalAgenda'|'waAttendantInbox'; label: string; desc: string }[]).map(({ key, label, desc }) => {
+            { key: 'waRemindersd1', label: 'Lembrete D-1 (véspera)',         desc: 'Envia lembrete 1 dia antes com botões Confirmar / Cancelar' },
+            { key: 'waRemindersd0', label: 'Lembrete D-0 (dia da consulta)', desc: 'Envia lembrete no próprio dia às 07:00' },
+          ] as { key: 'waRemindersd1'|'waRemindersd0'; label: string; desc: string }[]).map(({ key, label, desc }) => {
             const value = clinic[key] as boolean
             return (
               <div key={key} className="flex items-center justify-between p-4">
@@ -141,6 +140,36 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
               </div>
             )
           })}
+        </div>
+
+        {/* Feature toggles — Para a equipe */}
+        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-4 py-2.5">Para a equipe</p>
+          {([
+            { key: 'waProfessionalAgenda', label: 'Agenda diária para profissionais', desc: 'Envia a agenda do dia para cada profissional às 07:30' },
+            { key: 'waAttendantInbox',     label: 'Caixa de mensagens (atendentes)', desc: 'Conversas que a IA não resolveu aparecem na aba Mensagens' },
+          ] as { key: 'waProfessionalAgenda'|'waAttendantInbox'; label: string; desc: string }[]).map(({ key, label, desc }) => {
+            const value = clinic[key] as boolean
+            return (
+              <div key={key} className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">{label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                </div>
+                <button
+                  onClick={() => handleToggleReminders(key, !value)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-gray-200'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            )
+          })}
+          <div className="px-4 py-3 bg-gray-50 rounded-b-xl">
+            <p className="text-xs text-gray-400">
+              💡 Para receber alertas no <strong>seu próprio celular</strong>, configure em{' '}
+              <strong>Configurações → Notificações</strong>.
+            </p>
+          </div>
         </div>
 
         {/* AI model picker */}

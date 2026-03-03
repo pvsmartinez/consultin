@@ -35,6 +35,11 @@ export const MOCK_ADMIN_PROFILE: UserProfile = {
   isSuperAdmin: false,
   avatarUrl: null,
   permissionOverrides: {},
+  notificationPhone: null,
+  notifNewAppointment: false,
+  notifCancellation: false,
+  notifNoShow: false,
+  notifPaymentOverdue: false,
 }
 
 export const MOCK_RECEPTIONIST_PROFILE: UserProfile = {
@@ -45,6 +50,11 @@ export const MOCK_RECEPTIONIST_PROFILE: UserProfile = {
   isSuperAdmin: false,
   avatarUrl: null,
   permissionOverrides: {},
+  notificationPhone: null,
+  notifNewAppointment: false,
+  notifCancellation: false,
+  notifNoShow: false,
+  notifPaymentOverdue: false,
 }
 
 export const MOCK_PROFESSIONAL_PROFILE: UserProfile = {
@@ -55,6 +65,11 @@ export const MOCK_PROFESSIONAL_PROFILE: UserProfile = {
   isSuperAdmin: false,
   avatarUrl: null,
   permissionOverrides: {},
+  notificationPhone: null,
+  notifNewAppointment: false,
+  notifCancellation: false,
+  notifNoShow: false,
+  notifPaymentOverdue: false,
 }
 
 export const MOCK_PATIENT_PROFILE: UserProfile = {
@@ -65,6 +80,11 @@ export const MOCK_PATIENT_PROFILE: UserProfile = {
   isSuperAdmin: false,
   avatarUrl: null,
   permissionOverrides: {},
+  notificationPhone: null,
+  notifNewAppointment: false,
+  notifCancellation: false,
+  notifNoShow: false,
+  notifPaymentOverdue: false,
 }
 
 /**

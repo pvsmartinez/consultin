@@ -55,19 +55,27 @@ function setCachedProfile(p: UserProfile | null) {
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const doFetch = () => supabase
     .from('user_profiles')
-    .select('id, clinic_id, roles, name, is_super_admin, avatar_url, permission_overrides')
+    .select('id, clinic_id, roles, name, is_super_admin, avatar_url, permission_overrides, notification_phone, notif_new_appointment, notif_cancellation, notif_no_show, notif_payment_overdue')
     .eq('id', userId)
     .single()
     .then(({ data }) => {
       if (!data) return null
+      // Cast to unknown first so new DB columns (added in migration 0031) don't
+      // cause compile errors when database.ts hasn't been regenerated yet.
+      const d = data as unknown as Record<string, unknown>
       return {
-        id:                  data.id,
-        clinicId:            data.clinic_id,
-        roles:               data.roles as UserRole[],
-        name:                data.name,
-        isSuperAdmin:        data.is_super_admin ?? false,
-        avatarUrl:           data.avatar_url ?? null,
-        permissionOverrides: (data.permission_overrides as Record<string, boolean>) ?? {},
+        id:                  d.id as string,
+        clinicId:            d.clinic_id as string | null,
+        roles:               d.roles as UserRole[],
+        name:                d.name as string,
+        isSuperAdmin:        (d.is_super_admin as boolean) ?? false,
+        avatarUrl:           (d.avatar_url as string | null) ?? null,
+        permissionOverrides: (d.permission_overrides as Record<string, boolean>) ?? {},
+        notificationPhone:   (d.notification_phone as string | null) ?? null,
+        notifNewAppointment: (d.notif_new_appointment as boolean) ?? false,
+        notifCancellation:   (d.notif_cancellation as boolean) ?? false,
+        notifNoShow:         (d.notif_no_show as boolean) ?? false,
+        notifPaymentOverdue: (d.notif_payment_overdue as boolean) ?? false,
       } as UserProfile
     })
 
