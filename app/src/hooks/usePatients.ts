@@ -43,6 +43,7 @@ export function usePatients(search = '', page = 0) {
 
   const query = useQuery({
     queryKey: ['patients', search, page],
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const from = page * PATIENTS_PAGE_SIZE
       const to   = from + PATIENTS_PAGE_SIZE - 1
