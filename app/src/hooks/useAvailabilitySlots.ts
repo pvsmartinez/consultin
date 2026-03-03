@@ -37,40 +37,21 @@ export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: 
 
   const upsert = useMutation({
     mutationFn: async (slots: Omit<AvailabilitySlot, 'id' | 'clinicId'>[]) => {
-      // Fetch existing IDs BEFORE modifying anything.
-      // Strategy: insert new first → if that fails, old slots remain intact.
-      // Then delete by the pre-fetched IDs → if that fails we have duplicates
-      // but never a "zero availability" window.
-      const { data: existing } = await supabase
-        .from('availability_slots')
-        .select('id')
-        .eq('professional_id', professionalId)
-      const existingIds = (existing ?? []).map(r => r.id as string)
-
-      if (slots.length > 0) {
-        const { error: insError } = await supabase
-          .from('availability_slots')
-          .insert(
-            slots.map(s => ({
-              clinic_id:       clinicIdOverride ?? profile!.clinicId!,
-              professional_id: professionalId,
-              weekday:         s.weekday,
-              start_time:      s.startTime,
-              end_time:        s.endTime,
-              active:          s.active,
-            }))
-          )
-        if (insError) throw insError
-      }
-
-      // Only delete old records after new ones are safely inserted
-      if (existingIds.length > 0) {
-        const { error: delError } = await supabase
-          .from('availability_slots')
-          .delete()
-          .in('id', existingIds)
-        if (delError) throw delError
-      }
+      // Atomic replacement via RPC (0026_rpc_availability_revenue_room.sql).
+      // DELETE + INSERT run in a single DB transaction — no race condition,
+      // no "zero availability" window if the connection drops mid-flight.
+      const clinicId = clinicIdOverride ?? profile!.clinicId!
+      const { error } = await supabase.rpc('upsert_availability_slots', {
+        p_professional_id: professionalId,
+        p_clinic_id:       clinicId,
+        p_slots: slots.map(s => ({
+          weekday:    s.weekday,
+          start_time: s.startTime,
+          end_time:   s.endTime,
+          active:     s.active,
+        })) as unknown[],
+      })
+      if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   })

@@ -12,8 +12,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { format, addDays, startOfDay, endOfDay } from 'https://esm.sh/date-fns@3'
-import { toZonedTime }  from 'https://esm.sh/date-fns-tz@3'
+import { format, addDays } from 'https://esm.sh/date-fns@3'
+import { toZonedTime, fromZonedTime } from 'https://esm.sh/date-fns-tz@3'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -36,15 +36,14 @@ serve(async (req) => {
   // ── Target date in São Paulo time ─────────────────────────────────────────
   const nowUtc       = new Date()
   const nowBrt        = toZonedTime(nowUtc, TZ)
-  const targetLocal   = type === 'd1' ? addDays(nowBrt, 1) : nowBrt
-  const targetStart   = startOfDay(targetLocal)
-  const targetEnd     = endOfDay(targetLocal)
+  const targetBrt     = type === 'd1' ? addDays(nowBrt, 1) : nowBrt
 
-  // Convert back to UTC ISO strings for DB query (stored as UTC)
-  // We add TZ offset manually since toZonedTime is display only
-  const utcOffset    = -3 * 60  // BRT = UTC-3 (no DST in Brazil since 2019)
-  const startUTC     = new Date(targetStart.getTime() + utcOffset * 60000).toISOString()
-  const endUTC       = new Date(targetEnd.getTime()   + utcOffset * 60000).toISOString()
+  // Convert target day boundaries in São Paulo time → UTC ISO strings for DB query
+  const y = targetBrt.getFullYear()
+  const m = targetBrt.getMonth()
+  const d = targetBrt.getDate()
+  const startUTC = fromZonedTime(new Date(y, m, d, 0, 0, 0, 0),    TZ).toISOString()
+  const endUTC   = fromZonedTime(new Date(y, m, d, 23, 59, 59, 999), TZ).toISOString()
 
   // ── Fetch all appointments for the target date across all enabled clinics ──
   const { data: appointments, error: apptErr } = await supabase

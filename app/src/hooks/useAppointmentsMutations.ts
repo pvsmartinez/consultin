@@ -40,10 +40,14 @@ export function useMyProfessionalRecords() {
         .not('professional_id', 'is', null)
 
       if (memberships && memberships.length > 0) {
-        return memberships.map((m: any) => ({
-          id:        m.professional_id as string,
-          clinicId:  m.clinic_id as string,
-          clinicName: ((m.clinics as { name?: string } | null)?.name) ?? null,
+        return (memberships as Array<{
+          professional_id: string
+          clinic_id: string
+          clinics: { name?: string } | null
+        }>).map(m => ({
+          id:        m.professional_id,
+          clinicId:  m.clinic_id,
+          clinicName: m.clinics?.name ?? null,
         }))
       }
 
@@ -61,12 +65,6 @@ export function useMyProfessionalRecords() {
       }))
     },
   })
-}
-
-/** @deprecated use useMyProfessionalRecords instead */
-export function useProfessionalId() {
-  const records = useMyProfessionalRecords()
-  return { ...records, data: records.data?.[0]?.id ?? null }
 }
 
 export function useAppointmentsQuery(
@@ -113,7 +111,6 @@ export interface AppointmentInput {
   endsAt: string
   status: Appointment['status']
   notes?: string | null
-  room?: string | null
   roomId?: string | null
   chargeAmountCents?: number | null
   professionalFeeCents?: number | null
@@ -136,7 +133,6 @@ export function useAppointmentMutations() {
           ends_at:                 input.endsAt,
           status:                  input.status,
           notes:                   input.notes ?? null,
-          room:                    input.room ?? null,
           room_id:                 input.roomId ?? null,
           charge_amount_cents:     input.chargeAmountCents ?? null,
           professional_fee_cents:  input.professionalFeeCents ?? null,
@@ -160,7 +156,6 @@ export function useAppointmentMutations() {
           ends_at:                 input.endsAt,
           status:                  input.status,
           notes:                   input.notes ?? null,
-          room:                    input.room ?? null,
           room_id:                 input.roomId ?? null,
           charge_amount_cents:     input.chargeAmountCents ?? null,
           professional_fee_cents:  input.professionalFeeCents ?? null,

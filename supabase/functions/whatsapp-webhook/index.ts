@@ -222,6 +222,11 @@ async function processInbound(
           .update({ status: 'confirmed' })
           .eq('id', action.appointmentId)
           .eq('clinic_id', clinic.id)
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_confirmed',
+          data: { patientName: patient?.name ?? null, appointmentId: action.appointmentId },
+        })
       }
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
       break
@@ -233,6 +238,11 @@ async function processInbound(
           .update({ status: 'cancelled' })
           .eq('id', action.appointmentId)
           .eq('clinic_id', clinic.id)
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_cancelled',
+          data: { patientName: patient?.name ?? null, appointmentId: action.appointmentId },
+        })
       }
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
       break
@@ -242,6 +252,11 @@ async function processInbound(
         .from('whatsapp_sessions')
         .update({ status: 'human' })
         .eq('id', session.id)
+      await supabase.from('clinic_notifications').insert({
+        clinic_id: clinic.id,
+        type: 'wa_escalated',
+        data: { patientName: patient?.name ?? null, sessionId: session.id },
+      })
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText, 'ai')
       break
 

@@ -19,6 +19,8 @@ export function useClinicKPIs() {
       const monthStart = startOfMonth(now).toISOString()
       const monthEnd = endOfMonth(now).toISOString()
 
+      // Revenue uses RPC clinic_month_revenue (0026) — SUM happens in SQL,
+      // no need to download all paid rows to the browser just to reduce() them.
       const [todayResult, patientsResult, revenueResult] = await Promise.all([
         supabase
           .from('appointments')
@@ -31,24 +33,16 @@ export function useClinicKPIs() {
           .from('patients')
           .select('id', { count: 'exact', head: true }),
 
-        supabase
-          .from('appointments')
-          .select('paid_amount_cents')
-          .gte('starts_at', monthStart)
-          .lte('starts_at', monthEnd)
-          .eq('status', 'completed')
-          .not('paid_amount_cents', 'is', null),
+        supabase.rpc('clinic_month_revenue', {
+          p_month_start: monthStart,
+          p_month_end:   monthEnd,
+        }),
       ])
-
-      const monthRevenueCents = (revenueResult.data ?? []).reduce(
-        (sum, row) => sum + ((row.paid_amount_cents as number) ?? 0),
-        0,
-      )
 
       return {
         todayCount:    todayResult.count ?? 0,
         totalPatients: patientsResult.count ?? 0,
-        monthRevenue:  monthRevenueCents,
+        monthRevenue:  (revenueResult.data as unknown as number) ?? 0,
       }
     },
   })

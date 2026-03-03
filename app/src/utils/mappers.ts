@@ -16,7 +16,6 @@ export function mapAppointment(row: Record<string, unknown>): Appointment {
     endsAt:               row.ends_at as string,
     status:               row.status as Appointment['status'],
     notes:                (row.notes as string) ?? null,
-    room:                 (row.room as string) ?? null,
     roomId:               (row.room_id as string) ?? null,
     chargeAmountCents:    (row.charge_amount_cents as number) ?? null,
     paidAmountCents:      (row.paid_amount_cents as number) ?? null,

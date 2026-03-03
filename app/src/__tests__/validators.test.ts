@@ -6,6 +6,9 @@ import {
   formatCPF,
   formatCNPJ,
   formatPhone,
+  validateCpfCnpj,
+  maskCpfCnpj,
+  maskCEP,
 } from '../utils/validators'
 
 // ─── validateCPF ─────────────────────────────────────────────────────────────
@@ -173,5 +176,88 @@ describe('formatPhone', () => {
 
   it('result for landline matches (DD) DDDD-DDDD pattern', () => {
     expect(formatPhone('1133334444')).toMatch(/^\(\d{2}\) \d{4}-\d{4}$/)
+  })
+})
+
+// ─── validateCpfCnpj ─────────────────────────────────────────────────────────
+
+describe('validateCpfCnpj', () => {
+  it('returns true for a valid CPF (11 digits)', () => {
+    expect(validateCpfCnpj('11144477735')).toBe(true)
+  })
+
+  it('returns true for a valid CPF with formatting', () => {
+    expect(validateCpfCnpj('111.444.777-35')).toBe(true)
+  })
+
+  it('returns true for a valid CNPJ (14 digits)', () => {
+    expect(validateCpfCnpj('11222333000181')).toBe(true)
+  })
+
+  it('returns true for a valid CNPJ with formatting', () => {
+    expect(validateCpfCnpj('11.222.333/0001-81')).toBe(true)
+  })
+
+  it('returns false for an invalid CPF', () => {
+    expect(validateCpfCnpj('00000000000')).toBe(false)
+  })
+
+  it('returns false for an invalid CNPJ', () => {
+    expect(validateCpfCnpj('11222333000182')).toBe(false)
+  })
+
+  it('returns false for a partial string (not 11 or 14 digits)', () => {
+    expect(validateCpfCnpj('123456789')).toBe(false)
+  })
+
+  it('returns false for an empty string', () => {
+    expect(validateCpfCnpj('')).toBe(false)
+  })
+})
+
+// ─── maskCpfCnpj ─────────────────────────────────────────────────────────────
+
+describe('maskCpfCnpj', () => {
+  it('applies CPF mask for 11-digit input', () => {
+    expect(maskCpfCnpj('11144477735')).toBe('111.444.777-35')
+  })
+
+  it('applies CPF mask for up to 11 digits', () => {
+    expect(maskCpfCnpj('111444')).toMatch(/^\d{3}\.\d{3}$/)
+  })
+
+  it('applies CNPJ mask for 14-digit input', () => {
+    expect(maskCpfCnpj('11222333000181')).toBe('11.222.333/0001-81')
+  })
+
+  it('switches to CNPJ mask once input exceeds 11 digits', () => {
+    const result = maskCpfCnpj('112223330001')
+    // Should be formatted as partial CNPJ (12 digits → 11.222.333/0001)
+    expect(result).toMatch(/^\d{2}\.\d{3}\.\d{3}/)
+  })
+})
+
+// ─── maskCEP ─────────────────────────────────────────────────────────────────
+
+describe('maskCEP', () => {
+  it('formats 8 raw digits as XXXXX-XXX', () => {
+    expect(maskCEP('01310100')).toBe('01310-100')
+  })
+
+  it('strips non-digit characters before formatting', () => {
+    expect(maskCEP('01310-100')).toBe('01310-100')
+  })
+
+  it('returns partial digits unformatted when fewer than 5 digits', () => {
+    expect(maskCEP('013')).toBe('013')
+  })
+
+  it('returns partial digits with hyphen when 6-8 digits', () => {
+    const result = maskCEP('013101')
+    expect(result).toBe('01310-1')
+  })
+
+  it('truncates to 8 digits maximum', () => {
+    expect(maskCEP('0131010099')).toBe('01310-100')
   })
 })

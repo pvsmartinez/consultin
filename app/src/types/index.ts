@@ -190,7 +190,6 @@ export interface Appointment {
   endsAt: string
   status: AppointmentStatus
   notes: string | null
-  room: string | null          // legacy free-text (kept for compat)
   roomId: string | null         // FK to clinic_rooms
   chargeAmountCents: number | null
   paidAmountCents: number | null

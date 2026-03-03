@@ -15,6 +15,7 @@ export function useFinancial(month: Date) {
 
   return useQuery({
     queryKey: ['financial', monthStart],
+    staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')

@@ -11,6 +11,46 @@ export interface ClinicMember {
   permissionOverrides: Partial<Record<string, boolean>>
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+// Single source of truth for Clinic camelCase → DB snake_case mapping.
+// Add new fields here once — the update mutation picks them up automatically.
+function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record<string, unknown> {
+  const defined = <T>(v: T | undefined): v is T => v !== undefined
+  return {
+    ...(defined(input.name)                   && { name:                       input.name }),
+    ...(defined(input.cnpj)                   && { cnpj:                       input.cnpj }),
+    ...(defined(input.phone)                  && { phone:                      input.phone }),
+    ...(defined(input.email)                  && { email:                      input.email }),
+    ...(defined(input.address)                && { address:                    input.address }),
+    ...(defined(input.city)                   && { city:                       input.city }),
+    ...(defined(input.state)                  && { state:                      input.state }),
+    ...(defined(input.slotDurationMinutes)    && { slot_duration_minutes:      input.slotDurationMinutes }),
+    ...(defined(input.workingHours)           && { working_hours:              input.workingHours }),
+    ...(defined(input.customPatientFields)    && { custom_patient_fields:      input.customPatientFields }),
+    ...(defined(input.patientFieldConfig)     && { patient_field_config:       input.patientFieldConfig }),
+    ...(defined(input.customProfessionalFields) && { custom_professional_fields: input.customProfessionalFields }),
+    ...(defined(input.professionalFieldConfig)  && { professional_field_config:  input.professionalFieldConfig }),
+    ...(defined(input.anamnesisFields)        && { anamnesis_fields:           input.anamnesisFields }),
+    ...(defined(input.onboardingCompleted)    && { onboarding_completed:       input.onboardingCompleted }),
+    // Billing
+    ...(defined(input.paymentsEnabled)        && { payments_enabled:           input.paymentsEnabled }),
+    ...(defined(input.asaasCustomerId)        && { asaas_customer_id:          input.asaasCustomerId }),
+    ...(defined(input.asaasSubscriptionId)    && { asaas_subscription_id:      input.asaasSubscriptionId }),
+    ...(defined(input.subscriptionStatus)     && { subscription_status:        input.subscriptionStatus }),
+    // WhatsApp
+    ...(defined(input.whatsappEnabled)        && { whatsapp_enabled:           input.whatsappEnabled }),
+    ...(defined(input.whatsappPhoneNumberId)  && { whatsapp_phone_number_id:   input.whatsappPhoneNumberId }),
+    ...(defined(input.whatsappPhoneDisplay)   && { whatsapp_phone_display:     input.whatsappPhoneDisplay }),
+    ...(defined(input.whatsappWabaId)         && { whatsapp_waba_id:           input.whatsappWabaId }),
+    ...(defined(input.whatsappVerifyToken)    && { whatsapp_verify_token:      input.whatsappVerifyToken }),
+    ...(defined(input.waRemindersd1)          && { wa_reminders_d1:            input.waRemindersd1 }),
+    ...(defined(input.waRemindersd0)          && { wa_reminders_d0:            input.waRemindersd0 }),
+    ...(defined(input.waProfessionalAgenda)   && { wa_professional_agenda:     input.waProfessionalAgenda }),
+    ...(defined(input.waAttendantInbox)       && { wa_attendant_inbox:         input.waAttendantInbox }),
+    ...(defined(input.waAiModel)              && { wa_ai_model:                input.waAiModel }),
+  }
+}
+
 export function useClinic() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
@@ -35,39 +75,7 @@ export function useClinic() {
     mutationFn: async (input: Partial<Omit<Clinic, 'id' | 'createdAt'>>) => {
       const { data, error } = await supabase
         .from('clinics')
-        .update({
-          name:                       input.name,
-          cnpj:                       input.cnpj,
-          phone:                      input.phone,
-          email:                      input.email,
-          address:                    input.address,
-          city:                       input.city,
-          state:                      input.state,
-          slot_duration_minutes:      input.slotDurationMinutes,
-          working_hours:              input.workingHours,
-          custom_patient_fields:      input.customPatientFields,
-          patient_field_config:       input.patientFieldConfig,
-          custom_professional_fields: input.customProfessionalFields,
-          professional_field_config:  input.professionalFieldConfig,
-          anamnesis_fields:           input.anamnesisFields,
-          onboarding_completed:       input.onboardingCompleted,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ...(input.paymentsEnabled      !== undefined ? { payments_enabled:      input.paymentsEnabled      } : {}),
-          ...(input.asaasCustomerId      !== undefined ? { asaas_customer_id:     input.asaasCustomerId      } : {}),
-          ...(input.asaasSubscriptionId  !== undefined ? { asaas_subscription_id: input.asaasSubscriptionId  } : {}),
-          ...(input.subscriptionStatus   !== undefined ? { subscription_status:   input.subscriptionStatus   } : {}),
-          // WhatsApp
-          ...(input.whatsappEnabled         !== undefined ? { whatsapp_enabled:           input.whatsappEnabled         } : {}),
-          ...(input.whatsappPhoneNumberId   !== undefined ? { whatsapp_phone_number_id:   input.whatsappPhoneNumberId   } : {}),
-          ...(input.whatsappPhoneDisplay    !== undefined ? { whatsapp_phone_display:      input.whatsappPhoneDisplay    } : {}),
-          ...(input.whatsappWabaId          !== undefined ? { whatsapp_waba_id:            input.whatsappWabaId          } : {}),
-          ...(input.whatsappVerifyToken     !== undefined ? { whatsapp_verify_token:       input.whatsappVerifyToken     } : {}),
-          ...(input.waRemindersd1           !== undefined ? { wa_reminders_d1:             input.waRemindersd1           } : {}),
-          ...(input.waRemindersd0           !== undefined ? { wa_reminders_d0:             input.waRemindersd0           } : {}),
-          ...(input.waProfessionalAgenda    !== undefined ? { wa_professional_agenda:      input.waProfessionalAgenda    } : {}),
-          ...(input.waAttendantInbox        !== undefined ? { wa_attendant_inbox:          input.waAttendantInbox        } : {}),
-          ...(input.waAiModel               !== undefined ? { wa_ai_model:                 input.waAiModel               } : {}),
-        } as Record<string, unknown>)
+        .update(clinicToSnake(input))
         .eq('id', clinicId!)
         .select()
         .single()
@@ -89,18 +97,22 @@ export function useClinicMembers() {
     enabled: !!clinicId,
     staleTime: 2 * 60_000,
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_profiles')
         .select('id, name, roles, permission_overrides')
         .eq('clinic_id', clinicId!)
         .order('name')
       if (error) throw error
-      return ((data ?? []) as Record<string, unknown>[]).map(r => ({
-        id:                  r.id as string,
-        name:                r.name as string,
-        roles:               (r.roles as UserRole[]) ?? [],
-        permissionOverrides: (r.permission_overrides as Record<string, boolean>) ?? {},
+      return ((data ?? []) as {
+        id: string
+        name: string
+        roles: UserRole[]
+        permission_overrides: Record<string, boolean> | null
+      }[]).map(r => ({
+        id:                  r.id,
+        name:                r.name,
+        roles:               r.roles ?? [],
+        permissionOverrides: r.permission_overrides ?? {},
       }))
     },
   })

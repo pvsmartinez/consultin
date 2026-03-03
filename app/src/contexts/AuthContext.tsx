@@ -26,13 +26,20 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const PROFILE_CACHE_KEY = 'consultin_profile_cache'
+// Bump this version whenever the UserProfile shape changes (new fields, renamed fields).
+// Stale caches with older versions are discarded automatically on load.
+const PROFILE_CACHE_VERSION = 2
 
 function getCachedProfile(): UserProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_CACHE_KEY)
     if (!raw) return null
-    const p = JSON.parse(raw) as UserProfile
-    // Invalidate cache from before the role→roles migration
+    const parsed = JSON.parse(raw) as { version?: number; profile?: UserProfile }
+    // Invalidate if version mismatch or missing
+    if (parsed.version !== PROFILE_CACHE_VERSION) { localStorage.removeItem(PROFILE_CACHE_KEY); return null }
+    const p = parsed.profile
+    if (!p) return null
+    // Legacy guard: roles must be an array
     if (!Array.isArray(p.roles)) { localStorage.removeItem(PROFILE_CACHE_KEY); return null }
     return p
   } catch { return null }
@@ -40,27 +47,26 @@ function getCachedProfile(): UserProfile | null {
 
 function setCachedProfile(p: UserProfile | null) {
   try {
-    if (p) localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(p))
+    if (p) localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ version: PROFILE_CACHE_VERSION, profile: p }))
     else localStorage.removeItem(PROFILE_CACHE_KEY)
   } catch { /* ignore */ }
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const doFetch = () => (supabase as any)
+  const doFetch = () => supabase
     .from('user_profiles')
     .select('id, clinic_id, roles, name, is_super_admin, avatar_url, permission_overrides')
     .eq('id', userId)
     .single()
-    .then(({ data }: { data: Record<string, unknown> | null }) => {
+    .then(({ data }) => {
       if (!data) return null
       return {
-        id: data.id as string,
-        clinicId: data.clinic_id as string | null,
-        roles: (data.roles as UserRole[]) ?? [],
-        name: data.name as string,
-        isSuperAdmin: (data.is_super_admin as boolean) ?? false,
-        avatarUrl: (data.avatar_url as string | null) ?? null,
+        id:                  data.id,
+        clinicId:            data.clinic_id,
+        roles:               data.roles as UserRole[],
+        name:                data.name,
+        isSuperAdmin:        data.is_super_admin ?? false,
+        avatarUrl:           data.avatar_url ?? null,
         permissionOverrides: (data.permission_overrides as Record<string, boolean>) ?? {},
       } as UserProfile
     })

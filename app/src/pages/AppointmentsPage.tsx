@@ -96,7 +96,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
         id: appt.id, patientId: appt.patientId, professionalId: appt.professionalId,
         startsAt: newStart.toISOString(),
         endsAt: new Date(newStart.getTime() + diffMs).toISOString(),
-        status: appt.status, notes: appt.notes, room: appt.room, chargeAmountCents: appt.chargeAmountCents,
+        status: appt.status, notes: appt.notes, chargeAmountCents: appt.chargeAmountCents,
       })
       toast.success('Consulta remarcada')
     } catch {

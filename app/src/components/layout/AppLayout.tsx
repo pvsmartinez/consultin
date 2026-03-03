@@ -23,6 +23,8 @@ import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
 import { useEnterClinic } from '../../hooks/useAdmin'
 import { useMyProfessionalRecords } from '../../hooks/useAppointmentsMutations'
+import { useClinicNotifications } from '../../hooks/useClinicNotifications'
+import ErrorBoundary from '../ErrorBoundary'
 
 const navItems = [
   { to: '/dashboard',     icon: ChartBar,             label: 'Dashboard',      labelProfissional: 'Meu Painel',     permission: null },
@@ -55,6 +57,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isProfessional = role === 'professional'
   // admin/receptionist who also has a professional record gets an extra "Minha Agenda" link
   const hasLinkedProfessional = !isProfessional && myProfRecords.length > 0
+  const { unreadCount } = useClinicNotifications()
   const isTestMode = isSuperAdmin && !!profile?.clinicId
 
   function handleExitTestMode() {
@@ -100,7 +103,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }
             >
               <Icon size={18} />
-              {isProfessional ? labelProfissional : label}
+              <span className="flex-1">{isProfessional ? labelProfissional : label}</span>
+              {to === '/whatsapp' && unreadCount > 0 && (
+                <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </NavLink>
           ))}
           {/* Extra item for admin/receptionist who also have a professional record */}
@@ -177,7 +185,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         )}
         <main className="flex-1 overflow-auto p-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

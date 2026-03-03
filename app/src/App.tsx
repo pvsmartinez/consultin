@@ -10,6 +10,7 @@ import NovaSenhaPage    from './pages/NovaSenhaPage'    // recoveryMode intercep
 import OnboardingPage   from './pages/OnboardingPage'   // !profile gate
 import AppLayout        from './components/layout/AppLayout'
 import PatientPortalLayout from './components/layout/PatientPortalLayout'
+import ErrorBoundary    from './components/ErrorBoundary'
 
 // ─── Lazy route bundles ───────────────────────────────────────────────────────
 // Each import() becomes a separate JS chunk — only fetched when that "world"
@@ -35,9 +36,11 @@ function App() {
   // ── Unauthenticated ─────────────────────────────────────────────────────────
   if (!session) {
     return (
-      <Suspense fallback={<FullScreenLoader />}>
-        <PublicRoutes />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<FullScreenLoader />}>
+          <PublicRoutes />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 
@@ -47,20 +50,24 @@ function App() {
   // ── Patient portal ──────────────────────────────────────────────────────────
   if (role === 'patient') {
     return (
-      <PatientPortalLayout>
-        <Suspense fallback={<PageLoader />}>
-          <PatientRoutes />
-        </Suspense>
-      </PatientPortalLayout>
+      <ErrorBoundary>
+        <PatientPortalLayout>
+          <Suspense fallback={<PageLoader />}>
+            <PatientRoutes />
+          </Suspense>
+        </PatientPortalLayout>
+      </ErrorBoundary>
     )
   }
 
   // ── Clinic setup wizard (admin of a brand-new clinic) ───────────────────────
   if (role === 'admin' && !isSuperAdmin && clinic && !clinic.onboardingCompleted) {
     return (
-      <Suspense fallback={<FullScreenLoader />}>
-        <OnboardingRoutes />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<FullScreenLoader />}>
+          <OnboardingRoutes />
+        </Suspense>
+      </ErrorBoundary>
     )
   }
 

@@ -102,7 +102,6 @@ export type Database = {
           patient_id: string
           professional_fee_cents: number | null
           professional_id: string
-          room: string | null
           room_id: string | null
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
@@ -119,7 +118,6 @@ export type Database = {
           patient_id: string
           professional_fee_cents?: number | null
           professional_id: string
-          room?: string | null
           room_id?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -136,7 +134,6 @@ export type Database = {
           patient_id?: string
           professional_fee_cents?: number | null
           professional_id?: string
-          room?: string | null
           room_id?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
@@ -264,6 +261,41 @@ export type Database = {
             columns: ["invited_by"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinic_notifications: {
+        Row: {
+          id: string
+          clinic_id: string
+          type: string
+          data: Json
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          type: string
+          data?: Json
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          type?: string
+          data?: Json
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_notifications_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
         ]
@@ -889,6 +921,7 @@ export type Database = {
           id: string
           is_super_admin: boolean
           name: string
+          permission_overrides: Record<string, boolean> | null
           roles: Database["public"]["Enums"]["user_role"][]
         }
         Insert: {
@@ -899,6 +932,7 @@ export type Database = {
           id: string
           is_super_admin?: boolean
           name: string
+          permission_overrides?: Record<string, boolean> | null
           roles?: Database["public"]["Enums"]["user_role"][]
         }
         Update: {
@@ -909,6 +943,7 @@ export type Database = {
           id?: string
           is_super_admin?: boolean
           name?: string
+          permission_overrides?: Record<string, boolean> | null
           roles?: Database["public"]["Enums"]["user_role"][]
         }
         Relationships: [
@@ -1084,6 +1119,10 @@ export type Database = {
           appointments_this_month: number
         }[]
       }
+      clinic_month_revenue: {
+        Args: { p_month_start: string; p_month_end: string }
+        Returns: number
+      }
       current_user_clinic_id: { Args: never; Returns: string }
       current_user_is_super_admin: { Args: never; Returns: boolean }
       current_user_role: {
@@ -1107,6 +1146,14 @@ export type Database = {
       }
       store_clinic_whatsapp_token: {
         Args: { p_clinic_id: string; p_token: string }
+        Returns: undefined
+      }
+      upsert_availability_slots: {
+        Args: {
+          p_professional_id: string
+          p_clinic_id: string
+          p_slots: unknown[]
+        }
         Returns: undefined
       }
     }
