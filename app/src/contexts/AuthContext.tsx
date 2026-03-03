@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
 import { primaryRole, mergedPermissions } from '../types'
 import type { UserProfile, UserRole } from '../types'
+import { mapClinic, mapProfessional } from '../utils/mappers'
 
 interface AuthContextValue {
   session: Session | null
@@ -52,6 +55,23 @@ function setCachedProfile(p: UserProfile | null) {
   } catch { /* ignore */ }
 }
 
+function profileFromRow(d: Record<string, unknown>): UserProfile {
+  return {
+    id:                  d.id as string,
+    clinicId:            d.clinic_id as string | null,
+    roles:               d.roles as UserRole[],
+    name:                d.name as string,
+    isSuperAdmin:        (d.is_super_admin as boolean) ?? false,
+    avatarUrl:           (d.avatar_url as string | null) ?? null,
+    permissionOverrides: (d.permission_overrides as Record<string, boolean>) ?? {},
+    notificationPhone:   (d.notification_phone as string | null) ?? null,
+    notifNewAppointment: (d.notif_new_appointment as boolean) ?? false,
+    notifCancellation:   (d.notif_cancellation as boolean) ?? false,
+    notifNoShow:         (d.notif_no_show as boolean) ?? false,
+    notifPaymentOverdue: (d.notif_payment_overdue as boolean) ?? false,
+  } as UserProfile
+}
+
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const doFetch = () => supabase
     .from('user_profiles')
@@ -60,26 +80,10 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     .single()
     .then(({ data }) => {
       if (!data) return null
-      // Cast to unknown first so new DB columns (added in migration 0031) don't
-      // cause compile errors when database.ts hasn't been regenerated yet.
       const d = data as unknown as Record<string, unknown>
-      return {
-        id:                  d.id as string,
-        clinicId:            d.clinic_id as string | null,
-        roles:               d.roles as UserRole[],
-        name:                d.name as string,
-        isSuperAdmin:        (d.is_super_admin as boolean) ?? false,
-        avatarUrl:           (d.avatar_url as string | null) ?? null,
-        permissionOverrides: (d.permission_overrides as Record<string, boolean>) ?? {},
-        notificationPhone:   (d.notification_phone as string | null) ?? null,
-        notifNewAppointment: (d.notif_new_appointment as boolean) ?? false,
-        notifCancellation:   (d.notif_cancellation as boolean) ?? false,
-        notifNoShow:         (d.notif_no_show as boolean) ?? false,
-        notifPaymentOverdue: (d.notif_payment_overdue as boolean) ?? false,
-      } as UserProfile
+      return profileFromRow(d)
     })
 
-  // Try up to 3 times with 8s timeout each, in case of transient network delay
   for (let attempt = 0; attempt < 3; attempt++) {
     const timeout = new Promise<null>((_, reject) =>
       setTimeout(() => reject(new Error('fetchProfile timeout')), 8000)
@@ -95,6 +99,49 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   return null
 }
 
+/**
+ * Single RPC call that returns profile + clinic + professionals in one round trip.
+ * Seeds the React Query cache so data pages open from cache with zero additional fetches.
+ */
+async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserProfile | null> {
+  const doFetch = async () => {
+    const { data, error } = await supabase.rpc('get_startup_data')
+    if (error) throw error
+    const payload = data as { profile: Record<string, unknown> | null; clinic: Record<string, unknown> | null; professionals: Record<string, unknown>[] }
+    if (!payload?.profile) return null
+
+    const profile = profileFromRow(payload.profile)
+
+    // Seed React Query cache so hooks find data immediately
+    if (profile.clinicId) {
+      if (payload.clinic) {
+        qc.setQueryData(['clinic', profile.clinicId], mapClinic(payload.clinic))
+      }
+      const professionals = (payload.professionals ?? []).map(mapProfessional)
+      qc.setQueryData(['professionals', profile.clinicId], professionals)
+    }
+
+    return profile
+  }
+
+  // Fall back to plain profile fetch if RPC fails (e.g. function not yet deployed)
+  const fallback = () => fetchProfile(userId)
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const timeout = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('fetchStartupData timeout')), 8000)
+    )
+    try {
+      const result = await Promise.race([doFetch(), timeout])
+      if (result !== null) return result
+    } catch (e) {
+      if (attempt === 2) return fallback()
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+    }
+  }
+  return fallback()
+}
+
 // True when Supabase has stored a session in localStorage (user was previously logged in).
 // We detect it synchronously so we can skip the loading state on page reload.
 function hasCachedSession(): boolean {
@@ -104,6 +151,7 @@ function hasCachedSession(): boolean {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const qc = useQueryClient()
   const [session, setSession] = useState<Session | null>(null)
   // Seed profile from cache so UI renders instantly on reload
   const [profile, setProfile] = useState<UserProfile | null>(getCachedProfile)
@@ -160,11 +208,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const p = await fetchProfile(session.user.id)
+        const p = await fetchStartupData(session.user.id, qc)
         setProfile(p)
         setCachedProfile(p)
       } catch (e) {
-        console.error('fetchProfile error:', e)
+        console.error('fetchStartupData error:', e)
         if (!cached) { setProfile(null); setCachedProfile(null) }
       } finally {
         setLoading(false) // no-op if already false

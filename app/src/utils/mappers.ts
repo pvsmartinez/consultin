@@ -2,7 +2,7 @@
  * Shared row-mappers: convert Supabase snake_case DB rows → camelCase domain types.
  * Single source of truth — import these instead of defining local mapRow functions.
  */
-import type { Appointment, Clinic, Patient, ServiceType } from '../types'
+import type { Appointment, Clinic, Patient, Professional, ServiceType } from '../types'
 
 // ─── Appointment ──────────────────────────────────────────────────────────────
 
@@ -116,5 +116,23 @@ export function mapPatient(row: Record<string, unknown>): Patient {
     customFields:         (row.custom_fields as Record<string, unknown>) ?? {},
     anamnesisData:        (row.anamnesis_data as Record<string, unknown>) ?? {},
     createdAt:            row.created_at as string,
+  }
+}
+
+// ─── Professional ─────────────────────────────────────────────────────────────
+
+export function mapProfessional(r: Record<string, unknown>): Professional {
+  return {
+    id:           r.id as string,
+    clinicId:     r.clinic_id as string,
+    userId:       (r.user_id as string) ?? null,
+    name:         r.name as string,
+    specialty:    (r.specialty as string) ?? null,
+    councilId:    (r.council_id as string) ?? null,
+    phone:        (r.phone as string) ?? null,
+    email:        (r.email as string) ?? null,
+    active:       r.active as boolean,
+    customFields: (r.custom_fields as Record<string, unknown>) ?? {},
+    createdAt:    r.created_at as string,
   }
 }

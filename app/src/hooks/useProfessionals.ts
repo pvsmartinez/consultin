@@ -1,24 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
+import { mapProfessional } from '../utils/mappers'
 import type { Json, ProfessionalInput } from '../types'
 import type { Professional } from '../types'
 
-function mapRow(r: Record<string, unknown>): Professional {
-  return {
-    id:           r.id as string,
-    clinicId:     r.clinic_id as string,
-    userId:       (r.user_id as string) ?? null,
-    name:         r.name as string,
-    specialty:    (r.specialty as string) ?? null,
-    councilId:    (r.council_id as string) ?? null,
-    phone:        (r.phone as string) ?? null,
-    email:        (r.email as string) ?? null,
-    active:       r.active as boolean,
-    customFields: (r.custom_fields as Record<string, unknown>) ?? {},
-    createdAt:    r.created_at as string,
-  }
-}
+export { mapProfessional }
 
 export function useProfessionals() {
   const qc = useQueryClient()
@@ -27,13 +14,14 @@ export function useProfessionals() {
   const query = useQuery({
     queryKey: ['professionals', profile?.clinicId ?? null],
     staleTime: 2 * 60_000,
+    enabled: !!profile?.clinicId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('professionals')
         .select('*')
         .order('name')
       if (error) throw error
-      return (data ?? []).map(r => mapRow(r as Record<string, unknown>))
+      return (data ?? []).map(r => mapProfessional(r as Record<string, unknown>))
     },
   })
 
@@ -55,7 +43,7 @@ export function useProfessionals() {
         .select()
         .single()
       if (error) throw error
-      return mapRow(data as Record<string, unknown>)
+      return mapProfessional(data as Record<string, unknown>)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['professionals', profile?.clinicId ?? null] }),
   })
@@ -77,7 +65,7 @@ export function useProfessionals() {
         .select()
         .single()
       if (error) throw error
-      return mapRow(data as Record<string, unknown>)
+      return mapProfessional(data as Record<string, unknown>)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['professionals', profile?.clinicId ?? null] }),
   })
