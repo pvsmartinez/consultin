@@ -55,6 +55,8 @@ function getPatientPhone(patient: TodayAppointment['patient']): string | null {
 const STATUS_PRIORITY: Record<string, number> = { confirmed: 0, scheduled: 1, no_show: 2, completed: 3 }
 
 function ClinicDashboard() {
+  const { role } = useAuthContext()
+  const isAdmin = role === 'admin'
   const { data, isLoading } = useClinicKPIs()
   const { data: todayList = [], isLoading: todayLoading } = useTodayAppointments()
   const { data: profsToday = [] } = useProfessionalsToday()
@@ -110,7 +112,7 @@ function ClinicDashboard() {
       )}
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className={`grid grid-cols-1 gap-4 mb-8 ${isAdmin ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <Link to="/agenda">
           <KpiCard
             label="Consultas hoje"
@@ -127,14 +129,16 @@ function ClinicDashboard() {
             color="green"
           />
         </Link>
-        <Link to="/financeiro">
-          <KpiCard
-            label="Faturamento do mês"
-            value={isLoading ? '...' : formatBRL(data?.monthRevenue ?? 0)}
-            icon={<CurrencyCircleDollar size={20} className="text-purple-500" />}
-            color="purple"
-          />
-        </Link>
+        {isAdmin && (
+          <Link to="/financeiro">
+            <KpiCard
+              label="Faturamento do mês"
+              value={isLoading ? '...' : formatBRL(data?.monthRevenue ?? 0)}
+              icon={<CurrencyCircleDollar size={20} className="text-purple-500" />}
+              color="purple"
+            />
+          </Link>
+        )}
       </div>
 
       {/* Quick actions — most common receptionist tasks */}

@@ -75,6 +75,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const visibleNav = navItems.filter(item => {
     if (isProfessional && item.labelProfissional === null) return false
+    // WA inbox only makes sense when the clinic has WhatsApp activated
+    if (item.to === '/whatsapp' && !clinic?.whatsappEnabled) return false
     return item.permission == null || hasPermission(item.permission)
   })
 
