@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CheckCircle, Clock, UserCircle, UserMinus, Armchair } from '@phosphor-icons/react'
+import { CheckCircle, Clock, UserCircle, UserMinus, Armchair, Phone, WhatsappLogo } from '@phosphor-icons/react'
 import { useTodayAppointments } from '../hooks/useDashboard'
 import { useUpdateAppointmentStatus } from '../hooks/useAppointmentsMutations'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
@@ -10,6 +10,14 @@ function patientName(p: unknown): string {
   if (!p) return 'Paciente'
   if (Array.isArray(p)) return (p[0] as { name: string })?.name ?? 'Paciente'
   return (p as { name: string }).name ?? 'Paciente'
+}
+function patientPhone(p: unknown): string | null {
+  const raw = Array.isArray(p)
+    ? (p[0] as { phone?: string | null })?.phone
+    : (p as { phone?: string | null } | null)?.phone
+  if (!raw) return null
+  const digits = raw.replace(/\D/g, '')
+  return digits.startsWith('55') ? digits : `55${digits}`
 }
 function professionalName(p: unknown): string {
   if (!p) return '–'
@@ -86,6 +94,28 @@ export default function SalaDeEsperaPage() {
                         {format(new Date(appt.starts_at), 'HH:mm')}
                       </span>
                       <span>{professionalName(appt.professional)}</span>
+                      {patientPhone(appt.patient) && (
+                        <>
+                          <a
+                            href={`tel:+${patientPhone(appt.patient)}`}
+                            title="Ligar"
+                            className="flex items-center gap-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <Phone size={13} />
+                          </a>
+                          <a
+                            href={`https://wa.me/${patientPhone(appt.patient)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="WhatsApp"
+                            className="flex items-center gap-0.5 text-gray-400 hover:text-green-600 transition-colors"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <WhatsappLogo size={13} />
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

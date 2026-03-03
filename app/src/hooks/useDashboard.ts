@@ -9,7 +9,7 @@ export interface TodayAppointment {
   id: string
   starts_at: string
   status: string
-  patient: { name: string } | { name: string }[] | null
+  patient: { name: string; phone: string | null } | { name: string; phone: string | null }[] | null
   professional: { name: string } | { name: string }[] | null
 }
 
@@ -24,7 +24,7 @@ export function useTodayAppointments() {
       const now = new Date()
       const { data } = await supabase
         .from('appointments')
-        .select('id, starts_at, status, patient:patients(name), professional:professionals(name)')
+        .select('id, starts_at, status, patient:patients(name, phone), professional:professionals(name)')
         .gte('starts_at', startOfDay(now).toISOString())
         .lte('starts_at', endOfDay(now).toISOString())
         .neq('status', 'cancelled')

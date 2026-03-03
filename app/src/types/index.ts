@@ -253,6 +253,8 @@ export interface AvailabilitySlot {
   startTime: string   // "HH:MM"
   endTime: string
   active: boolean
+  roomId: string | null       // optional room assignment
+  weekParity: 'even' | 'odd' | null  // null=every week, even/odd ISO week parity
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────

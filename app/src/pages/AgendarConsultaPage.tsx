@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { format, addDays, parseISO, addMinutes } from 'date-fns'
+import { format, addDays, parseISO, addMinutes, getISOWeek } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 import { CalendarCheck, ArrowLeft, CheckCircle, ArrowRight } from '@phosphor-icons/react'
@@ -65,8 +65,13 @@ export default function AgendarConsultaPage() {
   // Derive available times from professional's weekly schedule for selectedDate
   const availableTimes = useMemo(() => {
     if (!selectedDate || !selectedProf || availSlots.length === 0) return []
-    const weekday = new Date(`${selectedDate}T12:00:00`).getDay() // 0=Sun…6=Sat
-    const daySlots = availSlots.filter(s => s.weekday === weekday && s.active)
+    const dt = new Date(`${selectedDate}T12:00:00`)
+    const weekday = dt.getDay() // 0=Sun…6=Sat
+    const weekNum = getISOWeek(dt)
+    const dateParity = weekNum % 2 === 0 ? 'even' : 'odd'
+    const daySlots = availSlots.filter(
+      s => s.weekday === weekday && s.active && (!s.weekParity || s.weekParity === dateParity)
+    )
     if (daySlots.length === 0) return []
     const times: string[] = []
     for (const slot of daySlots) {

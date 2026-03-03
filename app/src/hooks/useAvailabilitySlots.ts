@@ -12,6 +12,8 @@ function mapRow(r: Record<string, unknown>): AvailabilitySlot {
     startTime:      r.start_time as string,
     endTime:        r.end_time as string,
     active:         r.active as boolean,
+    roomId:         (r.room_id as string) ?? null,
+    weekParity:     (r.week_parity as 'even' | 'odd' | null) ?? null,
   }
 }
 
@@ -45,10 +47,12 @@ export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: 
         p_professional_id: professionalId,
         p_clinic_id:       clinicId,
         p_slots: slots.map(s => ({
-          weekday:    s.weekday,
-          start_time: s.startTime,
-          end_time:   s.endTime,
-          active:     s.active,
+          weekday:     s.weekday,
+          start_time:  s.startTime,
+          end_time:    s.endTime,
+          active:      s.active,
+          room_id:     s.roomId ?? null,
+          week_parity: s.weekParity ?? null,
         })) as unknown[],
       })
       if (error) throw error

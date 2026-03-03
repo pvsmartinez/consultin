@@ -1,8 +1,11 @@
-import { format } from 'date-fns'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
-import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar } from '@phosphor-icons/react'
+import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, Armchair, MagnifyingGlass } from '@phosphor-icons/react'
 import { useAuthContext } from '../contexts/AuthContext'
+import { useClinic } from '../hooks/useClinic'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '../services/supabase'
 import { useClinicKPIs, useProfessionalKPIs, useTodayAppointments, useProfessionalsToday, useClinicAlerts } from '../hooks/useDashboard'
 import type { TodayAppointment } from '../hooks/useDashboard'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
@@ -127,6 +130,31 @@ function ClinicDashboard() {
         </Link>
       </div>
 
+      {/* Quick actions — most common receptionist tasks */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Link
+          to="/agenda"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+        >
+          <Plus size={15} weight="bold" />
+          Nova consulta
+        </Link>
+        <Link
+          to="/sala-de-espera"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 text-sm font-medium transition-colors"
+        >
+          <Armchair size={15} />
+          Sala de espera
+        </Link>
+        <Link
+          to="/pacientes"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 text-sm font-medium transition-colors"
+        >
+          <MagnifyingGlass size={15} />
+          Buscar paciente
+        </Link>
+      </div>
+
       {/* Agenda de hoje + Profissionais hoje */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Agenda de hoje — 2/3 width */}
@@ -234,6 +262,7 @@ function ClinicDashboard() {
 
 function ProfessionalDashboard({ email, profileName, userId }: { email: string; profileName: string; userId: string }) {
   const { data, isLoading } = useProfessionalKPIs(email, userId)
+  const { data: clinic } = useClinic()
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
   const displayName = data?.profName ?? profileName
 
@@ -345,6 +374,58 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
             })}
           </ul>
         )}
+      </div>
+
+      {/* Earnings — only when profId is known and clinic has payments module */}
+      {data?.profId && clinic?.paymentsEnabled && (
+        <ProfessionalEarnings profId={data.profId} />
+      )}
+    </div>
+  )
+}
+
+// ─── Professional earnings section ───────────────────────────────────────────
+
+function ProfessionalEarnings({ profId }: { profId: string }) {
+  const now = new Date()
+  const { data: rows = [] } = useQuery({
+    queryKey: ['prof-earnings', profId, format(now, 'yyyy-MM')],
+    enabled: !!profId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('appointments')
+        .select('professional_fee_cents, paid_amount_cents, status')
+        .eq('professional_id', profId)
+        .eq('status', 'completed')
+        .gte('starts_at', startOfMonth(now).toISOString())
+        .lte('starts_at', endOfMonth(now).toISOString())
+      return data ?? []
+    },
+  })
+
+  const totalFee    = rows.reduce((s, r) => s + (r.professional_fee_cents ?? 0), 0)
+  const totalPaid   = rows.reduce((s, r) => s + (r.paid_amount_cents   ?? 0), 0)
+  const pendingPay  = Math.max(0, totalFee - totalPaid)
+
+  return (
+    <div className="mt-6">
+      <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Meus honorários — {format(now, 'MMMM yyyy', { locale: ptBR })}</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white border border-gray-100 rounded-xl p-4">
+          <p className="text-xs text-gray-400 mb-1">Consultas realizadas</p>
+          <p className="text-lg font-semibold text-gray-800">{rows.length}</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4">
+          <p className="text-xs text-gray-400 mb-1">Total a receber</p>
+          <p className="text-lg font-semibold text-gray-800">{formatBRL(totalFee)}</p>
+        </div>
+        <div className={`rounded-xl p-4 border ${pendingPay > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-100'}`}>
+          <p className="text-xs text-gray-400 mb-1">Pendente de repasse</p>
+          <p className={`text-lg font-semibold ${pendingPay > 0 ? 'text-amber-700' : 'text-green-700'}`}>
+            {formatBRL(pendingPay)}
+          </p>
+        </div>
       </div>
     </div>
   )
