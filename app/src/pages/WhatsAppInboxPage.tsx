@@ -57,13 +57,17 @@ export default function WhatsAppInboxPage() {
   }, [clinic?.id, loadSessions])
 
   // ── Load messages for selected session ────────────────────────────────────
+  // Uses a cancellation flag to prevent stale responses from a previous session
+  // overwriting messages when the user switches sessions quickly.
   useEffect(() => {
     if (!selectedId) return
+    let cancelled = false
     setLoadingMessages(true)
     fetchMessages(selectedId)
-      .then(setMessages)
-      .catch(() => toast.error('Erro ao carregar mensagens'))
-      .finally(() => setLoadingMessages(false))
+      .then((msgs) => { if (!cancelled) setMessages(msgs) })
+      .catch(() => { if (!cancelled) toast.error('Erro ao carregar mensagens') })
+      .finally(() => { if (!cancelled) setLoadingMessages(false) })
+    return () => { cancelled = true }
   }, [selectedId])
 
   // ── Realtime: new messages in selected session ────────────────────────────
@@ -127,17 +131,25 @@ export default function WhatsAppInboxPage() {
           loading={loadingMessages}
           clinicId={clinic.id}
           onResolve={async () => {
-            await resolveSession(selectedSession.id)
-            setSessions((prev) => prev.filter((s) => s.id !== selectedSession.id))
-            setSelectedId(sessions.find((s) => s.id !== selectedSession.id)?.id ?? null)
-            toast.success('Conversa resolvida')
+            try {
+              await resolveSession(selectedSession.id)
+              setSessions((prev) => prev.filter((s) => s.id !== selectedSession.id))
+              setSelectedId(sessions.find((s) => s.id !== selectedSession.id)?.id ?? null)
+              toast.success('Conversa resolvida')
+            } catch {
+              toast.error('Erro ao resolver conversa')
+            }
           }}
           onEscalate={async () => {
-            await escalateSession(selectedSession.id)
-            setSessions((prev) =>
-              prev.map((s) => s.id === selectedSession.id ? { ...s, status: 'human' } : s)
-            )
-            toast.success('Conversa atribuída para atendimento humano')
+            try {
+              await escalateSession(selectedSession.id)
+              setSessions((prev) =>
+                prev.map((s) => s.id === selectedSession.id ? { ...s, status: 'human' } : s)
+              )
+              toast.success('Conversa atribuída para atendimento humano')
+            } catch {
+              toast.error('Erro ao assumir conversa')
+            }
           }}
         />
       ) : (

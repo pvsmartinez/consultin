@@ -90,7 +90,7 @@ export function useClinicNotifications(navigate?: NavigateFn) {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [clinicId, qc])
+  }, [clinicId, qc, navigate])
 
   // ── Mutation: marcar todas como lidas ─────────────────────────────────────
   const markAllRead = useMutation({
