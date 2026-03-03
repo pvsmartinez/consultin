@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, PencilSimple, CalendarBlank, Phone, Envelope, MapPin, ClipboardText, WhatsappLogo, Copy } from '@phosphor-icons/react'
+import { ArrowLeft, PencilSimple, CalendarBlank, CalendarPlus, Phone, Envelope, MapPin, ClipboardText, WhatsappLogo, Copy } from '@phosphor-icons/react'
 import { usePatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
 import { useClinic } from '../hooks/useClinic'
@@ -7,6 +8,7 @@ import Badge from '../components/ui/Badge'
 import { formatDate, formatDateTime } from '../utils/date'
 import PatientRecordsPanel from '../components/patients/PatientRecordsPanel'
 import PatientFilesPanel from '../components/patients/PatientFilesPanel'
+import AppointmentModal from '../components/appointments/AppointmentModal'
 import { toast } from 'sonner'
 import {
   SEX_LABELS,
@@ -49,6 +51,7 @@ export default function PatientDetailPage() {
   const { patient, loading } = usePatient(id!)
   const { appointments, loading: loadingApts } = usePatientAppointments(id!)
   const { data: clinic } = useClinic()
+  const [scheduling, setScheduling] = useState(false)
 
   if (loading) {
     return <div className="text-center text-gray-400 text-sm mt-20">Carregando...</div>
@@ -90,6 +93,13 @@ export default function PatientDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setScheduling(true)}
+            className="flex items-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition"
+          >
+            <CalendarPlus size={15} />
+            Agendar
+          </button>
           <button
             onClick={() => navigate(`/pacientes/${patient.id}/editar`)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
@@ -220,6 +230,13 @@ export default function PatientDetailPage() {
           <p className="text-sm text-gray-400">Carregando...</p>
         )}
       </Section>
+
+      <AppointmentModal
+        open={scheduling}
+        onClose={() => setScheduling(false)}
+        initialPatientId={patient.id}
+        initialPatientName={patient.name}
+      />
     </div>
   )
 }

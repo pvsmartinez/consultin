@@ -11,8 +11,12 @@ import Badge from '../components/ui/Badge'
 import AppointmentPaymentModal from '../components/appointments/AppointmentPaymentModal'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
 import type { Appointment } from '../types'
+import RelatoriosPage from './RelatoriosPage'
+
+type FinTab = 'lancamentos' | 'relatorios'
 
 export default function FinanceiroPage() {
+  const [finTab, setFinTab] = useState<FinTab>('lancamentos')
   const [month, setMonth] = useState(new Date())
   const [payingId, setPayingId] = useState<string | null>(null)
   const [payingAmount, setPayingAmount] = useState('')
@@ -50,9 +54,10 @@ export default function FinanceiroPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-gray-800">Financeiro</h1>
-        <div className="flex items-center gap-2">
+        {finTab === 'lancamentos' && (
+          <div className="flex items-center gap-2">
           <button
             onClick={() => setMonth(m => subMonths(m, 1))}
             className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
@@ -94,10 +99,28 @@ export default function FinanceiroPage() {
               Mês atual
             </button>
           )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* KPI cards */}
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
+        {(['lancamentos', 'relatorios'] as FinTab[]).map(t => (
+          <button
+            key={t}
+            onClick={() => setFinTab(t)}
+            className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${
+              finTab === t ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t === 'lancamentos' ? 'Lançamentos' : 'Relatórios'}
+          </button>
+        ))}
+      </div>
+
+      {finTab === 'relatorios' && <RelatoriosPage />}
+      {finTab === 'lancamentos' && (
+      <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <KpiCard label="Total a cobrar" value={formatBRL(totalCharged)} color="blue" />
         <KpiCard label="Total recebido" value={formatBRL(totalReceived)} color="green" />
@@ -245,6 +268,8 @@ export default function FinanceiroPage() {
           appointment={chargingAppointment}
           onClose={() => setChargingAppointment(null)}
         />
+      )}
+      </>
       )}
     </div>
   )

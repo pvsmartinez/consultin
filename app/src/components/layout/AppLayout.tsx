@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   CalendarBlank,
@@ -10,13 +11,14 @@ import {
   Gear,
   Shield,
   CurrencyCircleDollar,
-  ChartLineUp,
   WhatsappLogo,
   Clock,
   Warning,
   SignIn,
   UserCircle,
+  Plus,
 } from '@phosphor-icons/react'
+import AppointmentModal from '../appointments/AppointmentModal'
 import type { UserRole } from '../../types'
 import { USER_ROLE_LABELS } from '../../types'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -33,7 +35,6 @@ const navItems = [
   { to: '/pacientes',     icon: Users,                 label: 'Pacientes',      labelProfissional: 'Pacientes',      permission: 'canViewPatients' as const },
   { to: '/profissionais', icon: UsersFour,             label: 'Profissionais',  labelProfissional: 'Profissionais',  permission: 'canManageProfessionals' as const },
   { to: '/financeiro',    icon: CurrencyCircleDollar,  label: 'Financeiro',     labelProfissional: 'Financeiro',     permission: 'canViewFinancial' as const },
-  { to: '/relatorios',    icon: ChartLineUp,           label: 'Relatórios',     labelProfissional: 'Relatórios',     permission: 'canViewFinancial' as const },
   { to: '/whatsapp',      icon: WhatsappLogo,          label: 'Mensagens',      labelProfissional: 'Mensagens',      permission: 'canViewWhatsApp' as const },
   { to: '/configuracoes', icon: Gear,                  label: 'Configurações',  labelProfissional: 'Configurações',  permission: 'canManageSettings' as const },
 ]
@@ -62,6 +63,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { unreadCount } = useClinicNotifications()
   const notifBadge = canSeeNotifications ? unreadCount : 0
   const isTestMode = isSuperAdmin && !!profile?.clinicId
+  const [newApptOpen, setNewApptOpen] = useState(false)
+  const canSchedule = role === 'admin' || role === 'receptionist'
 
   function handleExitTestMode() {
     if (!profile) return
@@ -92,6 +95,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           )}
         </div>
 
+        {/* Nova consulta CTA */}
+        {canSchedule && (
+          <div className="px-3 pb-2">
+            <button
+              onClick={() => setNewApptOpen(true)}
+              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              <Plus size={16} weight="bold" />
+              Nova consulta
+            </button>
+          </div>
+        )}
+
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1">
           {visibleNav.map(({ to, icon: Icon, label, labelProfissional }) => (
@@ -114,18 +130,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
               )}
             </NavLink>
           ))}
-          {/* Extra item for admin/receptionist who also have a professional record */}
+          {/* Minha Agenda — only for admin/receptionist with a linked professional record */}
           {hasLinkedProfessional && (
             <NavLink
               to="/minha-agenda"
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive ? 'bg-violet-50 text-violet-700 font-medium' : 'text-violet-600 hover:bg-violet-50'
+                  isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'
                 }`
               }
             >
               <CalendarCheck size={18} />
-              Minha Agenda
+              <span className="flex-1">Minha Agenda</span>
             </NavLink>
           )}
         </nav>
@@ -193,6 +209,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Global new appointment modal */}
+      <AppointmentModal
+        open={newApptOpen}
+        onClose={() => setNewApptOpen(false)}
+      />
     </div>
   )
 }

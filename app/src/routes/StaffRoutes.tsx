@@ -14,7 +14,6 @@ const AppointmentsPage       = lazy(() => import('../pages/AppointmentsPage'))
 const ProfessionalsPage      = lazy(() => import('../pages/ProfessionalsPage'))
 const SettingsPage           = lazy(() => import('../pages/SettingsPage'))
 const FinanceiroPage         = lazy(() => import('../pages/FinanceiroPage'))
-const RelatoriosPage         = lazy(() => import('../pages/RelatoriosPage'))
 const WhatsAppInboxPage      = lazy(() => import('../pages/WhatsAppInboxPage'))
 const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidadePage'))
 const PatientAnamnesisPage    = lazy(() => import('../pages/PatientAnamnesisPage'))
@@ -56,9 +55,7 @@ export default function StaffRoutes() {
       <Route path="/financeiro" element={
         <RequireAuth permission="canViewFinancial"><FinanceiroPage /></RequireAuth>
       } />
-      <Route path="/relatorios" element={
-        <RequireAuth permission="canViewFinancial"><RelatoriosPage /></RequireAuth>
-      } />
+      <Route path="/relatorios" element={<Navigate to="/financeiro" replace />} />
 
       {/* Profissionais / Config / WhatsApp */}
       <Route path="/profissionais" element={

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapAppointment } from '../utils/mappers'
-import type { Appointment } from '../types'
+import type { Appointment, AppointmentStatus } from '../types'
 
 /** Returns ALL professional records for the current user across all their clinics.
  *  Uses user_clinic_memberships (fast) and falls back to email match for legacy records. */
@@ -181,4 +181,24 @@ export function useAppointmentMutations() {
   })
 
   return { create, update, cancel }
+}
+
+/** Lightweight mutation for quick status changes (e.g. "Chegou", "Realizado", "Falta")
+ *  without needing all appointment fields. */
+export function useUpdateAppointmentStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['today-appointments'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-clinic-kpis'] })
+    },
+  })
 }

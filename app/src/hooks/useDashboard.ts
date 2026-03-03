@@ -3,6 +3,37 @@ import { startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 
+// ─── Today's appointments list (for ClinicDashboard) ────────────────────────
+
+export interface TodayAppointment {
+  id: string
+  starts_at: string
+  status: string
+  patient: { name: string } | { name: string }[] | null
+  professional: { name: string } | { name: string }[] | null
+}
+
+export function useTodayAppointments() {
+  const { profile } = useAuthContext()
+  return useQuery({
+    queryKey: ['today-appointments', profile?.clinicId ?? null],
+    enabled: !!profile?.clinicId,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const now = new Date()
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, starts_at, status, patient:patients(name), professional:professionals(name)')
+        .gte('starts_at', startOfDay(now).toISOString())
+        .lte('starts_at', endOfDay(now).toISOString())
+        .neq('status', 'cancelled')
+        .order('starts_at', { ascending: true })
+      return (data ?? []) as TodayAppointment[]
+    },
+  })
+}
+
 // ─── Clinic KPIs (admin / receptionist) ───────────────────────────────────────
 
 export function useClinicKPIs() {

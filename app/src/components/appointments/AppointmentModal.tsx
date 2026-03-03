@@ -74,11 +74,15 @@ interface Props {
   initialDurationMin?: number // from drag selection
   /** Default professional from calendar column */
   initialProfessionalId?: string
+  /** Pre-fill patient (e.g. opened from PatientDetailPage) */
+  initialPatientId?: string
+  initialPatientName?: string
 }
 
 export default function AppointmentModal({
   open, onClose, appointment,
   initialDate, initialTime, initialDurationMin, initialProfessionalId,
+  initialPatientId, initialPatientName,
 }: Props) {
   const isEditing = !!appointment
   const { data: professionals = [] } = useProfessionals()
@@ -132,7 +136,7 @@ export default function AppointmentModal({
       })
     } else {
       reset({
-        patientId:       '',
+        patientId:       initialPatientId ?? '',
         professionalId:  initialProfessionalId ?? '',
         date:            initialDate ?? format(new Date(), 'yyyy-MM-dd'),
         startTime:       initialTime ?? '08:00',
@@ -145,8 +149,9 @@ export default function AppointmentModal({
         recurrenceType:  'none',
         recurrenceCount: '4',
       })
+      if (initialPatientName) setPatientSearch(initialPatientName)
     }
-  }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, reset])
+  }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialPatientId, initialPatientName, reset])
 
   async function onSubmit(values: FormValues) {
     try {
