@@ -153,19 +153,17 @@ export default function MinhaContaPage() {
   const hasGoogle = identities.some(i => i.provider === 'google')
   const hasApple  = identities.some(i => i.provider === 'apple')
 
-  const handleLinkGoogle = async () => {
-    await supabase.auth.linkIdentity({
-      provider: 'google',
+  const handleLinkProvider = async (provider: 'google' | 'apple') => {
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
       options: { redirectTo: window.location.origin + '/minha-conta' },
     })
+    // linkIdentity redirects on success — if we're still here, it failed
+    if (error) toast.error(error.message)
   }
 
-  const handleLinkApple = async () => {
-    await supabase.auth.linkIdentity({
-      provider: 'apple',
-      options: { redirectTo: window.location.origin + '/minha-conta' },
-    })
-  }
+  const handleLinkGoogle = () => handleLinkProvider('google')
+  const handleLinkApple  = () => handleLinkProvider('apple')
 
   const handleUnlink = async (identity: UserIdentity) => {
     if (identities.length <= 1) {
