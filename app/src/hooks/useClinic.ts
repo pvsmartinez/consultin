@@ -190,10 +190,9 @@ export function useClinicInvites() {
     enabled: !!clinicId,
     staleTime: 2 * 60_000,
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('clinic_invites')
-        .select('id, email, name, role, created_at')
+        .select('id, email, name, roles, created_at')
         .eq('clinic_id', clinicId!)
         .is('used_at', null)
         .order('created_at', { ascending: false })
@@ -202,7 +201,7 @@ export function useClinicInvites() {
         id:        r.id as string,
         email:     r.email as string,
         name:      (r.name as string | null) ?? null,
-        role:      (r.role as string) ?? 'professional',
+        role:      ((r.roles as string[]) ?? ['professional'])[0],
         createdAt: r.created_at as string,
       }))
     },
@@ -228,8 +227,7 @@ export function useCancelInvite() {
   const { profile } = useAuthContext()
   return useMutation({
     mutationFn: async (inviteId: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('clinic_invites')
         .delete()
         .eq('id', inviteId)

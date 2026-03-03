@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { AvailabilitySlot } from '../types'
+import type { Json } from '../types/database'
 
 function mapRow(r: Record<string, unknown>): AvailabilitySlot {
   return {
@@ -53,7 +54,7 @@ export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: 
           active:      s.active,
           room_id:     s.roomId ?? null,
           week_parity: s.weekParity ?? null,
-        })) as unknown[],
+        })) as Json[],
       })
       if (error) throw error
     },

@@ -67,8 +67,7 @@ export function useCancelClinicBilling(clinicId: string) {
   return useMutation({
     mutationFn: async (subscriptionId: string) => {
       await cancelAsaasSubscription(subscriptionId)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('clinics')
         .update({ subscription_status: 'INACTIVE', payments_enabled: false })
         .eq('id', clinicId)

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { WhatsappFaq } from '../types'
+import type { Database } from '../types/database'
 
 function mapFaq(r: Record<string, unknown>): WhatsappFaq {
   return {
@@ -21,11 +22,12 @@ export function useWhatsappFaqs() {
     queryKey: ['whatsapp-faqs', profile?.clinicId],
     enabled: !!profile?.clinicId,
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await supabase
         .from('whatsapp_faqs')
         .select('*')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true })
+      if (error) throw error
       return (data as Record<string, unknown>[] ?? []).map(mapFaq)
     },
   })
@@ -36,9 +38,9 @@ export function useCreateWhatsappFaq() {
   const { profile } = useAuthContext()
   return useMutation({
     mutationFn: async (input: { question: string; answer: string }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('whatsapp_faqs')
-        .insert({ question: input.question, answer: input.answer })
+        .insert({ clinic_id: profile!.clinicId!, question: input.question, answer: input.answer })
         .select()
         .single()
       if (error) throw error
@@ -58,7 +60,10 @@ export function useUpdateWhatsappFaq() {
       if (input.answer   !== undefined) patch.answer     = input.answer
       if (input.active   !== undefined) patch.active     = input.active
       if (input.sortOrder !== undefined) patch.sort_order = input.sortOrder
-      const { error } = await (supabase as any).from('whatsapp_faqs').update(patch).eq('id', id)
+      const { error } = await supabase
+        .from('whatsapp_faqs')
+        .update(patch as Database['public']['Tables']['whatsapp_faqs']['Update'])
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp-faqs', profile?.clinicId] }),
@@ -70,7 +75,7 @@ export function useDeleteWhatsappFaq() {
   const { profile } = useAuthContext()
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('whatsapp_faqs').delete().eq('id', id)
+      const { error } = await supabase.from('whatsapp_faqs').delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp-faqs', profile?.clinicId] }),

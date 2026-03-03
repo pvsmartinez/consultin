@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapServiceType } from '../utils/mappers'
 import type { ServiceType, ServiceTypeInput } from '../types'
+import type { Database } from '../types/database'
 
 export function useServiceTypes() {
   const { profile } = useAuthContext()
@@ -13,8 +14,7 @@ export function useServiceTypes() {
     enabled: !!clinicId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('service_types')
         .select('*')
         .eq('clinic_id', clinicId!)
@@ -31,11 +31,10 @@ export function useCreateServiceType() {
 
   return useMutation({
     mutationFn: async (input: ServiceTypeInput) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('service_types')
         .insert({
-          clinic_id:        profile!.clinicId,
+          clinic_id:        profile!.clinicId!,
           name:             input.name,
           duration_minutes: input.durationMinutes,
           price_cents:      input.priceCents ?? null,
@@ -66,10 +65,9 @@ export function useUpdateServiceType() {
       if (input.color            !== undefined) update.color            = input.color
       if (input.active           !== undefined) update.active           = input.active
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('service_types')
-        .update(update)
+        .update(update as Database['public']['Tables']['service_types']['Update'])
         .eq('id', id)
         .select()
         .single()
@@ -88,8 +86,7 @@ export function useDeleteServiceType() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('service_types')
         .delete()
         .eq('id', id)

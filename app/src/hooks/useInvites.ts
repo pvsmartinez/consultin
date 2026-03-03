@@ -209,14 +209,14 @@ export function useAcceptInvite() {
 
         if (existingProf) {
           // Link user_id to existing record
-          await (supabase as any)
+          await supabase
             .from('professionals')
             .update({ user_id: params.userId })
             .eq('id', existingProf.id)
           professionalId = existingProf.id as string
         } else {
           // Create a new professionals record for this clinic
-          const { data: newProf, error: profErr } = await (supabase as any)
+          const { data: newProf, error: profErr } = await supabase
             .from('professionals')
             .insert({
               clinic_id: params.clinicId,
@@ -232,7 +232,7 @@ export function useAcceptInvite() {
         }
 
         // 3. Upsert user_clinic_memberships entry
-        await (supabase as any)
+        await supabase
           .from('user_clinic_memberships')
           .upsert(
             {
@@ -267,14 +267,14 @@ export function useMyClinicMemberships() {
     queryKey: ['my-clinic-memberships', session?.user.id],
     enabled: !!session?.user.id,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_clinic_memberships')
         .select('*, clinics(id, name)')
         .eq('user_id', session!.user.id)
         .eq('active', true)
         .order('created_at')
       if (error) throw error
-      return (data ?? []).map((r: any) => {
+      return (data ?? []).map((r) => {
         const clinic = r.clinics as { id: string; name: string } | null
         return {
           id:             r.id as string,
