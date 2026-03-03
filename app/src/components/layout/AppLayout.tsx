@@ -31,7 +31,7 @@ import ErrorBoundary from '../ErrorBoundary'
 const navItems = [
   { to: '/dashboard',     icon: ChartBar,             label: 'Dashboard',      labelProfissional: 'Meu Painel',     permission: null },
   { to: '/agenda',        icon: CalendarBlank,         label: 'Agenda',         labelProfissional: 'Minha Agenda',   permission: null },
-  { to: '/minha-disponibilidade', icon: Clock,           label: 'Disponibilidade', labelProfissional: 'Minha Disponibilidade', permission: 'canManageOwnAvailability' as const },
+  { to: '/minha-disponibilidade', icon: Clock,           label: 'Meus Horários',   labelProfissional: 'Meus Horários',         permission: 'canManageOwnAvailability' as const },
   { to: '/pacientes',     icon: Users,                 label: 'Pacientes',      labelProfissional: 'Pacientes',      permission: 'canViewPatients' as const },
   { to: '/profissionais', icon: UsersFour,             label: 'Profissionais',  labelProfissional: 'Profissionais',  permission: 'canManageProfessionals' as const },
   { to: '/financeiro',    icon: CurrencyCircleDollar,  label: 'Financeiro',     labelProfissional: 'Financeiro',     permission: 'canViewFinancial' as const },
@@ -124,7 +124,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <Icon size={18} />
               <span className="flex-1">{isProfessional ? labelProfissional : label}</span>
               {to === '/whatsapp' && notifBadge > 0 && (
-                <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1">
+                <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 animate-pulse">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}

@@ -1,6 +1,7 @@
 import { NavLink, Navigate } from 'react-router-dom'
 import { Stethoscope, SignOut, CalendarBlank, User, CalendarPlus } from '@phosphor-icons/react'
 import { useAuthContext } from '../../contexts/AuthContext'
+import { useClinic } from '../../hooks/useClinic'
 
 interface PatientPortalLayoutProps {
   children: React.ReactNode
@@ -12,6 +13,7 @@ interface PatientPortalLayoutProps {
  */
 export default function PatientPortalLayout({ children }: PatientPortalLayoutProps) {
   const { role, profile, signOut, loading } = useAuthContext()
+  const { data: clinic } = useClinic()
 
   if (loading) return null
   if (!role) return <Navigate to="/login" replace />
@@ -23,7 +25,7 @@ export default function PatientPortalLayout({ children }: PatientPortalLayoutPro
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Stethoscope size={20} className="text-blue-600" />
-          <span className="font-semibold text-gray-800 text-sm">Consultin</span>
+          <span className="font-semibold text-gray-800 text-sm">{clinic?.name ?? 'Consultin'}</span>
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-blue-600 bg-blue-50 ml-1">
             Paciente
           </span>

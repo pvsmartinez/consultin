@@ -1,53 +1,35 @@
 import { useState, useRef } from 'react'
 import { format, addMonths, subMonths, parseISO, isThisMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CaretLeft, CaretRight, CheckCircle, CurrencyCircleDollar } from '@phosphor-icons/react'
-import { toast } from 'sonner'
-import { useFinancial, useMarkPaid, PAYMENT_METHOD_LABELS } from '../hooks/useFinancial'
+import { CaretLeft, CaretRight, CurrencyCircleDollar } from '@phosphor-icons/react'
+import { useFinancial, PAYMENT_METHOD_LABELS } from '../hooks/useFinancial'
 import type { AppointmentPaymentMethod } from '../hooks/useFinancial'
 import { formatBRL } from '../utils/currency'
 import { useClinic } from '../hooks/useClinic'
 import Badge from '../components/ui/Badge'
 import AppointmentPaymentModal from '../components/appointments/AppointmentPaymentModal'
+import PaymentRegistrationModal from '../components/appointments/PaymentRegistrationModal'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
 import type { Appointment } from '../types'
 import RelatoriosPage from './RelatoriosPage'
 
 type FinTab = 'lancamentos' | 'relatorios'
 
+type RegisteringRow = { id: string; patientName: string; chargeAmountCents: number | null } | null
+
 export default function FinanceiroPage() {
   const [finTab, setFinTab] = useState<FinTab>('lancamentos')
   const [month, setMonth] = useState(new Date())
-  const [payingId, setPayingId] = useState<string | null>(null)
-  const [payingAmount, setPayingAmount] = useState('')
-  const [payingMethod, setPayingMethod] = useState<AppointmentPaymentMethod>('pix')
+  const [registeringRow, setRegisteringRow] = useState<RegisteringRow>(null)
   const [chargingAppointment, setChargingAppointment] = useState<Appointment | null>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
 
   const { data = [], isLoading } = useFinancial(month)
   const { data: clinic }         = useClinic()
-  const markPaid = useMarkPaid()
 
   const totalCharged = data.reduce((s, r) => s + (r.chargeAmountCents ?? 0), 0)
   const totalReceived = data.reduce((s, r) => s + (r.paidAmountCents ?? 0), 0)
   const pending = data.filter(r => r.status !== 'completed' || r.paidAmountCents == null)
-
-  const handleMarkPaid = async (id: string) => {
-    const cents = Math.round(parseFloat(payingAmount.replace(',', '.')) * 100)
-    if (isNaN(cents) || cents <= 0) {
-      toast.error('Informe um valor válido.')
-      return
-    }
-    try {
-      await markPaid.mutateAsync({ id, paidAmountCents: cents, paymentMethod: payingMethod })
-      toast.success('Pagamento registrado!')
-      setPayingId(null)
-      setPayingAmount('')
-      setPayingMethod('pix')
-    } catch (err) {
-      toast.error('Erro ao registrar pagamento.')
-    }
-  }
 
   const monthLabel = format(month, "MMMM 'de' yyyy", { locale: ptBR })
 
@@ -185,53 +167,13 @@ export default function FinanceiroPage() {
                     }
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {payingId === row.id ? (
-                      <div className="flex flex-col gap-1.5 items-end">
-                        <div className="flex items-center gap-1">
-                          <span className="text-gray-500 text-xs">R$</span>
-                          <input
-                            autoFocus
-                            type="text"
-                            inputMode="decimal"
-                            value={payingAmount}
-                            onChange={e => setPayingAmount(e.target.value)}
-                            placeholder="0,00"
-                            className="w-24 border border-gray-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleMarkPaid(row.id)
-                              if (e.key === 'Escape') { setPayingId(null); setPayingAmount('') }
-                            }}
-                          />
-                          <button
-                            onClick={() => handleMarkPaid(row.id)}
-                            disabled={markPaid.isPending}
-                            className="text-green-600 hover:text-green-700 disabled:opacity-50"
-                          >
-                            <CheckCircle size={18} />
-                          </button>
-                        </div>
-                        <select
-                          value={payingMethod}
-                          onChange={e => setPayingMethod(e.target.value as AppointmentPaymentMethod)}
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-                        >
-                          {(Object.entries(PAYMENT_METHOD_LABELS) as [AppointmentPaymentMethod, string][]).map(
-                            ([val, label]) => (
-                              <option key={val} value={val}>{label}</option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-                    ) : row.paidAmountCents == null ? (
+                    {row.paidAmountCents == null ? (
                       <button
-                        onClick={() => {
-                          setPayingId(row.id)
-                          setPayingAmount(
-                            row.chargeAmountCents != null
-                              ? (row.chargeAmountCents / 100).toFixed(2).replace('.', ',')
-                              : ''
-                          )
-                        }}
+                        onClick={() => setRegisteringRow({
+                          id: row.id,
+                          patientName: row.patient?.name ?? 'Paciente',
+                          chargeAmountCents: row.chargeAmountCents,
+                        })}
                         className="flex items-center gap-1 text-xs text-blue-600 hover:underline whitespace-nowrap"
                       >
                         <CurrencyCircleDollar size={14} />
@@ -267,6 +209,16 @@ export default function FinanceiroPage() {
         <AppointmentPaymentModal
           appointment={chargingAppointment}
           onClose={() => setChargingAppointment(null)}
+        />
+      )}
+
+      {registeringRow && (
+        <PaymentRegistrationModal
+          open={!!registeringRow}
+          onClose={() => setRegisteringRow(null)}
+          appointmentId={registeringRow.id}
+          patientName={registeringRow.patientName}
+          chargeAmountCents={registeringRow.chargeAmountCents}
         />
       )}
       </>

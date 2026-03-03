@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
-import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight } from '@phosphor-icons/react'
+import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy } from '@phosphor-icons/react'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinicKPIs, useProfessionalKPIs, useTodayAppointments } from '../hooks/useDashboard'
 import type { TodayAppointment } from '../hooks/useDashboard'
@@ -219,10 +219,16 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
               <Stethoscope size={16} />
               <span className="font-medium">Perfil não vinculado</span>
             </div>
-            <p className="text-xs">
+            <p className="text-xs mb-3">
               Peça ao administrador da clínica para cadastrar seu e-mail
               ({email}) no seu registro de profissional.
             </p>
+            <button
+              onClick={() => { navigator.clipboard.writeText(email ?? ''); toast.success('E-mail copiado!') }}
+              className="flex items-center gap-1.5 text-xs font-medium text-amber-700 border border-amber-300 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition-colors"
+            >
+              <Copy size={13} /> Copiar meu e-mail
+            </button>
           </div>
         ) : (data?.upcoming ?? []).length === 0 ? (
           <p className="text-sm text-gray-400 bg-white rounded-xl border border-gray-100 p-4 text-center">

@@ -17,7 +17,7 @@ const TABS: { id: Tab; label: string; icon: typeof Gear }[] = [
   { id: 'dados',           label: 'Dados da clínica',      icon: Gear          },
   { id: 'agenda',          label: 'Agenda',                icon: CalendarBlank  },
   { id: 'campos',          label: 'Campos personalizados', icon: Sliders        },
-  { id: 'disponibilidade', label: 'Disponibilidade',       icon: Clock          },
+  { id: 'disponibilidade', label: 'Horários',               icon: Clock          },
   { id: 'salas',           label: 'Salas / Espaços',       icon: Door           },
   { id: 'financeiro',      label: 'Financeiro',            icon: CurrencyDollar },
   { id: 'anamnese',        label: 'Anamnese',              icon: ClipboardText  },
