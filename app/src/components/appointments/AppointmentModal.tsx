@@ -94,9 +94,10 @@ export default function AppointmentModal({
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [patientSearch, setPatientSearch] = useState('')
+  const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null)
   const [showQuickPatient, setShowQuickPatient] = useState(false)
   const [quickName, setQuickName] = useState('')
-  const [quickPhone, setQuickPhone] = useState('')
+  const [quickCpf, setQuickCpf] = useState('')
   const debouncedPatientSearch = useDebounce(patientSearch, 300)
   const { patients = [] } = usePatients(debouncedPatientSearch)
 
@@ -119,7 +120,7 @@ export default function AppointmentModal({
   }, [durationMinVal])
 
   useEffect(() => {
-    if (!open) { setConfirmCancel(false); setPatientSearch(''); setShowQuickPatient(false); setQuickName(''); setQuickPhone(''); return }
+    if (!open) { setConfirmCancel(false); setPatientSearch(''); setSelectedPatient(null); setShowQuickPatient(false); setQuickName(''); setQuickCpf(''); return }
 
     if (appointment) {
       const start   = parseISO(appointment.startsAt)
@@ -144,6 +145,9 @@ export default function AppointmentModal({
         recurrenceType:  'none',
         recurrenceCount: '4',
       })
+      setSelectedPatient(appointment.patient
+        ? { id: appointment.patientId, name: appointment.patient.name }
+        : null)
     } else {
       reset({
         patientId:       initialPatientId ?? '',
@@ -160,7 +164,11 @@ export default function AppointmentModal({
         recurrenceType:  'none',
         recurrenceCount: '4',
       })
-      if (initialPatientName) setPatientSearch(initialPatientName)
+      if (initialPatientId && initialPatientName) {
+        setSelectedPatient({ id: initialPatientId, name: initialPatientName })
+      } else if (initialPatientName) {
+        setPatientSearch(initialPatientName)
+      }
     }
   }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialPatientId, initialPatientName, reset])
 
@@ -232,12 +240,14 @@ export default function AppointmentModal({
 
   async function handleQuickPatient() {
     if (!quickName.trim()) { toast.error('Informe o nome do paciente'); return }
+    if (!quickCpf.trim()) { toast.error('Informe o CPF do paciente'); return }
     try {
-      const created = await createPatient.mutateAsync({ name: quickName.trim(), phone: quickPhone.trim() || null, userId: null, cpf: null, rg: null, birthDate: null, sex: null, email: null, addressStreet: null, addressNumber: null, addressComplement: null, addressNeighborhood: null, addressCity: null, addressState: null, addressZip: null, notes: null, customFields: {} })
+      const created = await createPatient.mutateAsync({ name: quickName.trim(), cpf: quickCpf.trim(), phone: null, userId: null, rg: null, birthDate: null, sex: null, email: null, addressStreet: null, addressNumber: null, addressComplement: null, addressNeighborhood: null, addressCity: null, addressState: null, addressZip: null, notes: null, customFields: {} })
       setValue('patientId', created.id)
-      setPatientSearch(created.name)
+      setSelectedPatient({ id: created.id, name: created.name })
+      setPatientSearch('')
       setShowQuickPatient(false)
-      setQuickName(''); setQuickPhone('')
+      setQuickName(''); setQuickCpf('')
       toast.success('Paciente criado e selecionado')
     } catch {
       toast.error('Erro ao criar paciente')
@@ -313,34 +323,70 @@ export default function AppointmentModal({
             {/* Patient */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
-              <input
-                type="text"
-                value={patientSearch}
-                onChange={e => setPatientSearch(e.target.value)}
-                placeholder="Buscar por nome ou CPF..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1"
-              />
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                {...register('patientId')}
-              >
-                <option value="">Selecione o paciente...</option>
-                {patients.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}{p.cpf ? ` · ${p.cpf}` : ''}</option>
-                ))}
-              </select>
-              {patients.length === 0 && patientSearch.trim() && (
-                <div className="mt-1">
-                  <p className="text-xs text-gray-400 mb-1">Nenhum paciente encontrado.</p>
+
+              {/* Hidden field to keep react-hook-form value in sync */}
+              <input type="hidden" {...register('patientId')} />
+
+              {selectedPatient ? (
+                /* Selected state — show chip with clear button */
+                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  <span className="text-sm font-medium text-blue-800">{selectedPatient.name}</span>
                   <button
                     type="button"
-                    onClick={() => { setShowQuickPatient(true); setQuickName(patientSearch) }}
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                    onClick={() => {
+                      setSelectedPatient(null)
+                      setValue('patientId', '')
+                      setPatientSearch('')
+                    }}
+                    className="ml-2 text-blue-400 hover:text-blue-600 shrink-0"
                   >
-                    <UserPlus size={13} /> Criar paciente "{patientSearch}"
+                    <X size={15} />
                   </button>
                 </div>
+              ) : (
+                /* Search state — text input + suggestion dropdown */
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={patientSearch}
+                    onChange={e => { setPatientSearch(e.target.value); setShowQuickPatient(false) }}
+                    placeholder="Buscar por nome ou CPF..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
+                  />
+                  {patientSearch.trim() && !showQuickPatient && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                      {patients.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => {
+                            setSelectedPatient({ id: p.id, name: p.name })
+                            setValue('patientId', p.id)
+                            setPatientSearch('')
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-blue-50 border-b border-gray-100 last:border-0 flex items-baseline gap-2"
+                        >
+                          <span className="font-medium text-gray-800">{p.name}</span>
+                          {p.cpf && <span className="text-xs text-gray-400">{p.cpf}</span>}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setShowQuickPatient(true); setQuickName(patientSearch) }}
+                        className="w-full text-left px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-1.5 border-t border-gray-100"
+                      >
+                        <UserPlus size={14} />
+                        {patients.length === 0 ? `Criar paciente "${patientSearch}"` : 'Criar novo paciente'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
+
+              {/* Quick-create form */}
               {showQuickPatient && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
                   <p className="text-xs font-medium text-blue-700">Cadastro rápido de paciente</p>
@@ -352,10 +398,10 @@ export default function AppointmentModal({
                     className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
                   />
                   <input
-                    type="tel"
-                    value={quickPhone}
-                    onChange={e => setQuickPhone(e.target.value)}
-                    placeholder="Telefone / WhatsApp (opcional)"
+                    type="text"
+                    value={quickCpf}
+                    onChange={e => setQuickCpf(e.target.value)}
+                    placeholder="CPF *"
                     className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
                   />
                   <div className="flex gap-2">
@@ -370,6 +416,7 @@ export default function AppointmentModal({
                   </div>
                 </div>
               )}
+
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}
             </div>
 
