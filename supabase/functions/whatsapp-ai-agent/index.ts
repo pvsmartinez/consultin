@@ -147,7 +147,10 @@ serve(async (req) => {
   ]
 
   // ── Call OpenRouter ───────────────────────────────────────────────────────
-  const model = clinic.wa_ai_model ?? 'openai/gpt-4o-mini'
+  const model = clinic.wa_ai_model ?? 'google/gemini-2.0-flash-exp:free'
+
+  // response_format JSON mode is only supported by OpenAI models on OpenRouter
+  const supportsJsonMode = (model as string).startsWith('openai/')
 
   const orRes = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
@@ -162,7 +165,7 @@ serve(async (req) => {
       messages,
       temperature:  0.2,
       max_tokens:   512,
-      response_format: { type: 'json_object' },
+      ...(supportsJsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   })
 

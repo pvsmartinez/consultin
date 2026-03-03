@@ -27,7 +27,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
   const [phoneId,      setPhoneId]      = useState(clinic.whatsappPhoneNumberId ?? '')
   const [phoneDisplay, setPhoneDisplay] = useState(clinic.whatsappPhoneDisplay ?? '')
   const [wabaId,       setWabaId]       = useState(clinic.whatsappWabaId ?? '')
-  const [aiModel,      setAiModel]      = useState(clinic.waAiModel ?? 'openai/gpt-4o-mini')
+  const [aiModel,      setAiModel]      = useState(clinic.waAiModel ?? 'google/gemini-2.0-flash-exp:free')
   const [customPrompt, setCustomPrompt] = useState(clinic.waAiCustomPrompt ?? '')
   const [saving,       setSaving]       = useState(false)
 

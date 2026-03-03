@@ -557,12 +557,14 @@ export interface WhatsAppTemplate {
 }
 
 /** Available OpenRouter models for WhatsApp AI agent */
-export const WA_AI_MODELS: { value: string; label: string }[] = [
-  { value: 'openai/gpt-4o-mini',           label: 'GPT-4o Mini (OpenAI) — recomendado' },
-  { value: 'google/gemini-flash-1.5',      label: 'Gemini Flash 1.5 (Google)' },
-  { value: 'meta-llama/llama-3.1-8b-instruct:free', label: 'Llama 3.1 8B (Meta) — gratuito' },
-  { value: 'mistralai/mistral-7b-instruct:free',    label: 'Mistral 7B — gratuito' },
-  { value: 'anthropic/claude-3-haiku',     label: 'Claude 3 Haiku (Anthropic)' },
+export const WA_AI_MODELS: { value: string; label: string; free?: boolean }[] = [
+  { value: 'google/gemini-2.0-flash-exp:free',          label: 'Gemini 2.0 Flash (Google) — gratuito ✓',  free: true },
+  { value: 'google/gemini-flash-1.5-8b:free',           label: 'Gemini Flash 1.5 8B (Google) — gratuito ✓', free: true },
+  { value: 'meta-llama/llama-3.3-70b-instruct:free',    label: 'Llama 3.3 70B (Meta) — gratuito ✓',        free: true },
+  { value: 'deepseek/deepseek-chat:free',               label: 'DeepSeek V3 — gratuito ✓',                  free: true },
+  { value: 'openai/gpt-4o-mini',                        label: 'GPT-4o Mini (OpenAI)' },
+  { value: 'google/gemini-flash-1.5',                   label: 'Gemini Flash 1.5 (Google)' },
+  { value: 'anthropic/claude-3-haiku',                  label: 'Claude 3 Haiku (Anthropic)' },
 ]
 
 // ─── Patient Records (notes + attachments) ────────────────────────────────────

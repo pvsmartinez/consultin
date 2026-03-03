@@ -64,7 +64,7 @@ export function mapClinic(r: Record<string, unknown>): Clinic {
     waRemindersd0:            (r.wa_reminders_d0 as boolean) ?? true,
     waProfessionalAgenda:     (r.wa_professional_agenda as boolean) ?? false,
     waAttendantInbox:         (r.wa_attendant_inbox as boolean) ?? true,
-    waAiModel:                (r.wa_ai_model as string) ?? 'openai/gpt-4o-mini',
+    waAiModel:                (r.wa_ai_model as string) ?? 'google/gemini-2.0-flash-exp:free',
     waAiCustomPrompt:         (r.wa_ai_custom_prompt as string | null) ?? null,
     waAiAllowSchedule:        (r.wa_ai_allow_schedule as boolean) ?? false,
     waAiAllowConfirm:         (r.wa_ai_allow_confirm as boolean) ?? true,
