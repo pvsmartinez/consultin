@@ -27,17 +27,42 @@ export default function NovaSenhaPage() {
     }
 
     setLoading(true)
-    const { error } = await supabase.auth.updateUser({ password })
-    setLoading(false)
 
-    if (error) {
-      setError('Não foi possível atualizar a senha. O link pode ter expirado.')
+    try {
+      // Ensure there is a valid session before calling updateUser.
+      // If the OTP session expired or was never established, abort early.
+      const { data: { session: activeSession } } = await supabase.auth.getSession()
+      if (!activeSession) {
+        setError('Sessão expirada. Solicite um novo código e tente novamente.')
+        setLoading(false)
+        return
+      }
+
+      // Race against a 15s timeout — updateUser can hang if the JWT refresh stalls.
+      const result = await Promise.race([
+        supabase.auth.updateUser({ password }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 15000)
+        ),
+      ])
+
+      if (result.error) {
+        setError('Não foi possível atualizar a senha. Tente novamente.')
+        return
+      }
+    } catch (err) {
+      const isTimeout = err instanceof Error && err.message === 'timeout'
+      setError(
+        isTimeout
+          ? 'A requisição demorou demais. Verifique sua conexão e tente novamente.'
+          : 'Não foi possível atualizar a senha. O link pode ter expirado.'
+      )
       return
+    } finally {
+      setLoading(false)
     }
 
     setDone(true)
-    // Give the user a moment to read the success message, then clear recovery mode.
-    // onAuthStateChange will fire USER_UPDATED and set up a fresh session.
     setTimeout(() => clearRecoveryMode(), 2500)
   }
 
