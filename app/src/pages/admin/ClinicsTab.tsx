@@ -3,11 +3,11 @@ import { useForm, Controller } from 'react-hook-form'
 import { IMaskInput } from 'react-imask'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
-  Plus, PencilSimple, Envelope, CaretDown, CaretUp, SignIn,
+  Plus, PencilSimple, Envelope, CaretDown, CaretUp, SignIn, Trash,
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import {
-  useAdminClinics, useCreateClinic, useUpdateClinic, useEnterClinic, useInviteUser,
+  useAdminClinics, useCreateClinic, useUpdateClinic, useDeleteClinic, useEnterClinic, useInviteUser,
   useAdminAuthUsers,
 } from '../../hooks/useAdmin'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -122,8 +122,19 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
   const [showAddUser, setShowAddUser] = useState(false)
 
   const updateClinic = useUpdateClinic()
+  const deleteClinic = useDeleteClinic()
   const enterClinic  = useEnterClinic()
   const inviteUser   = useInviteUser()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  async function handleDelete() {
+    try {
+      await deleteClinic.mutateAsync(clinic.id)
+      toast.success(`Clínica "${clinic.name}" removida.`)
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao remover clínica')
+    }
+  }
 
   // Só carrega usuários quando a linha é expandida (evita cold start da edge function no load inicial)
   const { data: allUsers = [], isLoading: loadingUsers } = useAdminAuthUsers({ enabled: open })
@@ -294,6 +305,29 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
               </div>
             </div>
           )}
+
+          {/* Delete clinic */}
+          <div className="pt-2 border-t border-gray-800">
+            {!confirmDelete ? (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-400 transition-colors"
+              >
+                <Trash size={13} /> Remover clínica
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-red-400">Remover "{clinic.name}"? Todos os dados serão perdidos.</span>
+                <button type="button" onClick={handleDelete} disabled={deleteClinic.isPending}
+                  className="text-xs font-semibold text-red-500 hover:text-red-400 disabled:opacity-40">
+                  {deleteClinic.isPending ? 'Removendo...' : 'Confirmar'}
+                </button>
+                <button type="button" onClick={() => setConfirmDelete(false)}
+                  className="text-xs text-gray-500 hover:text-gray-300">Cancelar</button>
+              </div>
+            )}
+          </div>
 
           {/* Add user */}
           {showAddUser ? (

@@ -378,6 +378,21 @@ export function useUpdateClinic() {
   })
 }
 
+// ─── Delete clinic (cascades via FK) ────────────────────────────────────────
+export function useDeleteClinic() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (clinicId: string) => {
+      const { error } = await supabase
+        .from('clinics')
+        .delete()
+        .eq('id', clinicId)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'clinics'] }),
+  })
+}
+
 // ─── Enter a clinic as super admin (test mode) ────────────────────────────────
 // Sets clinic_id on own profile → navigate to /dashboard → app behaves as clinic admin.
 // Pass clinicId = null to exit test mode.
