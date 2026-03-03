@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapClinic } from '../utils/mappers'
@@ -212,13 +213,25 @@ export function useResendInvite() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
   return useMutation({
-    mutationFn: async (inviteId: string) => {
-      const { error } = await supabase.functions.invoke('send-clinic-invite', {
-        body: { inviteId },
-      })
+    mutationFn: async (inviteId: string): Promise<{ sent: boolean; reason?: string }> => {
+      const { data, error } = await supabase.functions.invoke<{ sent: boolean; reason?: string; email: string }>(
+        'send-clinic-invite',
+        { body: { inviteId } },
+      )
       if (error) throw error
+      return { sent: data?.sent ?? false, reason: data?.reason }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-invites', profile?.clinicId] }),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['clinic-invites', profile?.clinicId] })
+      if (result.sent) {
+        toast.success('Convite reenviado por e-mail!')
+      } else if (result.reason === 'already_registered') {
+        toast.info('Usuário já tem conta ativa — ele verá o convite ao fazer login.')
+      } else {
+        toast.error('Não foi possível reenviar o e-mail.')
+      }
+    },
+    onError: () => toast.error('Erro ao reenviar convite.'),
   })
 }
 

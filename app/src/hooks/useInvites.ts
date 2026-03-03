@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { ClinicInvite, UserRole } from '../types'
@@ -142,6 +143,16 @@ export function useResendInviteEmail() {
       if (error) throw error
       return { sent: data?.sent ?? false, reason: data?.reason }
     },
+    onSuccess: (result) => {
+      if (result.sent) {
+        toast.success('Convite reenviado por e-mail!')
+      } else if (result.reason === 'already_registered') {
+        toast.info('Usuário já tem conta ativa — ele verá o convite ao fazer login em consultin.app.')
+      } else {
+        toast.error('Não foi possível reenviar o e-mail.')
+      }
+    },
+    onError: () => toast.error('Erro ao reenviar convite.'),
   })
 }
 
