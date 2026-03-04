@@ -247,6 +247,28 @@ supabase gen types typescript --project-id nxztzehgnkdmluogxehi > app/src/types/
 
 **Note:** `supabase CLI` is available at `/usr/local/bin/supabase`. Already logged in. No need to install or login.
 
+### RLS Policy Authoring Rules — OBRIGATÓRIO
+
+**Sempre** envolva chamadas a `auth.uid()`, `auth.email()`, `auth.jwt()` e `current_setting()` em `(select ...)` dentro de cláusulas `USING` / `WITH CHECK` de policies RLS.
+
+```sql
+-- ✅ CORRETO — avaliado uma vez por statement ("init plan")
+CREATE POLICY "example" ON my_table
+  FOR ALL
+  USING ((select auth.uid()) = user_id);
+
+-- ❌ ERRADO — auth.uid() reavaliado para cada linha scaneada
+CREATE POLICY "example" ON my_table
+  FOR ALL
+  USING (auth.uid() = user_id);
+```
+
+**Por quê:** O Postgres executa funções em cláusulas RLS para cada linha durante o scan. Sem o `(select ...)`, `auth.uid()` vira chamada de função por linha — O(n). Com o wrapper, o otimizador trata como escalar estável e avalia uma única vez — O(1).
+
+**Exceções legítimas:** Dentro de corpos PL/pgSQL (ex: `v_user_id := auth.uid()`) não há problema — já é avaliado uma vez por invocação de função.
+
+**Histórico:** Em março/2026 foram criadas as migrations `0034_fix_rls_auth_init_plan.sql` (consultin) e `0003_fix_rls_auth_init_plan.sql` (cafezin) para corrigir ~20 policies que tinham esse problema. O Supabase Linter detecta isso como "Auth RLS Initialization Plan".
+
 ---
 
 ## Environment & Credentials (KEEP THIS UPDATED)
@@ -360,6 +382,7 @@ curl -s 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/admin/users?page=1&per
 8. **Commits** — use Conventional Commits (`feat:`, `fix:`, `chore:`, etc.), messages in English.
 9. **Onboarding guard** — any new route/redirect logic must respect `clinic.onboardingCompleted`. Clinics with `false` must land on `/onboarding` first, never on `/dashboard` or feature pages.
 10. **Field visibility** — never render a built-in patient/professional form field without first checking `fieldConfig[key] !== false`. Always pass `customPatientFields` / `customProfessionalFields` from the clinic to the form component.
+11. **RLS auth calls** — in any `USING` / `WITH CHECK` clause, always write `(select auth.uid())` not `auth.uid()`. Same for `auth.email()`, `auth.jwt()`, `current_setting()`. Bare calls are re-evaluated per row and will trigger the Supabase "Auth RLS Initialization Plan" lint warning.
 
 ---
 
