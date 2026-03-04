@@ -97,7 +97,7 @@ export function useClinic() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic', clinicId] }),
   })
 
-  return { ...query, update }
+  return { ...query, update, isLoading: query.isPending && query.isFetching }
 }
 // ─── Clinic members (user_profiles for current clinic) ───────────────────────
 export function useClinicMembers() {

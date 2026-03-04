@@ -144,5 +144,5 @@ export function usePatientRecords(patientId: string) {
     return data.signedUrl
   }
 
-  return { ...query, addNote, uploadFile, deleteRecord, getAttachmentUrl }
+  return { ...query, addNote, uploadFile, deleteRecord, getAttachmentUrl, isLoading: query.isPending && query.isFetching }
 }

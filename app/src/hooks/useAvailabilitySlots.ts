@@ -61,5 +61,5 @@ export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: 
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   })
 
-  return { ...query, upsert }
+  return { ...query, upsert, isLoading: query.isPending && query.isFetching }
 }

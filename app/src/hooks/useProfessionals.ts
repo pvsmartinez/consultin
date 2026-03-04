@@ -81,5 +81,5 @@ export function useProfessionals() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['professionals', profile?.clinicId ?? null] }),
   })
 
-  return { ...query, create, update, toggleActive }
+  return { ...query, create, update, toggleActive, isLoading: query.isPending && query.isFetching }
 }
