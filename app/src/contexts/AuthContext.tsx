@@ -84,16 +84,16 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
       return profileFromRow(d)
     })
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // null = no profile row yet (valid, don't retry). Only retry on thrown errors / timeout.
+  for (let attempt = 0; attempt < 2; attempt++) {
     const timeout = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('fetchProfile timeout')), 8000)
+      setTimeout(() => reject(new Error('fetchProfile timeout')), 4000)
     )
     try {
-      const result = await Promise.race([doFetch(), timeout])
-      if (result !== null) return result
+      return await Promise.race([doFetch(), timeout])
     } catch (e) {
-      if (attempt === 2) throw e
-      await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+      if (attempt === 1) throw e
+      await new Promise(r => setTimeout(r, 800))
     }
   }
   return null
@@ -127,16 +127,17 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
   // Fall back to plain profile fetch if RPC fails (e.g. function not yet deployed)
   const fallback = () => fetchProfile(userId)
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // null = no profile row yet (valid state — new user). Return immediately.
+  // Only retry on thrown errors (network error, timeout). Max 2 attempts, 4s each.
+  for (let attempt = 0; attempt < 2; attempt++) {
     const timeout = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('fetchStartupData timeout')), 8000)
+      setTimeout(() => reject(new Error('fetchStartupData timeout')), 4000)
     )
     try {
-      const result = await Promise.race([doFetch(), timeout])
-      if (result !== null) return result
+      return await Promise.race([doFetch(), timeout])
     } catch (e) {
-      if (attempt === 2) return fallback()
-      await new Promise(r => setTimeout(r, 500 * (attempt + 1)))
+      if (attempt === 1) return fallback()
+      await new Promise(r => setTimeout(r, 800))
     }
   }
   return fallback()

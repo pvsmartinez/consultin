@@ -14,7 +14,7 @@
  *   4. Expõe `markAllRead()` para limpar o badge
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
@@ -39,11 +39,13 @@ export function useClinicNotifications(navigate?: NavigateFn) {
   // Only admin and receptionist have RLS access to clinic_notifications
   const enabled = !!clinicId && (role === 'admin' || role === 'receptionist')
 
-  // ── Query: notificações não-lidas ──────────────────────────────────────────
+  // ── Query: notificações não-lidas (refetch a cada 30s) ───────────────────
+  // Polling em vez de postgres_changes para evitar WAL subscription contínua.
   const query = useQuery({
     queryKey: ['clinic_notifications', clinicId],
     enabled,
-    staleTime: 30_000,
+    staleTime: 25_000,
+    refetchInterval: enabled ? 30_000 : false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinic_notifications')
@@ -57,40 +59,36 @@ export function useClinicNotifications(navigate?: NavigateFn) {
     },
   })
 
-  // ── Realtime: INSERT → toast + refetch ────────────────────────────────────
+  // ── Toast: dispara quando chegam novas notificações no polling ─────────────
+  const prevIdsRef = useRef<Set<string>>(new Set())
+
   useEffect(() => {
-    if (!enabled) return
+    if (!query.data) return
+    const current = query.data
+    const prevIds = prevIdsRef.current
 
-    const channel = supabase
-      .channel(`clinic_notifications:${clinicId}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'clinic_notifications',
-          filter: `clinic_id=eq.${clinicId}`,
+    // Na primeira carga, apenas registra os IDs sem disparar toasts
+    if (prevIds.size === 0 && current.length > 0) {
+      prevIdsRef.current = new Set(current.map(n => n.id))
+      return
+    }
+
+    // Toasts apenas para notificações novas (não vistas antes)
+    const newItems = current.filter(n => !prevIds.has(n.id))
+    for (const row of newItems) {
+      const label = TOAST_LABELS[row.type] ?? '🔔 Nova notificação'
+      const patientName = (row.data as Record<string, unknown>)?.patientName as string | undefined
+      toast.info(patientName ? `${label} — ${patientName}` : label, {
+        duration: 8_000,
+        action: {
+          label:   'Ver mensagens',
+          onClick: () => { if (navigate) navigate('/whatsapp'); else window.location.href = '/whatsapp' },
         },
-        (payload) => {
-          const row = payload.new as ClinicNotification
-          const label = TOAST_LABELS[row.type] ?? '🔔 Nova notificação'
-          const patientName = (row.data as Record<string, unknown>)?.patientName as string | undefined
+      })
+    }
 
-          toast.info(patientName ? `${label} — ${patientName}` : label, {
-            duration: 8_000,
-            action: {
-              label:   'Ver mensagens',
-              onClick: () => { if (navigate) navigate('/whatsapp'); else window.location.href = '/whatsapp' },
-            },
-          })
-
-          qc.invalidateQueries({ queryKey: ['clinic_notifications', clinicId] })
-        },
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [clinicId, qc, navigate])
+    prevIdsRef.current = new Set(current.map(n => n.id))
+  }, [query.data, navigate])
 
   // ── Mutation: marcar todas como lidas ─────────────────────────────────────
   const markAllRead = useMutation({
