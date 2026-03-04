@@ -51,6 +51,16 @@ const RECURRENCE_LABELS: Record<string, string> = {
   monthly: 'Mensalmente',
 }
 
+const RETURN_PRESETS = [
+  { label: 'Sem retorno', value: 'none'   },
+  { label: '1 semana',   value: '7d'    },
+  { label: '2 semanas',  value: '14d'   },
+  { label: '1 mês',      value: '30d'   },
+  { label: '3 meses',    value: '90d'   },
+  { label: 'Avançado',   value: 'custom' },
+] as const
+type ReturnPreset = typeof RETURN_PRESETS[number]['value']
+
 function toUTC(date: string, time: string): string {
   return fromZonedTime(`${date}T${time}:00`, 'America/Sao_Paulo').toISOString()
 }
@@ -93,6 +103,7 @@ export default function AppointmentModal({
   const { data: serviceTypes = [] } = useServiceTypes()
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [returnPreset, setReturnPreset]   = useState<ReturnPreset>('none')
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null)
   const [showQuickPatient, setShowQuickPatient] = useState(false)
@@ -170,7 +181,17 @@ export default function AppointmentModal({
         setPatientSearch(initialPatientName)
       }
     }
+    setReturnPreset('none')
   }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialPatientId, initialPatientName, reset])
+
+  // Auto-select room / professional when there is only one active option
+  useEffect(() => {
+    if (!open) return
+    const profs = professionals.filter(p => p.active)
+    const rms   = rooms.filter(r => r.active)
+    if (profs.length === 1) setValue('professionalId', profs[0].id)
+    if (rms.length   === 1) setValue('roomId', rms[0].id)
+  }, [open, professionals, rooms, setValue])
 
   async function onSubmit(values: FormValues) {
     try {
@@ -198,8 +219,19 @@ export default function AppointmentModal({
       if (isEditing) {
         await update.mutateAsync({ id: appointment!.id, ...basePayload, startsAt, endsAt })
         toast.success('Consulta atualizada')
-      } else if (values.recurrenceType !== 'none') {
-        // Create all recurring appointments concurrently to avoid serial blocking
+      } else if (returnPreset !== 'none' && returnPreset !== 'custom') {
+        // Quick return preset — create original + one follow-up
+        const offsetDays  = parseInt(returnPreset)  // '7d' → 7, '14d' → 14 …
+        const returnStart = addDays(new Date(startsAt), offsetDays).toISOString()
+        const returnEnd   = addMinutes(new Date(returnStart), durationMin).toISOString()
+        await Promise.all([
+          create.mutateAsync({ ...basePayload, startsAt, endsAt }),
+          create.mutateAsync({ ...basePayload, startsAt: returnStart, endsAt: returnEnd }),
+        ])
+        const presetLabel = RETURN_PRESETS.find(p => p.value === returnPreset)?.label ?? ''
+        toast.success(`Consulta agendada com retorno em ${presetLabel}`)
+      } else if (returnPreset === 'custom' && values.recurrenceType !== 'none') {
+        // Advanced recurrence
         const count = Math.min(Math.max(parseInt(values.recurrenceCount) || 1, 1), 52)
         const type  = values.recurrenceType
         const creates = Array.from({ length: count }, (_, i) => {
@@ -223,17 +255,6 @@ export default function AppointmentModal({
         toast.error('Conflito de sala — já existe consulta nessa sala nesse horário')
       } else {
         toast.error('Erro ao salvar consulta')
-      }
-    }
-  }
-
-  function onServiceTypeChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    setValue('serviceTypeId', e.target.value || '')
-    const st = activeServiceTypes.find(s => s.id === e.target.value)
-    if (st) {
-      setValue('durationMin', String(st.durationMinutes))
-      if (st.priceCents != null) {
-        setValue('chargeAmount', (st.priceCents / 100).toFixed(2).replace('.', ','))
       }
     }
   }
@@ -266,6 +287,7 @@ export default function AppointmentModal({
   }
 
   const activeProfessionals = professionals.filter(p => p.active)
+  const activeRooms         = rooms.filter(r => r.active)
   const hasNoProfessionals  = !isEditing && activeProfessionals.length === 0
   const hasNoPatients       = !isEditing && patients.length === 0 && !patientSearch.trim()
 
@@ -420,31 +442,53 @@ export default function AppointmentModal({
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}
             </div>
 
-            {/* Professional */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                {...register('professionalId')}
-              >
-                <option value="">Selecione o profissional...</option>
-                {activeProfessionals.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
-                  </option>
-                ))}
-              </select>
-              {errors.professionalId && <p className="text-xs text-red-500 mt-1">{errors.professionalId.message}</p>}
-            </div>
+            {/* Professional — hidden + auto-filled when clinic has only one */}
+            {activeProfessionals.length === 1 ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
+                <input type="hidden" {...register('professionalId')} />
+                <p className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
+                  {activeProfessionals[0].name}
+                  {activeProfessionals[0].specialty ? ` — ${activeProfessionals[0].specialty}` : ''}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  {...register('professionalId')}
+                >
+                  <option value="">Selecione o profissional...</option>
+                  {activeProfessionals.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {errors.professionalId && <p className="text-xs text-red-500 mt-1">{errors.professionalId.message}</p>}
+              </div>
+            )}
 
-            {/* Service type — optional, auto-fills duration + price */}
-            {!isEditing && activeServiceTypes.length > 0 && (
+            {/* Service type — optional, auto-fills duration + price when creating */}
+            {activeServiceTypes.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de atendimento</label>
                 <select
-                  onChange={onServiceTypeChange}
+                  value={watch('serviceTypeId') ?? ''}
+                  onChange={e => {
+                    setValue('serviceTypeId', e.target.value || '')
+                    if (!isEditing) {
+                      const st = activeServiceTypes.find(s => s.id === e.target.value)
+                      if (st) {
+                        setValue('durationMin', String(st.durationMinutes))
+                        if (st.priceCents != null) {
+                          setValue('chargeAmount', (st.priceCents / 100).toFixed(2).replace('.', ','))
+                        }
+                      }
+                    }
+                  }}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  defaultValue=""
                 >
                   <option value="">Selecionar serviço... (opcional)</option>
                   {activeServiceTypes.map(s => (
@@ -453,7 +497,7 @@ export default function AppointmentModal({
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-400 mt-0.5">Selecionar preenche automaticamente duração e valor.</p>
+                {!isEditing && <p className="text-xs text-gray-400 mt-0.5">Selecionar preenche automaticamente duração e valor.</p>}
               </div>
             )}
             <div className="grid grid-cols-3 gap-3">
@@ -472,20 +516,22 @@ export default function AppointmentModal({
               </div>
             </div>
 
-            {/* Room + Status */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sala / consultório</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  {...register('roomId')}
-                >
-                  <option value="">Sem sala definida</option>
-                  {rooms.filter(r => r.active).map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Room + Status — room hidden when clinic has ≤1 room */}
+            <div className={`grid gap-3 ${activeRooms.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {activeRooms.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sala / consultório</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    {...register('roomId')}
+                  >
+                    <option value="">Sem sala definida</option>
+                    {activeRooms.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
@@ -516,45 +562,72 @@ export default function AppointmentModal({
             {/* Notes */}
             <TextArea label="Observações" rows={2} {...register('notes')} />
 
-            {/* Recurrence (only for new appointments) */}
+            {/* Return / recurrence — only for new appointments */}
             {!isEditing && (
               <div className="rounded-xl border border-gray-200 p-3 space-y-3 bg-gray-50">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <RepeatOnce size={16} className="text-gray-400" />
-                  Repetição
+                  Retorno
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Frequência</label>
-                    <select
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                      {...register('recurrenceType')}
+                <div className="flex flex-wrap gap-1.5">
+                  {RETURN_PRESETS.map(p => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setReturnPreset(p.value)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                        returnPreset === p.value
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                      }`}
                     >
-                      {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
-                        <option key={v} value={v}>{l}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {recurrenceType !== 'none' && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Repetir (nº de ocorrências)
-                      </label>
-                      <input
-                        type="number"
-                        min={2}
-                        max={52}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        {...register('recurrenceCount')}
-                      />
-                    </div>
-                  )}
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
-                {recurrenceType !== 'none' && (
+                {returnPreset !== 'none' && returnPreset !== 'custom' && (
                   <p className="text-xs text-blue-600">
-                    Serão criadas <strong>{Math.min(Math.max(parseInt(recurrenceCount) || 1, 1), 52)}</strong> consultas{' '}
-                    {RECURRENCE_LABELS[recurrenceType].toLowerCase().replace('mente', '')}.
+                    Será agendado um retorno em{' '}
+                    <strong>{RETURN_PRESETS.find(p => p.value === returnPreset)?.label}</strong>{' '}
+                    com o mesmo profissional e horário.
                   </p>
+                )}
+                {returnPreset === 'custom' && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Frequência</label>
+                        <select
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          {...register('recurrenceType')}
+                        >
+                          {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
+                            <option key={v} value={v}>{l}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {recurrenceType !== 'none' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Nº de ocorrências
+                          </label>
+                          <input
+                            type="number"
+                            min={2}
+                            max={52}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            {...register('recurrenceCount')}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {recurrenceType !== 'none' && (
+                      <p className="text-xs text-blue-600">
+                        Serão criadas <strong>{Math.min(Math.max(parseInt(recurrenceCount) || 1, 1), 52)}</strong> consultas{' '}
+                        {RECURRENCE_LABELS[recurrenceType].toLowerCase().replace('mente', '')}.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

@@ -206,6 +206,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   })
 
   const [agendaView, setAgendaView]         = useState<AgendaView>('room')
+  const [filterProfId, setFilterProfId]     = useState<string>('')
   const [extendConfirm, setExtendConfirm]   = useState<ExtendConfirm | null>(null)
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [addRoomOpen, setAddRoomOpen]       = useState(false)
@@ -241,6 +242,10 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const isPersonalView = myOnly || role === 'professional'
   const professionalFilter = isPersonalView ? myProfRecords.map(r => r.id) : null
 
+  // When only 1 active room, always use professional view
+  const activeRoomCount      = rooms.filter(r => r.active).length
+  const effectiveAgendaView: AgendaView = activeRoomCount <= 1 ? 'prof' : agendaView
+
   const { data: appointments = [], isLoading } = useAppointmentsQuery(range.start, range.end, professionalFilter)
   const { update } = useAppointmentMutations()
 
@@ -251,22 +256,25 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
 
   const [modalOpen, setModalOpen]     = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
-  const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number } | null>(null)
+  const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
 
   // Resources for resource views
   const resources: { id: string; title: string; eventColor?: string }[] = useMemo(() => {
-    if (agendaView === 'room') {
+    if (effectiveAgendaView === 'room') {
       const active = rooms.filter(r => r.active)
       return active.length
         ? active.map(r => ({ id: r.id, title: r.name, eventColor: r.color }))
         : [{ id: '__no_room__', title: 'Sem sala' }]
     }
-    // agendaView === 'prof'
+    // effectiveAgendaView === 'prof'
     const active = professionals.filter(p => p.active)
-    return active.length
-      ? active.map(p => ({ id: p.id, title: p.name }))
+    const source = filterProfId
+      ? active.filter(p => p.id === filterProfId)
+      : active
+    return source.length
+      ? source.map(p => ({ id: p.id, title: p.name }))
       : [{ id: '__no_prof__', title: 'Sem profissional' }]
-  }, [agendaView, rooms, professionals])
+  }, [effectiveAgendaView, rooms, professionals, filterProfId])
 
   const events: EventInput[] = (appointments as (Appointment & { clinicName?: string | null })[]).map(a => {
     const color = multiClinic
@@ -275,7 +283,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
     const title = multiClinic && a.clinicName
       ? `[${a.clinicName}] ${a.patient?.name ?? 'Paciente'}`
       : (a.patient?.name ?? 'Paciente')
-    const resourceId = agendaView === 'room'
+    const resourceId = effectiveAgendaView === 'room'
       ? (a.roomId ?? '__no_room__')
       : a.professionalId
     return {
@@ -287,7 +295,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
     }
   })
 
-  function handleDateSelect(arg: { start: Date; end: Date; startStr: string; endStr: string; allDay: boolean }) {
+  function handleDateSelect(arg: { start: Date; end: Date; startStr: string; endStr: string; allDay: boolean; resource?: { id: string } }) {
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
     // Owner/admin can schedule outside hours but must confirm
     if (!isPersonalView && clinic?.workingHours && !isInsideBusinessHours(arg.start, clinic.workingHours)) {
@@ -301,8 +309,9 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
       })
       return
     }
+    const profId = effectiveAgendaView === 'prof' ? (arg.resource?.id ?? '') : ''
     setEditingAppt(null)
-    setInitialSlot({ date: format(arg.start, 'yyyy-MM-dd'), time: format(arg.start, 'HH:mm'), durationMin })
+    setInitialSlot({ date: format(arg.start, 'yyyy-MM-dd'), time: format(arg.start, 'HH:mm'), durationMin, professionalId: profId })
     setModalOpen(true)
   }
 
@@ -435,6 +444,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const fcInitialView = 'resourceTimeGridWeek'
   const headerRight  = 'resourceTimeGridWeek,resourceTimeGridDay'
   const fcButtonText = { today: 'Hoje', week: 'Semana', day: 'Dia', resourceTimeGridWeek: 'Semana', resourceTimeGridDay: 'Dia' }
+  const activeProfessionals = professionals.filter(p => p.active)
 
   return (
     <div className="space-y-4">
@@ -452,7 +462,21 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
               {todayLabel}
             </span>
           )}
-          {!isPersonalView && (
+          {/* Professional filter */}
+          {!isPersonalView && activeProfessionals.length > 1 && (
+            <select
+              value={filterProfId}
+              onChange={e => setFilterProfId(e.target.value)}
+              className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">Todos os profissionais</option>
+              {activeProfessionals.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          )}
+          {/* Room/prof toggle — only if clinic has more than 1 room */}
+          {!isPersonalView && activeRoomCount > 1 && (
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
               {([
                 ['room', DoorOpen,     'Por sala'],
@@ -468,7 +492,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
               ))}
             </div>
           )}
-          {agendaView === 'room' && !isPersonalView && (
+          {agendaView === 'room' && !isPersonalView && activeRoomCount > 1 && (
             <button onClick={() => setAddRoomOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors">
               <Plus size={13} /> Sala
@@ -497,7 +521,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
 
       <div className={`bg-white rounded-xl border border-gray-100 p-4 relative ${isLoading ? 'opacity-60' : ''}`}>
         <FullCalendar
-          key={agendaView}
+          key={effectiveAgendaView}
           ref={calendarRef}
           plugins={fcPlugins}
           initialView={fcInitialView}
@@ -535,13 +559,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
         initialDate={initialSlot?.date}
         initialTime={initialSlot?.time}
         initialDurationMin={initialSlot?.durationMin}
-      />
-
-      {extendConfirm && (
-        <ExtendModal
-          data={extendConfirm}
-          onJustThis={() => commitExtend(false)}
-          onAlways={() => commitExtend(true)}
+        initialProfessionalId={initialSlot?.professionalId}
           onCancel={() => setExtendConfirm(null)}
         />
       )}
