@@ -9,6 +9,9 @@ verify_jwt = false
 [functions.send-clinic-invite]
 verify_jwt = false
 
+[functions.submit-clinic-signup]
+verify_jwt = false
+
 [api]
 enabled = true
 port = 54321

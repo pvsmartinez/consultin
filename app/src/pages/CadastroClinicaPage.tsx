@@ -28,34 +28,19 @@ export default function CadastroClinicaPage() {
   async function onSubmit(values: FormValues) {
     setServerError(null)
     try {
-      // 1. Insert signup request (public, no auth required)
-      const { error: insertError } = await supabase
-        .from('clinic_signup_requests')
-        .insert({
-          name:             values.clinicName,
-          cnpj:             values.cnpj  || null,
-          phone:            values.phone || null,
-          email:            values.email,
-          responsible_name: values.responsibleName,
-          message:          values.message || null,
-        })
+      // Submit via Edge Function (service role insert + Telegram notification)
+      const { error } = await supabase.functions.invoke('submit-clinic-signup', {
+        body: {
+          clinicName:      values.clinicName,
+          responsibleName: values.responsibleName,
+          email:           values.email,
+          cnpj:            values.cnpj    || undefined,
+          phone:           values.phone   || undefined,
+          message:         values.message || undefined,
+        },
+      })
 
-      if (insertError) throw new Error(insertError.message)
-
-      // 2. Notify Pedro via Telegram (best-effort, don't fail if it errors)
-      try {
-        await supabase.functions.invoke('notify-telegram', {
-          body: {
-            clinicName:      values.clinicName,
-            responsibleName: values.responsibleName,
-            email:           values.email,
-            phone:           values.phone || undefined,
-            message:         values.message || undefined,
-          },
-        })
-      } catch {
-        // Telegram notification failure is non-fatal
-      }
+      if (error) throw new Error(error.message)
 
       setSubmitted(true)
     } catch (e: unknown) {
