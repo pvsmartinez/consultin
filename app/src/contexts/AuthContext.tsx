@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
@@ -87,13 +87,13 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   // null = no profile row yet (valid, don't retry). Only retry on thrown errors / timeout.
   for (let attempt = 0; attempt < 2; attempt++) {
     const timeout = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('fetchProfile timeout')), 4000)
+      setTimeout(() => reject(new Error('fetchProfile timeout')), 3000)
     )
     try {
       return await Promise.race([doFetch(), timeout])
     } catch (e) {
-      if (attempt === 1) throw e
-      await new Promise(r => setTimeout(r, 800))
+      if (attempt === 1) return null   // give up; caller uses cached profile
+      await new Promise(r => setTimeout(r, 500))
     }
   }
   return null
@@ -124,23 +124,22 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
     return profile
   }
 
-  // Fall back to plain profile fetch if RPC fails (e.g. function not yet deployed)
-  const fallback = () => fetchProfile(userId)
-
   // null = no profile row yet (valid state — new user). Return immediately.
-  // Only retry on thrown errors (network error, timeout). Max 2 attempts, 4s each.
+  // Only retry on thrown errors (network error, timeout). Max 2 attempts, 3s each.
+  // No fallback to fetchProfile — if the RPC is unreachable the caller uses the
+  // cached profile and we avoid blocking the UI for an extra 6+ seconds.
   for (let attempt = 0; attempt < 2; attempt++) {
     const timeout = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('fetchStartupData timeout')), 4000)
+      setTimeout(() => reject(new Error('fetchStartupData timeout')), 3000)
     )
     try {
       return await Promise.race([doFetch(), timeout])
     } catch (e) {
-      if (attempt === 1) return fallback()
-      await new Promise(r => setTimeout(r, 800))
+      if (attempt === 1) return null   // give up; caller falls back to cached profile
+      await new Promise(r => setTimeout(r, 500))
     }
   }
-  return fallback()
+  return null
 }
 
 // True when Supabase has stored a session in localStorage (user was previously logged in).
@@ -162,6 +161,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // True when Supabase fires PASSWORD_RECOVERY — forces NovaSenhaPage regardless of route
   const [recoveryMode, setRecoveryMode] = useState(false)
 
+  // Guard: prevent concurrent fetchStartupData calls in React Strict Mode (double-effect)
+  // and on rapid re-subscriptions. Persists across Strict Mode re-runs (same component ref).
+  const startupFetchInProgressRef = useRef(false)
+
   useEffect(() => {
     let settled = false
 
@@ -171,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Safety net: if auth never resolves (token refresh hang, network issue),
-    // clear state and show login after 12s. Do NOT await signOut — it can hang too.
+    // clear state and show login after 10s. Do NOT await signOut — it can hang too.
     const timeout = setTimeout(() => {
       if (settled) return
       console.warn('Auth timed out — clearing session')
@@ -181,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCachedProfile(null)
       setLoading(false)
       settle()
-    }, 12000)
+    }, 10000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       settle()
@@ -201,6 +204,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      // TOKEN_REFRESHED / USER_UPDATED: JWT rotated but profile is unchanged.
+      // Just keep the session fresh — no need to re-seed the React Query cache
+      // with another round-trip to the DB.
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        setLoading(false)
+        return
+      }
+
+      // Prevent concurrent startup fetches (React Strict Mode runs effects twice).
+      if (startupFetchInProgressRef.current) {
+        setLoading(false)
+        return
+      }
+      startupFetchInProgressRef.current = true
+
       // Use cached profile to render instantly, then refresh from DB in background
       const cached = getCachedProfile()
       if (cached && cached.id === session.user.id) {
@@ -210,12 +228,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const p = await fetchStartupData(session.user.id, qc)
-        setProfile(p)
-        setCachedProfile(p)
+        // fetchStartupData returns null on DB failure — fall back to cached profile
+        setProfile(p ?? cached)
+        if (p) setCachedProfile(p)
+        else if (!cached) setCachedProfile(null)
       } catch (e) {
         console.error('fetchStartupData error:', e)
         if (!cached) { setProfile(null); setCachedProfile(null) }
       } finally {
+        startupFetchInProgressRef.current = false
         setLoading(false) // no-op if already false
       }
     })
