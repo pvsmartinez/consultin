@@ -31,6 +31,13 @@ refresh_token_reuse_interval = 10
 enable_signup = true
 enable_manual_linking = true
 
+[auth.password]
+hibp_enabled = true   # check passwords against HaveIBeenPwned.org
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [auth.email.template.magic_link]
 subject = "Seu código de acesso — Consultin"
 content_path = "./supabase/templates/magic_link.html"
