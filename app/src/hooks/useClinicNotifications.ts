@@ -109,7 +109,7 @@ export function useClinicNotifications(navigate?: NavigateFn) {
   return {
     notifications: query.data ?? [],
     unreadCount:   query.data?.length ?? 0,
-    isLoading:     query.isLoading,
+    isLoading:     query.isPending && query.isFetching,
     markAllRead:   () => markAllRead.mutate(),
   }
 }

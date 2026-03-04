@@ -20,6 +20,6 @@ export function usePatientAppointments(patientId: string) {
 
   return {
     appointments: query.data ?? [],
-    loading:      query.isLoading,
+    loading:      query.isPending && query.isFetching,
   }
 }

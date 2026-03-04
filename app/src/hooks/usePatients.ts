@@ -106,7 +106,7 @@ export function usePatients(search = '', page = 0) {
     patients:      query.data?.patients ?? [],
     total:         query.data?.total ?? 0,
     pageCount:     Math.ceil((query.data?.total ?? 0) / PATIENTS_PAGE_SIZE),
-    loading:       query.isLoading,
+    loading:       query.isPending && query.isFetching,
     error:         query.error?.message ?? null,
     refetch:       query.refetch,
     createPatient: (input: PatientInput) => createMut.mutateAsync(input),
@@ -178,7 +178,7 @@ export function usePatient(id: string) {
 
   return {
     patient: query.data ?? null,
-    loading: query.isLoading,
+    loading: query.isPending && query.isFetching,
     error:   query.error?.message ?? null,
     refetch: query.refetch,
   }
@@ -251,7 +251,7 @@ export function useMyPatient() {
 
   return {
     patient:       query.data ?? null,
-    loading:       query.isLoading,
+    loading:       query.isPending && query.isFetching,
     updatePatient: (input: Partial<PatientInput>) =>
       query.data
         ? updateMut.mutateAsync({ id: query.data.id, input })
