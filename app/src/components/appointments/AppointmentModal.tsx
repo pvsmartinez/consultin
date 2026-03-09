@@ -103,6 +103,7 @@ export default function AppointmentModal({
   const { data: serviceTypes = [] } = useServiceTypes()
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [showExtras, setShowExtras]       = useState(false)
   const [returnPreset, setReturnPreset]   = useState<ReturnPreset>('none')
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null)
@@ -131,7 +132,7 @@ export default function AppointmentModal({
   }, [durationMinVal])
 
   useEffect(() => {
-    if (!open) { setConfirmCancel(false); setPatientSearch(''); setSelectedPatient(null); setShowQuickPatient(false); setQuickName(''); setQuickCpf(''); return }
+    if (!open) { setConfirmCancel(false); setPatientSearch(''); setSelectedPatient(null); setShowQuickPatient(false); setQuickName(''); setQuickCpf(''); setShowExtras(false); return }
 
     if (appointment) {
       const start   = parseISO(appointment.startsAt)
@@ -159,6 +160,8 @@ export default function AppointmentModal({
       setSelectedPatient(appointment.patient
         ? { id: appointment.patientId, name: appointment.patient.name }
         : null)
+      // When editing, always show extras so user can see all existing values
+      setShowExtras(true)
     } else {
       reset({
         patientId:       initialPatientId ?? '',
@@ -261,9 +264,8 @@ export default function AppointmentModal({
 
   async function handleQuickPatient() {
     if (!quickName.trim()) { toast.error('Informe o nome do paciente'); return }
-    if (!quickCpf.trim()) { toast.error('Informe o CPF do paciente'); return }
     try {
-      const created = await createPatient.mutateAsync({ name: quickName.trim(), cpf: quickCpf.trim(), phone: null, userId: null, rg: null, birthDate: null, sex: null, email: null, addressStreet: null, addressNumber: null, addressComplement: null, addressNeighborhood: null, addressCity: null, addressState: null, addressZip: null, notes: null, customFields: {} })
+      const created = await createPatient.mutateAsync({ name: quickName.trim(), cpf: quickCpf.trim() || null, phone: null, userId: null, rg: null, birthDate: null, sex: null, email: null, addressStreet: null, addressNumber: null, addressComplement: null, addressNeighborhood: null, addressCity: null, addressState: null, addressZip: null, notes: null, customFields: {} })
       setValue('patientId', created.id)
       setSelectedPatient({ id: created.id, name: created.name })
       setPatientSearch('')
@@ -423,7 +425,7 @@ export default function AppointmentModal({
                     type="text"
                     value={quickCpf}
                     onChange={e => setQuickCpf(e.target.value)}
-                    placeholder="CPF *"
+                    placeholder="CPF (opcional)"
                     className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
                   />
                   <div className="flex gap-2">
@@ -516,6 +518,23 @@ export default function AppointmentModal({
               </div>
             </div>
 
+            {/* ── Mais opções toggle ─────────────────────────────────────────── */}
+            <button
+              type="button"
+              onClick={() => setShowExtras(v => !v)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors py-0.5"
+            >
+              <span className={`transition-transform ${showExtras ? 'rotate-90' : ''}`}>▶</span>
+              {showExtras ? 'Menos opções' : 'Mais opções'}
+              {!showExtras && (
+                <span className="text-gray-400">(sala, status, valor, observações, retorno)</span>
+              )}
+            </button>
+
+            {/* ── Extras collapsible ─────────────────────────────────────────── */}
+            {showExtras && (
+              <div className="space-y-4">
+
             {/* Room + Status — room hidden when clinic has ≤1 room */}
             <div className={`grid gap-3 ${activeRooms.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {activeRooms.length > 1 && (
@@ -567,7 +586,7 @@ export default function AppointmentModal({
               <div className="rounded-xl border border-gray-200 p-3 space-y-3 bg-gray-50">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <RepeatOnce size={16} className="text-gray-400" />
-                  Retorno
+                  Retorno / recorrência
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {RETURN_PRESETS.map(p => (
@@ -629,6 +648,9 @@ export default function AppointmentModal({
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
               </div>
             )}
 

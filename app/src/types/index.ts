@@ -273,6 +273,20 @@ export interface AvailabilitySlot {
   weekParity: 'even' | 'odd' | null  // null=every week, even/odd ISO week parity
 }
 
+// ─── Room Availability Slot ───────────────────────────────────────────────────
+// Each clinic room has its own weekly availability schedule.
+// Used to shade unavailable time in the calendar per room column.
+export interface RoomAvailabilitySlot {
+  id: string
+  clinicId: string
+  roomId: string
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6   // 0=Sun … 6=Sat
+  startTime: string   // "HH:MM"
+  endTime: string
+  active: boolean
+  weekParity: 'even' | 'odd' | null  // null=every week
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 /**

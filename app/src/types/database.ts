@@ -599,6 +599,21 @@ export type Database = {
           },
         ]
       }
+      notify_staff_config: {
+        Row: {
+          key: string
+          value: string
+        }
+        Insert: {
+          key: string
+          value: string
+        }
+        Update: {
+          key?: string
+          value?: string
+        }
+        Relationships: []
+      }
       patient_files: {
         Row: {
           clinic_id: string
@@ -926,6 +941,57 @@ export type Database = {
           },
         ]
       }
+      room_availability_slots: {
+        Row: {
+          active: boolean
+          clinic_id: string
+          created_at: string
+          end_time: string
+          id: string
+          room_id: string
+          start_time: string
+          week_parity: string | null
+          weekday: number
+        }
+        Insert: {
+          active?: boolean
+          clinic_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          room_id: string
+          start_time: string
+          week_parity?: string | null
+          weekday: number
+        }
+        Update: {
+          active?: boolean
+          clinic_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          room_id?: string
+          start_time?: string
+          week_parity?: string | null
+          weekday?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_availability_slots_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_availability_slots_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           active: boolean
@@ -1018,6 +1084,11 @@ export type Database = {
           id: string
           is_super_admin: boolean
           name: string
+          notif_cancellation: boolean
+          notif_new_appointment: boolean
+          notif_no_show: boolean
+          notif_payment_overdue: boolean
+          notification_phone: string | null
           permission_overrides: Json
           roles: Database["public"]["Enums"]["user_role"][]
         }
@@ -1029,6 +1100,11 @@ export type Database = {
           id: string
           is_super_admin?: boolean
           name: string
+          notif_cancellation?: boolean
+          notif_new_appointment?: boolean
+          notif_no_show?: boolean
+          notif_payment_overdue?: boolean
+          notification_phone?: string | null
           permission_overrides?: Json
           roles?: Database["public"]["Enums"]["user_role"][]
         }
@@ -1040,6 +1116,11 @@ export type Database = {
           id?: string
           is_super_admin?: boolean
           name?: string
+          notif_cancellation?: boolean
+          notif_new_appointment?: boolean
+          notif_no_show?: boolean
+          notif_payment_overdue?: boolean
+          notification_phone?: string | null
           permission_overrides?: Json
           roles?: Database["public"]["Enums"]["user_role"][]
         }
@@ -1279,6 +1360,7 @@ export type Database = {
         Args: { p_clinic_id: string }
         Returns: string
       }
+      get_startup_data: { Args: never; Returns: Json }
       professional_patient_count: {
         Args: { p_professional_id: string }
         Returns: number
@@ -1289,6 +1371,10 @@ export type Database = {
       }
       upsert_availability_slots: {
         Args: { p_clinic_id: string; p_professional_id: string; p_slots: Json }
+        Returns: undefined
+      }
+      upsert_room_availability_slots: {
+        Args: { p_clinic_id: string; p_room_id: string; p_slots: Json }
         Returns: undefined
       }
     }

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Plus, Trash, PencilSimple, Check, X } from '@phosphor-icons/react'
+import { Plus, Trash, PencilSimple, Check, X, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom } from '../../hooks/useRooms'
+import RoomAvailabilityEditor from '../../components/availability/RoomAvailabilityEditor'
 import type { ClinicRoom } from '../../types'
 
 const ROOM_COLORS = [
@@ -19,6 +20,7 @@ export default function SalasTab() {
   const [editing, setEditing] = useState<ClinicRoom | null>(null)
   const [name, setName] = useState('')
   const [color, setColor] = useState(ROOM_COLORS[0])
+  const [expandedAvail, setExpandedAvail] = useState<string | null>(null)
 
   function openNew() { setEditing(null); setName(''); setColor(ROOM_COLORS[0]); setShowForm(true) }
   function openEdit(r: ClinicRoom) { setEditing(r); setName(r.name); setColor(r.color); setShowForm(true) }
@@ -103,17 +105,40 @@ export default function SalasTab() {
       ) : (
         <div className="space-y-2">
           {rooms.map(r => (
-            <div key={r.id} className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl">
-              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
-              <p className={`flex-1 text-sm font-medium ${r.active ? 'text-gray-800' : 'text-gray-400 line-through'}`}>{r.name}</p>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${r.active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                {r.active ? 'Ativa' : 'Inativa'}
-              </span>
-              <button onClick={() => openEdit(r)} className="text-gray-400 hover:text-gray-700 p-1"><PencilSimple size={15} /></button>
-              <button onClick={() => toggleActive(r)} className="text-gray-400 hover:text-gray-700 p-1 text-xs border border-gray-200 rounded px-2">
-                {r.active ? 'Desativar' : 'Ativar'}
-              </button>
-              <button onClick={() => remove(r)} className="text-red-400 hover:text-red-600 p-1"><Trash size={15} /></button>
+            <div key={r.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              {/* Room header row */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: r.color }} />
+                <p className={`flex-1 text-sm font-medium ${r.active ? 'text-gray-800' : 'text-gray-400 line-through'}`}>{r.name}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${r.active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                  {r.active ? 'Ativa' : 'Inativa'}
+                </span>
+                {/* Availability toggle */}
+                <button
+                  onClick={() => setExpandedAvail(prev => prev === r.id ? null : r.id)}
+                  title="Configurar horários da sala"
+                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
+                    expandedAvail === r.id
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'
+                  }`}
+                >
+                  <Clock size={12} />
+                  <span className="hidden sm:inline">Horários</span>
+                </button>
+                <button onClick={() => openEdit(r)} className="text-gray-400 hover:text-gray-700 p-1"><PencilSimple size={15} /></button>
+                <button onClick={() => toggleActive(r)} className="text-gray-400 hover:text-gray-700 p-1 text-xs border border-gray-200 rounded px-2">
+                  {r.active ? 'Desativar' : 'Ativar'}
+                </button>
+                <button onClick={() => remove(r)} className="text-red-400 hover:text-red-600 p-1"><Trash size={15} /></button>
+              </div>
+
+              {/* Collapsible availability editor */}
+              {expandedAvail === r.id && (
+                <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
+                  <RoomAvailabilityEditor roomId={r.id} />
+                </div>
+              )}
             </div>
           ))}
         </div>

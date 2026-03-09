@@ -11,6 +11,7 @@ import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
 import { useRooms, useCreateRoom } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
+import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
 import type { Appointment } from '../types'
 
@@ -22,6 +23,16 @@ const PT_DAY_LABELS: Record<DayKey, string> = {
   thu: 'Quinta', fri: 'Sexta', sat: 'Sábado',
 }
 type AgendaView = 'room' | 'prof'
+
+// ─── per-resource businessHours helper ────────────────────────────────────────
+type FCBusinessHour = { daysOfWeek: number[]; startTime: string; endTime: string }
+
+function slotsToResourceBusinessHours(
+  slots: Array<{ weekday: number; startTime: string; endTime: string }>,
+): FCBusinessHour[] | undefined {
+  if (!slots.length) return undefined
+  return slots.map(s => ({ daysOfWeek: [s.weekday], startTime: s.startTime, endTime: s.endTime }))
+}
 
 /** Returns false if the date falls on a closed day or outside business hours */
 function isInsideBusinessHours(
@@ -216,6 +227,8 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const { data: rooms = [] }              = useRooms()
   const { data: professionals = [] }      = useProfessionals()
   const { data: myProfRecords = [] }      = useMyProfessionalRecords()
+  const { data: roomAvailSlots = [] }     = useRoomAvailabilitySlots()
+  const { data: clinicAvailSlots = [] }   = useClinicAvailabilitySlots()
 
   // Business hours + slot limits from clinic config
   const { businessHours, slotMin, slotMax, todayOpen, todayLabel } = useMemo(() => {
@@ -258,23 +271,34 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
 
-  // Resources for resource views
-  const resources: { id: string; title: string; eventColor?: string }[] = useMemo(() => {
+  // Resources for resource views — include per-resource businessHours
+  // so each column shades its own unavailable time independently of the global clinic hours.
+  const resources: { id: string; title: string; eventColor?: string; businessHours?: FCBusinessHour[] | false }[] = useMemo(() => {
     if (effectiveAgendaView === 'room') {
       const active = rooms.filter(r => r.active)
-      return active.length
-        ? active.map(r => ({ id: r.id, title: r.name, eventColor: r.color }))
-        : [{ id: '__no_room__', title: 'Sem sala' }]
+      if (!active.length) return [{ id: '__no_room__', title: 'Sem sala' }]
+      return active.map(r => {
+        const rSlots = roomAvailSlots.filter(s => s.roomId === r.id)
+        const bh = slotsToResourceBusinessHours(
+          rSlots.map(s => ({ weekday: s.weekday, startTime: s.startTime, endTime: s.endTime }))
+        )
+        return { id: r.id, title: r.name, eventColor: r.color, ...(bh ? { businessHours: bh } : {}) }
+      })
     }
     // effectiveAgendaView === 'prof'
     const active = professionals.filter(p => p.active)
     const source = filterProfId
       ? active.filter(p => p.id === filterProfId)
       : active
-    return source.length
-      ? source.map(p => ({ id: p.id, title: p.name }))
-      : [{ id: '__no_prof__', title: 'Sem profissional' }]
-  }, [effectiveAgendaView, rooms, professionals, filterProfId])
+    if (!source.length) return [{ id: '__no_prof__', title: 'Sem profissional' }]
+    return source.map(p => {
+      const pSlots = clinicAvailSlots.filter(s => s.professional_id === p.id)
+      const bh = slotsToResourceBusinessHours(
+        pSlots.map(s => ({ weekday: s.weekday, startTime: s.start_time, endTime: s.end_time }))
+      )
+      return { id: p.id, title: p.name, ...(bh ? { businessHours: bh } : {}) }
+    })
+  }, [effectiveAgendaView, rooms, professionals, filterProfId, roomAvailSlots, clinicAvailSlots])
 
   const events: EventInput[] = (appointments as (Appointment & { clinicName?: string | null })[]).map(a => {
     const color = multiClinic
@@ -519,6 +543,17 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
         </div>
       )}
 
+      {/* Read-only notice for professionals */}
+      {isPersonalView && role === 'professional' && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+          <Lock size={13} className="shrink-0 text-blue-500" />
+          <span>
+            Você está vendo apenas suas próprias consultas. Para alterar sua disponibilidade, acesse{' '}
+            <a href="/minha-disponibilidade" className="font-semibold underline hover:text-blue-900">Meus Horários</a>.
+          </span>
+        </div>
+      )}
+
       <div className={`bg-white rounded-xl border border-gray-100 p-4 relative ${isLoading ? 'opacity-60' : ''}`}>
         <FullCalendar
           key={effectiveAgendaView}
@@ -560,6 +595,13 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
         initialTime={initialSlot?.time}
         initialDurationMin={initialSlot?.durationMin}
         initialProfessionalId={initialSlot?.professionalId}
+      />
+
+      {extendConfirm && (
+        <ExtendModal
+          data={extendConfirm}
+          onJustThis={() => commitExtend(false)}
+          onAlways={() => commitExtend(true)}
           onCancel={() => setExtendConfirm(null)}
         />
       )}
