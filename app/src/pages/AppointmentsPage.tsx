@@ -175,7 +175,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [roomsDrawerOpen, setRoomsDrawerOpen] = useState(false)
 
-  const { role }                          = useAuthContext()
+  const { role, isSuperAdmin }             = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
   const { data: rooms = [] }              = useRooms()
   const { data: professionals = [] }      = useProfessionals()
@@ -453,7 +453,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
             </select>
           )}
           {/* Salas button — always visible for admins */}
-          {!isPersonalView && role === 'admin' && (
+          {!isPersonalView && (role === 'admin' || isSuperAdmin) && (
             <button onClick={() => setRoomsDrawerOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors">
               <DoorOpen size={14} /> Salas
@@ -540,7 +540,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
           resourceLabelContent={(arg: { resource: { id: string; title: string } }) => {
             const rid = arg.resource.id
-            if (rid === '__no_room__' || isPersonalView || role !== 'admin') {
+            if (rid === '__no_room__' || isPersonalView || (role !== 'admin' && !isSuperAdmin)) {
               return <span>{arg.resource.title}</span>
             }
             return (
