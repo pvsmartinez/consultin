@@ -4,7 +4,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
-import { Plus, DoorOpen, UserCircle, X, Lock } from '@phosphor-icons/react'
+import { Plus, DoorOpen, UserCircle, X, Lock, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -13,6 +13,7 @@ import { useRooms, useCreateRoom } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
+import RoomScheduleDrawer from '../components/rooms/RoomScheduleDrawer'
 import type { Appointment } from '../types'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -221,6 +222,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const [extendConfirm, setExtendConfirm]   = useState<ExtendConfirm | null>(null)
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [addRoomOpen, setAddRoomOpen]       = useState(false)
+  const [schedulingRoomId, setSchedulingRoomId] = useState<string | null>(null)
 
   const { role }                          = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
@@ -584,6 +586,24 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
           slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
+          resourceLabelContent={(arg: { resource: { id: string; title: string } }) => {
+            const rid = arg.resource.id
+            if (rid === '__no_room__' || isPersonalView || role !== 'admin') {
+              return <span>{arg.resource.title}</span>
+            }
+            return (
+              <div className="flex items-center gap-1.5 group w-full justify-between">
+                <span className="text-sm font-medium truncate">{arg.resource.title}</span>
+                <button
+                  onClick={e => { e.stopPropagation(); setSchedulingRoomId(rid) }}
+                  title="Editar horários desta sala"
+                  className="flex-shrink-0 p-1 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
+                >
+                  <Clock size={13} />
+                </button>
+              </div>
+            )
+          }}
         />
       </div>
 
@@ -608,6 +628,13 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
 
       {addRoomOpen && (
         <AddRoomModal onClose={() => setAddRoomOpen(false)} />
+      )}
+
+      {schedulingRoomId && (
+        <RoomScheduleDrawer
+          roomId={schedulingRoomId}
+          onClose={() => setSchedulingRoomId(null)}
+        />
       )}
 
       {closedSlotPending && (
