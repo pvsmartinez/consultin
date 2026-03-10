@@ -354,6 +354,49 @@ Antes de criar qualquer query que aguarda o resultado de outra para disparar (se
 
 ---
 
+## Query Key Registry — OBRIGATÓRIO
+
+> Todas as keys do React Query vivem em `app/src/lib/queryKeys.ts` (objeto `QK`).
+> **NUNCA** escreva arrays de chave inline. Cada key nova deve ser adicionada ao `QK` primeiro.
+
+### Por quê
+
+- TypeScript detecta na compile time chaves duplicadas ou com nome errado — o bug de `useProfessionalsList` vs `useProfessionals` não teria existido com este padrão.
+- Centraliza em um lugar descobrir "quem invalida o quê": basta buscar `QK.appointments.all()`.
+- Garante que a chave de prefixo usada nas invalidações respeite a mesma estrutura da chave completa.
+
+### Como usar
+
+```typescript
+import { QK } from '../lib/queryKeys'
+
+// Numa query
+useQuery({ queryKey: QK.professionals.list(clinicId), ... })
+
+// Numa invalidação
+qc.invalidateQueries({ queryKey: QK.professionals.list(clinicId) })
+
+// Invalidação de prefixo (invalida qualquer key que comece com 'appointments')
+qc.invalidateQueries({ queryKey: QK.appointments.all() })
+```
+
+### Como adicionar uma key nova
+
+1. Identifique o domínio (ou crie um novo namespace se não existir)
+2. Adicione a factory function em `queryKeys.ts`, mantendo o padrão do bloco correspondente
+3. Use `QK.domain.method()` no hook — nunca o array literal
+
+```typescript
+// queryKeys.ts — exemplo de adição
+  myDomain: {
+    all:    ()           => ['my-domain']             as const,
+    list:   (id: string) => ['my-domain', id]         as const,
+    detail: (id: string) => ['my-domain', id, 'detail'] as const,
+  },
+```
+
+---
+
 ## Environment & Credentials (KEEP THIS UPDATED)
 
 > **If any of the values below change, update this section immediately so future agents don't waste time with wrong credentials.**
