@@ -29,6 +29,7 @@ export function useRoomAvailabilitySlots() {
   const query = useQuery({
     queryKey: key,
     enabled: !!profile?.clinicId,
+    staleTime: 2 * 60_000,
     queryFn: async (): Promise<RoomAvailabilitySlot[]> => {
       const { data, error } = await supabase
         .from('room_availability_slots')

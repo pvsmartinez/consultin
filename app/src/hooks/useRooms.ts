@@ -18,6 +18,8 @@ export function useRooms() {
   const { profile } = useAuthContext()
   return useQuery({
     queryKey: ['rooms', profile?.clinicId ?? null],
+    enabled: !!profile?.clinicId,
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinic_rooms')

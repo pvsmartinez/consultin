@@ -119,6 +119,18 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
       }
       const professionals = (payload.professionals ?? []).map(mapProfessional)
       qc.setQueryData(['professionals', profile.clinicId], professionals)
+
+      // Pre-seed the current user's own professional records so AppointmentsPage
+      // can render without waiting for an additional useMyProfessionalRecords query.
+      // This eliminates the cascade: startup → prof-records → appointments.
+      const clinicName = payload.clinic ? (mapClinic(payload.clinic) as { name: string }).name : null
+      const myProfRecords = professionals
+        .filter(p => p.userId === userId)
+        .map(p => ({ id: p.id, clinicId: p.clinicId, clinicName }))
+      // Only seed when we have a result — empty means "still unknown" (email-only legacy records)
+      if (myProfRecords.length > 0) {
+        qc.setQueryData(['my-professional-records', userId], myProfRecords)
+      }
     }
 
     return profile

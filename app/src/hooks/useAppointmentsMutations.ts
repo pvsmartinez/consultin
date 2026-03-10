@@ -16,52 +16,61 @@ export function useMyProfessionalRecords() {
     enabled: !!session?.user.id,
     staleTime: 60_000, // 1 min — runs on every page via AppLayout, cache it
     queryFn: async (): Promise<ProfessionalRecord[]> => {
-      // Primary: direct user_id on professionals table (works for any role)
-      const { data: direct } = await supabase
-        .from('professionals')
-        .select('id, clinic_id, clinics(id, name)')
-        .eq('user_id', session!.user.id)
-        .eq('active', true)
+      const userId = session!.user.id
 
-      if (direct && direct.length > 0) {
+      // Run all three lookup strategies in parallel — avoids a 3× RTT sequential waterfall.
+      // For the vast majority of users the first query returns immediately (user_id match),
+      // so the extra parallel queries are just cheap no-ops that get cancelled client-side.
+      const [directResult, membershipsResult, emailResult] = await Promise.all([
+        // Primary: direct user_id match (preferred)
+        supabase
+          .from('professionals')
+          .select('id, clinic_id, clinics(id, name)')
+          .eq('user_id', userId)
+          .eq('active', true),
+
+        // Secondary: user_clinic_memberships (multi-clinic professionals)
+        supabase
+          .from('user_clinic_memberships')
+          .select('professional_id, clinic_id, clinics(id, name)')
+          .eq('user_id', userId)
+          .eq('active', true)
+          .not('professional_id', 'is', null),
+
+        // Fallback: email match (legacy records without user_id)
+        email
+          ? supabase
+              .from('professionals')
+              .select('id, clinic_id, clinics(id, name)')
+              .ilike('email', email)
+              .eq('active', true)
+          : Promise.resolve({ data: [] as { id: string; clinic_id: string; clinics: unknown }[], error: null }),
+      ])
+
+      type ClinicRef = { name?: string } | null
+      const direct      = (directResult.data ?? []) as { id: string; clinic_id: string; clinics: ClinicRef }[]
+      const memberships = (membershipsResult.data ?? []) as { professional_id: string; clinic_id: string; clinics: ClinicRef }[]
+      const byEmail     = ((emailResult as { data: { id: string; clinic_id: string; clinics: ClinicRef }[] | null }).data ?? [])
+
+      // Priority: user_id > membership > email
+      if (direct.length > 0) {
         return direct.map(r => ({
-          id:        r.id as string,
-          clinicId:  r.clinic_id as string,
-          clinicName: ((r.clinics as { name?: string } | null)?.name) ?? null,
+          id:        r.id,
+          clinicId:  r.clinic_id,
+          clinicName: (r.clinics as ClinicRef)?.name ?? null,
         }))
       }
-
-      // Secondary: user_clinic_memberships → professional_id (multi-clinic professionals)
-      const { data: memberships } = await supabase
-        .from('user_clinic_memberships')
-        .select('professional_id, clinic_id, clinics(id, name)')
-        .eq('user_id', session!.user.id)
-        .eq('active', true)
-        .not('professional_id', 'is', null)
-
-      if (memberships && memberships.length > 0) {
-        return (memberships as Array<{
-          professional_id: string
-          clinic_id: string
-          clinics: { name?: string } | null
-        }>).map(m => ({
+      if (memberships.length > 0) {
+        return memberships.map(m => ({
           id:        m.professional_id,
           clinicId:  m.clinic_id,
-          clinicName: m.clinics?.name ?? null,
+          clinicName: (m.clinics as ClinicRef)?.name ?? null,
         }))
       }
-
-      // Fallback: email match (legacy records without user_id)
-      if (!email) return []
-      const { data: byEmail } = await supabase
-        .from('professionals')
-        .select('id, clinic_id, clinics(id, name)')
-        .ilike('email', email)
-        .eq('active', true)
-      return (byEmail ?? []).map(r => ({
-        id:        r.id as string,
-        clinicId:  r.clinic_id as string,
-        clinicName: ((r.clinics as { name?: string } | null)?.name) ?? null,
+      return byEmail.map(r => ({
+        id:        r.id,
+        clinicId:  r.clinic_id,
+        clinicName: (r.clinics as ClinicRef)?.name ?? null,
       }))
     },
   })
