@@ -1,16 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createSupabaseClient } from '@pvsmartinez/shared'
 import type { Database } from '../types/database'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias.',
-  )
-}
-
-export { supabaseUrl, supabaseAnonKey }
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey)
 
