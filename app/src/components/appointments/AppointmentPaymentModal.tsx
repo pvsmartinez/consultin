@@ -14,6 +14,7 @@ import {
 } from '../../hooks/useAppointmentPayments'
 import { useProfessionalBankAccount } from '../../hooks/useProfessionalBankAccount'
 import { formatBRL } from '../../utils/currency'
+import { formatDateTime } from '../../utils/date'
 import type { Appointment, AppointmentPayment } from '../../types'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS, TRANSFER_STATUS_LABELS } from '../../types'
 
@@ -268,7 +269,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                   </button>
                   {payment.pixExpiresAt && (
                     <p className="text-xs text-gray-400">
-                      Expira em {new Date(payment.pixExpiresAt).toLocaleString('pt-BR')}
+                      Expira em {formatDateTime(payment.pixExpiresAt)}
                     </p>
                   )}
                 </div>
@@ -307,7 +308,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                 {payment.transferStatus === 'TRANSFERRED' && payment.transferAmountCents && (
                   <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">
                     ✓ Repassado {formatBRL(payment.transferAmountCents)} em{' '}
-                    {payment.transferredAt ? new Date(payment.transferredAt).toLocaleString('pt-BR') : '—'}
+                    {payment.transferredAt ? formatDateTime(payment.transferredAt) : '—'}
                   </p>
                 )}
               </div>

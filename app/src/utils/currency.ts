@@ -7,5 +7,7 @@ export {
   parseCurrency,
   centavosToReais,
   formatBRL,
+  formatBRLReais,
+  formatNumber,
 } from '@pvsmartinez/shared'
 

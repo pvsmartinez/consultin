@@ -1,5 +1,6 @@
 import { ArrowClockwise, ClockCountdown, Check, X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { formatDateTime } from '../../utils/date'
 import {
   useSignupRequests, useApproveSignupRequest, useRejectSignupRequest,
   type ClinicSignupRequest,
@@ -112,11 +113,7 @@ function RequestCard({
   onReject: () => void
   isPending: boolean
 }) {
-  const date = new Date(r.createdAt).toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-    timeZone: 'America/Sao_Paulo',
-  })
+  const date = formatDateTime(r.createdAt)
 
   return (
     <div className="bg-gray-900 border border-amber-700/30 rounded-xl p-5 space-y-3">
