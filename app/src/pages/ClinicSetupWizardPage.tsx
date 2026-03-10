@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { QK } from '../lib/queryKeys'
 import {
   Stethoscope,
   Buildings,
@@ -413,7 +414,7 @@ function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) 
         }
       }
       // Update cache immediately so App.tsx guard re-evaluates before navigation
-      qc.setQueryData(['clinic', profile?.clinicId], (old: Clinic | undefined) =>
+      qc.setQueryData(QK.clinic.detail(profile?.clinicId), (old: Clinic | undefined) =>
         old ? { ...old, onboardingCompleted: true } : old
       )
       navigate('/agenda')

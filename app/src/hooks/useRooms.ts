@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { ClinicRoom } from '../types'
 
@@ -17,7 +18,7 @@ function mapRow(r: Record<string, unknown>): ClinicRoom {
 export function useRooms() {
   const { profile } = useAuthContext()
   return useQuery({
-    queryKey: ['rooms', profile?.clinicId ?? null],
+    queryKey: QK.rooms.list(profile?.clinicId),
     enabled: !!profile?.clinicId,
     staleTime: 2 * 60_000,
     queryFn: async () => {
@@ -44,7 +45,7 @@ export function useCreateRoom() {
       if (error) throw error
       return mapRow(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms', profile?.clinicId ?? null] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.list(profile?.clinicId) }),
   })
 }
 
@@ -62,7 +63,7 @@ export function useUpdateRoom() {
       if (error) throw error
       return mapRow(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms', profile?.clinicId ?? null] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.list(profile?.clinicId) }),
   })
 }
 
@@ -74,6 +75,6 @@ export function useDeleteRoom() {
       const { error } = await supabase.from('clinic_rooms').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms', profile?.clinicId ?? null] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.list(profile?.clinicId) }),
   })
 }

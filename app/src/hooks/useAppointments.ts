@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { mapAppointment } from '../utils/mappers'
 
 /** Fetch appointments for a specific patient */
 export function usePatientAppointments(patientId: string) {
   const query = useQuery({
-    queryKey: ['patient-appointments', patientId],
+    queryKey: QK.patients.appointments(patientId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')

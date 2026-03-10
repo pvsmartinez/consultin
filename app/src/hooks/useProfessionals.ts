@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapProfessional } from '../utils/mappers'
 import type { Json, ProfessionalInput } from '../types'
@@ -12,7 +13,7 @@ export function useProfessionals() {
   const { profile } = useAuthContext()
 
   const query = useQuery({
-    queryKey: ['professionals', profile?.clinicId ?? null],
+    queryKey: QK.professionals.list(profile?.clinicId),
     staleTime: 2 * 60_000,
     enabled: !!profile?.clinicId,
     queryFn: async () => {
@@ -45,7 +46,7 @@ export function useProfessionals() {
       if (error) throw error
       return mapProfessional(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['professionals', profile?.clinicId ?? null] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.professionals.list(profile?.clinicId) }),
   })
 
   const update = useMutation({
@@ -67,7 +68,7 @@ export function useProfessionals() {
       if (error) throw error
       return mapProfessional(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['professionals', profile?.clinicId ?? null] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.professionals.list(profile?.clinicId) }),
   })
 
   const toggleActive = useMutation({
@@ -78,7 +79,7 @@ export function useProfessionals() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['professionals', profile?.clinicId ?? null] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.professionals.list(profile?.clinicId) }),
   })
 
   return { ...query, create, update, toggleActive, isLoading: query.isPending && query.isFetching }

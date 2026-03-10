@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapPatient } from '../utils/mappers'
 import type { Patient, PatientInput } from '../types'
@@ -42,7 +43,7 @@ export function usePatients(search = '', page = 0) {
   const qc = useQueryClient()
 
   const query = useQuery({
-    queryKey: ['patients', search, page],
+    queryKey: QK.patients.list(search, page),
     staleTime: 2 * 60_000,
     queryFn: async () => {
       const from = page * PATIENTS_PAGE_SIZE
@@ -79,7 +80,7 @@ export function usePatients(search = '', page = 0) {
       if (error) throw new Error(error.message)
       return mapPatient(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patients'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.all() }),
   })
 
   const updateMut = useMutation({
@@ -97,8 +98,8 @@ export function usePatients(search = '', page = 0) {
       return mapPatient(data as Record<string, unknown>)
     },
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: ['patients'] })
-      qc.invalidateQueries({ queryKey: ['patient', id] })
+      qc.invalidateQueries({ queryKey: QK.patients.all() })
+      qc.invalidateQueries({ queryKey: QK.patients.detail(id) })
     },
   })
 
@@ -138,7 +139,7 @@ export function useCreatePatient() {
       if (error) throw new Error(error.message)
       return mapPatient(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patients'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.all() }),
   })
 }
 
@@ -163,7 +164,7 @@ export function useFindUserByCpf() {
 
 export function usePatient(id: string) {
   const query = useQuery({
-    queryKey: ['patient', id],
+    queryKey: QK.patients.detail(id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('patients')
@@ -194,7 +195,7 @@ export function useMyPatient() {
   const qc = useQueryClient()
 
   const query = useQuery({
-    queryKey: ['my-patient', session?.user.id],
+    queryKey: QK.patients.my(session?.user.id),
     enabled: !!session?.user.id,
     queryFn: async (): Promise<Patient | null> => {
       const userId = session!.user.id
@@ -243,9 +244,9 @@ export function useMyPatient() {
       return mapPatient(data as Record<string, unknown>)
     },
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: ['my-patient', session?.user.id] })
-      qc.invalidateQueries({ queryKey: ['patients'] })
-      qc.invalidateQueries({ queryKey: ['patient', id] })
+      qc.invalidateQueries({ queryKey: QK.patients.my(session?.user.id) })
+      qc.invalidateQueries({ queryKey: QK.patients.all() })
+      qc.invalidateQueries({ queryKey: QK.patients.detail(id) })
     },
   })
 
@@ -274,7 +275,7 @@ export function useUpdateAnamnesis() {
     },
     // anamnesis_data is not in PATIENT_LIST_COLS — no need to bust the paginated list
     onSuccess: (_r, { patientId }) => {
-      qc.invalidateQueries({ queryKey: ['patient', patientId] })
+      qc.invalidateQueries({ queryKey: QK.patients.detail(patientId) })
     },
   })
 }

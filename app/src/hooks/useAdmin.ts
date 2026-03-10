@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { mapClinic } from '../utils/mappers'
 import type { UserRole } from '../types'
 
@@ -62,7 +63,7 @@ async function callAdminFn<T>(
 // ─── All clinics (no RLS filter — super admin sees everything) ─────────────────
 export function useAdminClinics() {
   return useQuery({
-    queryKey: ['admin', 'clinics'],
+    queryKey: QK.admin.clinics(),
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -89,14 +90,14 @@ export function useCreateClinic() {
       if (error) throw error
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'clinics'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.admin.clinics() }),
   })
 }
 
 // ─── All user profiles (only visible to super admin via RLS) ──────────────────
 export function useAdminProfiles() {
   return useQuery({
-    queryKey: ['admin', 'profiles'],
+    queryKey: QK.admin.profiles(),
     staleTime: 2 * 60_000,
     queryFn: async () => {
       // Single JOIN query instead of 2 round-trips
@@ -138,8 +139,8 @@ export function useUpsertProfile() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'profiles'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'auth-users'] })
+      qc.invalidateQueries({ queryKey: QK.admin.profiles() })
+      qc.invalidateQueries({ queryKey: QK.admin.authUsers() })
     },
   })
 }
@@ -164,7 +165,7 @@ export interface AdminOverview {
 
 export function useAdminOverview() {
   return useQuery<AdminOverview>({
-    queryKey: ['admin', 'overview'],
+    queryKey: QK.admin.overview(),
     staleTime: 5 * 60_000,
     queryFn: async () => {
       // 2 queries instead of 8 — per-clinic aggregations done in DB via RPC
@@ -202,7 +203,7 @@ export function useAdminOverview() {
 // ─── Auth users list (via edge function, service role) ────────────────────────
 export function useAdminAuthUsers({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<AdminAuthUser[]>({
-    queryKey: ['admin', 'auth-users'],
+    queryKey: QK.admin.authUsers(),
     queryFn: () => callAdminFn<AdminAuthUser[]>(''),
     enabled,
     staleTime: 60_000, // 1 min — evita refetch desnecessário
@@ -222,9 +223,9 @@ export function useCreateAuthUser() {
       isSuperAdmin: boolean
     }) => callAdminFn<{ id: string; email: string }>('/create', { method: 'POST', body: input }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'auth-users'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'profiles'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'overview'] })
+      qc.invalidateQueries({ queryKey: QK.admin.authUsers() })
+      qc.invalidateQueries({ queryKey: QK.admin.profiles() })
+      qc.invalidateQueries({ queryKey: QK.admin.overview() })
     },
   })
 }
@@ -241,9 +242,9 @@ export function useInviteUser() {
       isSuperAdmin: boolean
     }) => callAdminFn<{ id: string; email: string }>('/invite', { method: 'POST', body: input }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'auth-users'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'profiles'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'overview'] })
+      qc.invalidateQueries({ queryKey: QK.admin.authUsers() })
+      qc.invalidateQueries({ queryKey: QK.admin.profiles() })
+      qc.invalidateQueries({ queryKey: QK.admin.overview() })
     },
   })
 }
@@ -254,7 +255,7 @@ export function useResendInvite() {
   return useMutation({
     mutationFn: (userId: string) =>
       callAdminFn<{ resent: string }>('/resend-invite', { method: 'POST', body: { userId } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'auth-users'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.admin.authUsers() }),
   })
 }
 
@@ -265,9 +266,9 @@ export function useDeleteAuthUser() {
     mutationFn: (userId: string) =>
       callAdminFn<{ deleted: string }>(`/${userId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'auth-users'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'profiles'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'overview'] })
+      qc.invalidateQueries({ queryKey: QK.admin.authUsers() })
+      qc.invalidateQueries({ queryKey: QK.admin.profiles() })
+      qc.invalidateQueries({ queryKey: QK.admin.overview() })
     },
   })
 }
@@ -295,7 +296,7 @@ export interface ClinicSignupRequest {
 
 export function useSignupRequests() {
   return useQuery<ClinicSignupRequest[]>({
-    queryKey: ['admin', 'signup-requests'],
+    queryKey: QK.admin.signupRequests(),
     staleTime: 2 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -327,9 +328,9 @@ export function useApproveSignupRequest() {
         body: { requestId },
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'signup-requests'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'clinics'] })
-      qc.invalidateQueries({ queryKey: ['admin', 'overview'] })
+      qc.invalidateQueries({ queryKey: QK.admin.signupRequests() })
+      qc.invalidateQueries({ queryKey: QK.admin.clinics() })
+      qc.invalidateQueries({ queryKey: QK.admin.overview() })
     },
   })
 }
@@ -343,7 +344,7 @@ export function useRejectSignupRequest() {
         body: { requestId },
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'signup-requests'] })
+      qc.invalidateQueries({ queryKey: QK.admin.signupRequests() })
     },
   })
 }
@@ -374,7 +375,7 @@ export function useUpdateClinic() {
         .eq('id', input.id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'clinics'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.admin.clinics() }),
   })
 }
 
@@ -389,7 +390,7 @@ export function useDeleteClinic() {
         .eq('id', clinicId)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'clinics'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.admin.clinics() }),
   })
 }
 

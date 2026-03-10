@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { startOfMonth, endOfMonth } from 'date-fns'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 
 // ─── Report data for a given month + optional professional filter ──────────────
 
@@ -9,7 +10,7 @@ export function useReportData(month: Date, professionalId: string) {
   const monthEnd   = endOfMonth(month).toISOString()
 
   return useQuery({
-    queryKey: ['report', monthStart, professionalId],
+    queryKey: QK.financial.report(monthStart, professionalId),
     staleTime: 5 * 60_000,
     queryFn: async () => {
       let q = supabase

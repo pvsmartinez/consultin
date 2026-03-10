@@ -294,6 +294,7 @@ const actives = allProfs.filter(p => p.active)
 ```
 
 **Lista de dados que já têm cache no startup (não recriar):**
+
 - `['professionals', clinicId]` — `useProfessionals()`
 - `['clinic', clinicId]` — `useClinic()`
 - `['my-professional-records', userId]` — `useMyProfessionalRecords()`
@@ -303,33 +304,34 @@ const actives = allProfs.filter(p => p.active)
 Se A depende do resultado de B, que depende de C → você tem um waterfall. O tempo de carregamento vira A + B + C.
 
 Regras para evitar:
+
 - **Seede dados no startup:** o RPC `get_startup_data()` em `AuthContext.tsx` já retorna profile + clinic + professionals + my-professional-records. Se um hook novo precisar de dados que chegam no startup, seed-o ali.
 - **Use `Promise.all` quando houver múltiplos fetches independentes** dentro de um mesmo `queryFn`.
 - **Gate queries com `enabled`:** uma query não deve disparar enquanto depende de outra que ainda não resolveu.
 
 ```typescript
 // ❌ ERRADO — 3 RTTs sequenciais
-const { data: a } = await fetchA()
-if (!a) return
-const { data: b } = await fetchB(a.id)
-if (!b) return
-const { data: c } = await fetchC(b.id)
+const { data: a } = await fetchA();
+if (!a) return;
+const { data: b } = await fetchB(a.id);
+if (!b) return;
+const { data: c } = await fetchC(b.id);
 
 // ✅ CORRETO — quando A, B, C são independentes
-const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()])
+const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]);
 ```
 
 ### 3. Sempre definir `staleTime` explícito quando diferir do default
 
 O QueryClient global tem `staleTime: 60_000` (1 min). Qualquer hook que precisar de comportamento diferente **deve declarar explicitamente**.
 
-| Tipo de dado | staleTime recomendado |
-|---|---|
-| Dados de configuração da clínica (clinic, rooms, service types) | `5 * 60_000` (5 min) |
-| Listas de referência (professionals, availability, FAQs) | `2 * 60_000` (2 min) |
-| Dados transacionais do dia (appointments, notifications) | `30_000` a `60_000` (30–60s) |
-| Dados de relatório (mês fechado) | `5 * 60_000` (5 min) |
-| Queries em tempo real (whatsapp messages) | não usar React Query — usar Realtime direto |
+| Tipo de dado                                                    | staleTime recomendado                       |
+| --------------------------------------------------------------- | ------------------------------------------- |
+| Dados de configuração da clínica (clinic, rooms, service types) | `5 * 60_000` (5 min)                        |
+| Listas de referência (professionals, availability, FAQs)        | `2 * 60_000` (2 min)                        |
+| Dados transacionais do dia (appointments, notifications)        | `30_000` a `60_000` (30–60s)                |
+| Dados de relatório (mês fechado)                                | `5 * 60_000` (5 min)                        |
+| Queries em tempo real (whatsapp messages)                       | não usar React Query — usar Realtime direto |
 
 ### 4. Nunca usar `select('*')` em tabelas grandes sem necessidade
 

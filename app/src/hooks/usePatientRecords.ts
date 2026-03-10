@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { QK } from '../lib/queryKeys'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { PatientRecord, RecordType } from '../types'
@@ -31,7 +32,7 @@ export function usePatientRecords(patientId: string) {
 
   // ─── List ──────────────────────────────────────────────────────────────────
   const query = useQuery({
-    queryKey: ['patient_records', patientId],
+    queryKey: QK.patients.records(patientId),
     enabled: !!patientId && !!clinicId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -68,7 +69,7 @@ export function usePatientRecords(patientId: string) {
       if (error) throw error
       return mapRow(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient_records', patientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.records(patientId) }),
   })
 
   // ─── Upload attachment ─────────────────────────────────────────────────────
@@ -112,7 +113,7 @@ export function usePatientRecords(patientId: string) {
       if (dbError) throw dbError
       return mapRow(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient_records', patientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.records(patientId) }),
   })
 
   // ─── Delete ───────────────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export function usePatientRecords(patientId: string) {
         .eq('id', record.id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient_records', patientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.records(patientId) }),
   })
 
   // ─── Get a short-lived signed URL for a private attachment ────────────────

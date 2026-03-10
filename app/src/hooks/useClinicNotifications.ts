@@ -18,6 +18,7 @@ import { useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { Database } from '../types/database'
 
@@ -42,7 +43,7 @@ export function useClinicNotifications(navigate?: NavigateFn) {
   // ── Query: notificações não-lidas (refetch a cada 30s) ───────────────────
   // Polling em vez de postgres_changes para evitar WAL subscription contínua.
   const query = useQuery({
-    queryKey: ['clinic_notifications', clinicId],
+    queryKey: QK.clinic.notifications(clinicId),
     enabled,
     staleTime: 25_000,
     refetchInterval: enabled ? 30_000 : false,
@@ -102,7 +103,7 @@ export function useClinicNotifications(navigate?: NavigateFn) {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['clinic_notifications', clinicId] })
+      qc.invalidateQueries({ queryKey: QK.clinic.notifications(clinicId) })
     },
   })
 

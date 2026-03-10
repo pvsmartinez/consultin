@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { primaryRole, mergedPermissions } from '../types'
 import type { UserProfile, UserRole } from '../types'
 import { mapClinic, mapProfessional } from '../utils/mappers'
@@ -115,10 +116,10 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
     // Seed React Query cache so hooks find data immediately
     if (profile.clinicId) {
       if (payload.clinic) {
-        qc.setQueryData(['clinic', profile.clinicId], mapClinic(payload.clinic))
+        qc.setQueryData(QK.clinic.detail(profile.clinicId), mapClinic(payload.clinic))
       }
       const professionals = (payload.professionals ?? []).map(mapProfessional)
-      qc.setQueryData(['professionals', profile.clinicId], professionals)
+      qc.setQueryData(QK.professionals.list(profile.clinicId), professionals)
 
       // Pre-seed the current user's own professional records so AppointmentsPage
       // can render without waiting for an additional useMyProfessionalRecords query.
@@ -129,7 +130,7 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
         .map(p => ({ id: p.id, clinicId: p.clinicId, clinicName }))
       // Only seed when we have a result — empty means "still unknown" (email-only legacy records)
       if (myProfRecords.length > 0) {
-        qc.setQueryData(['my-professional-records', userId], myProfRecords)
+        qc.setQueryData(QK.professionals.my(userId), myProfRecords)
       }
     }
 

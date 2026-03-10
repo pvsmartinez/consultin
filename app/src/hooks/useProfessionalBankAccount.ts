@@ -3,6 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import type { ProfessionalBankAccount, ProfessionalBankAccountInput } from '../types'
 
 function mapRow(r: Record<string, unknown>): ProfessionalBankAccount {
@@ -28,7 +29,7 @@ function mapRow(r: Record<string, unknown>): ProfessionalBankAccount {
 /** Busca conta bancária de um profissional específico */
 export function useProfessionalBankAccount(professionalId: string | undefined) {
   return useQuery({
-    queryKey: ['bank-account', professionalId],
+    queryKey: QK.professionals.bankAccount(professionalId),
     enabled: !!professionalId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,7 +47,7 @@ export function useProfessionalBankAccount(professionalId: string | undefined) {
 /** Lista todas as contas bancárias da clínica */
 export function useClinicBankAccounts(clinicId: string | undefined) {
   return useQuery({
-    queryKey: ['bank-accounts', clinicId],
+    queryKey: QK.professionals.bankAccounts(clinicId),
     enabled: !!clinicId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -95,8 +96,8 @@ export function useUpsertBankAccount() {
       return mapRow(data as Record<string, unknown>)
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['bank-account', data.professionalId] })
-      qc.invalidateQueries({ queryKey: ['bank-accounts', data.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.professionals.bankAccount(data.professionalId) })
+      qc.invalidateQueries({ queryKey: QK.professionals.bankAccounts(data.clinicId) })
     },
   })
 }
@@ -114,7 +115,7 @@ export function useDeleteBankAccount(clinicId: string) {
       if (error) throw new Error(error.message)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bank-accounts', clinicId] })
+      qc.invalidateQueries({ queryKey: QK.professionals.bankAccounts(clinicId) })
     },
   })
 }

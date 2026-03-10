@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays } from 'date-fns'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 
 // ─── Today's appointments list (for ClinicDashboard) ────────────────────────
@@ -16,7 +17,7 @@ export interface TodayAppointment {
 export function useTodayAppointments() {
   const { profile } = useAuthContext()
   return useQuery({
-    queryKey: ['today-appointments', profile?.clinicId ?? null],
+    queryKey: QK.appointments.today(profile?.clinicId),
     enabled: !!profile?.clinicId,
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -39,7 +40,7 @@ export function useTodayAppointments() {
 export function useClinicKPIs() {
   const { profile } = useAuthContext()
   return useQuery({
-    queryKey: ['dashboard-clinic-kpis', profile?.clinicId ?? null],
+    queryKey: QK.dashboard.clinicKPIs(profile?.clinicId),
     // Super admins without a clinic selected must not run this query
     enabled: !!profile?.clinicId,
     staleTime: 60_000,
@@ -83,7 +84,7 @@ export function useClinicKPIs() {
 
 export function useProfessionalKPIs(email: string | undefined, userId: string | undefined) {
   return useQuery({
-    queryKey: ['dashboard-professional-kpis', userId ?? email],
+    queryKey: QK.dashboard.profKPIs(userId ?? email),
     enabled: !!(userId || email),
     staleTime: 60_000,
     queryFn: async () => {
@@ -164,7 +165,7 @@ export interface ProfessionalToday {
 export function useProfessionalsToday() {
   const { profile } = useAuthContext()
   return useQuery<ProfessionalToday[]>({
-    queryKey: ['professionals-today', profile?.clinicId ?? null],
+    queryKey: QK.professionals.today(profile?.clinicId),
     enabled: !!profile?.clinicId,
     staleTime: 60_000,
     refetchInterval: 120_000,
@@ -218,7 +219,7 @@ export interface ClinicAlert {
 export function useClinicAlerts() {
   const { profile } = useAuthContext()
   return useQuery<ClinicAlert[]>({
-    queryKey: ['clinic-alerts', profile?.clinicId ?? null],
+    queryKey: QK.clinic.alerts(profile?.clinicId),
     enabled: !!profile?.clinicId,
     staleTime: 60_000,
     refetchInterval: 120_000,

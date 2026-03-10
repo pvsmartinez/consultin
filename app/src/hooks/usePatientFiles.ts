@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ function mapFile(r: Record<string, unknown>): PatientFile {
 
 export function usePatientFiles(patientId: string) {
   return useQuery<PatientFile[]>({
-    queryKey: ['patient-files', patientId],
+    queryKey: QK.patients.files(patientId),
     enabled: !!patientId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -81,7 +82,7 @@ export function useUploadPatientFile(patientId: string) {
         throw dbError
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient-files', patientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.files(patientId) }),
   })
 }
 
@@ -97,7 +98,7 @@ export function useDeletePatientFile(patientId: string) {
       // Best-effort storage cleanup — don't fail if file already gone
       await supabase.storage.from('patient-files').remove([storagePath]).catch(() => {})
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['patient-files', patientId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.patients.files(patientId) }),
   })
 }
 

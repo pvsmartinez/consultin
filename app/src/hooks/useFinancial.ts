@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { startOfMonth, endOfMonth } from 'date-fns'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { mapAppointment } from '../utils/mappers'
 import type { Appointment } from '../types'
 
@@ -14,7 +15,7 @@ export function useFinancial(month: Date) {
   const monthEnd   = endOfMonth(month).toISOString()
 
   return useQuery({
-    queryKey: ['financial', monthStart],
+    queryKey: QK.financial.monthly(monthStart),
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -71,10 +72,10 @@ export function useMarkPaid() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['financial'] })
-      qc.invalidateQueries({ queryKey: ['appointments'] })
-      qc.invalidateQueries({ queryKey: ['dashboard-clinic-kpis'] })
-      qc.invalidateQueries({ queryKey: ['dashboard-professional-kpis'] })
+      qc.invalidateQueries({ queryKey: QK.financial.all() })
+      qc.invalidateQueries({ queryKey: QK.appointments.all() })
+      qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
+      qc.invalidateQueries({ queryKey: QK.dashboard.profKPIsAll() })
     },
   })
 }

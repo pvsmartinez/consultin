@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapServiceType } from '../utils/mappers'
 import type { ServiceType, ServiceTypeInput } from '../types'
@@ -10,7 +11,7 @@ export function useServiceTypes() {
   const clinicId = profile?.clinicId
 
   return useQuery<ServiceType[]>({
-    queryKey: ['service-types', clinicId],
+    queryKey: QK.services.types(clinicId),
     enabled: !!clinicId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -47,7 +48,7 @@ export function useCreateServiceType() {
       return mapServiceType(data as Record<string, unknown>)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['service-types', profile?.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.services.types(profile?.clinicId) })
     },
   })
 }
@@ -75,7 +76,7 @@ export function useUpdateServiceType() {
       return mapServiceType(data as Record<string, unknown>)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['service-types', profile?.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.services.types(profile?.clinicId) })
     },
   })
 }
@@ -93,7 +94,7 @@ export function useDeleteServiceType() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['service-types', profile?.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.services.types(profile?.clinicId) })
     },
   })
 }

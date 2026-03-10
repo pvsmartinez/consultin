@@ -7,6 +7,7 @@ import { useClinic } from '../hooks/useClinic'
 import type { Clinic } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useClinicKPIs, useProfessionalKPIs, useTodayAppointments, useProfessionalsToday, useClinicAlerts } from '../hooks/useDashboard'
 import type { TodayAppointment } from '../hooks/useDashboard'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
@@ -518,7 +519,7 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
 function ProfessionalEarnings({ profId }: { profId: string }) {
   const now = new Date()
   const { data: rows = [] } = useQuery({
-    queryKey: ['prof-earnings', profId, format(now, 'yyyy-MM')],
+    queryKey: QK.financial.profEarnings(profId, format(now, 'yyyy-MM')),
     enabled: !!profId,
     staleTime: 60_000,
     queryFn: async () => {

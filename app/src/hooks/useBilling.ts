@@ -3,6 +3,7 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { activateClinicSubscription, cancelAsaasSubscription } from '../services/asaas'
 import type { AsaasBillingType } from '../types'
 
@@ -55,7 +56,7 @@ export function useActivateClinicBilling() {
       return { customerId, subscriptionId }
     },
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ['clinic', vars.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.clinic.detail(vars.clinicId) })
     },
   })
 }
@@ -73,6 +74,6 @@ export function useCancelClinicBilling(clinicId: string) {
         .eq('id', clinicId)
       if (error) throw new Error(error.message)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic', clinicId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
   })
 }

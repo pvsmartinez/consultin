@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapAppointment } from '../utils/mappers'
 import type { Appointment, AppointmentStatus } from '../types'
@@ -12,7 +13,7 @@ export function useMyProfessionalRecords() {
   const { session } = useAuthContext()
   const email = session?.user.email
   return useQuery({
-    queryKey: ['my-professional-records', session?.user.id],
+    queryKey: QK.professionals.my(session?.user.id),
     enabled: !!session?.user.id,
     staleTime: 60_000, // 1 min — runs on every page via AppLayout, cache it
     queryFn: async (): Promise<ProfessionalRecord[]> => {
@@ -87,7 +88,7 @@ export function useAppointmentsQuery(
     : null
 
   return useQuery({
-    queryKey: ['appointments', startsFrom, startsUntil, ids ?? 'all'],
+    queryKey: QK.appointments.list(startsFrom, startsUntil, ids ?? 'all'),
     // Skip query when ids is an explicit empty array (personal view before prof records load,
     // or professional with no linked record) — prevents leaking all-clinic appointments.
     enabled: ids === null || ids.length > 0,
@@ -129,7 +130,7 @@ export interface AppointmentInput {
 export function useAppointmentMutations() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['appointments'] })
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK.appointments.all() })
 
   const create = useMutation({
     mutationFn: async (input: AppointmentInput) => {
@@ -208,9 +209,9 @@ export function useUpdateAppointmentStatus() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['today-appointments'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-clinic-kpis'] })
+      queryClient.invalidateQueries({ queryKey: QK.appointments.all() })
+      queryClient.invalidateQueries({ queryKey: QK.appointments.todayAll() })
+      queryClient.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
     },
   })
 }

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { AvailabilitySlot } from '../types'
 import type { Json } from '../types/database'
@@ -21,10 +22,9 @@ function mapRow(r: Record<string, unknown>): AvailabilitySlot {
 export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: string) {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
-  const key = ['availability-slots', professionalId]
 
   const query = useQuery({
-    queryKey: key,
+    queryKey: QK.professionals.availability(professionalId),
     enabled: !!professionalId,
     staleTime: 2 * 60_000,
     queryFn: async () => {
@@ -59,7 +59,7 @@ export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: 
       })
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.professionals.availability(professionalId) }),
   })
 
   return { ...query, upsert, isLoading: query.isPending && query.isFetching }

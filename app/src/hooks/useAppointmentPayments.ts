@@ -3,6 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import {
   findOrCreateAsaasCustomer,
   createAsaasCharge,
@@ -35,7 +36,7 @@ function mapRow(r: Record<string, unknown>): AppointmentPayment {
 /** Lists pagamentos de uma consulta */
 export function useAppointmentPayments(appointmentId: string | undefined) {
   return useQuery({
-    queryKey: ['appt-payments', appointmentId],
+    queryKey: QK.financial.apptPayments(appointmentId),
     enabled: !!appointmentId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -55,7 +56,7 @@ export function useClinicAppointmentPayments(clinicId: string | undefined, month
   const end   = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59).toISOString()
 
   return useQuery({
-    queryKey: ['clinic-appt-payments', clinicId, start],
+    queryKey: QK.financial.clinicPayments(clinicId, start),
     enabled: !!clinicId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -156,8 +157,8 @@ export function useCreateAppointmentCharge() {
       }
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['appt-payments', vars.appointmentId] })
-      qc.invalidateQueries({ queryKey: ['clinic-appt-payments', vars.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.financial.apptPayments(vars.appointmentId) })
+      qc.invalidateQueries({ queryKey: QK.financial.clinicPayments(vars.clinicId) })
     },
   })
 }
@@ -195,8 +196,8 @@ export function useSyncPaymentStatus() {
       return charge.status as AppointmentPayment['status']
     },
     onSuccess: (_, payment) => {
-      qc.invalidateQueries({ queryKey: ['appt-payments', payment.appointmentId] })
-      qc.invalidateQueries({ queryKey: ['clinic-appt-payments', payment.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.financial.apptPayments(payment.appointmentId) })
+      qc.invalidateQueries({ queryKey: QK.financial.clinicPayments(payment.clinicId) })
     },
   })
 }
@@ -264,8 +265,8 @@ export function useTransferToProfessional() {
       return transfer
     },
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['appt-payments', vars.payment.appointmentId] })
-      qc.invalidateQueries({ queryKey: ['clinic-appt-payments', vars.payment.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.financial.apptPayments(vars.payment.appointmentId) })
+      qc.invalidateQueries({ queryKey: QK.financial.clinicPayments(vars.payment.clinicId) })
     },
   })
 }

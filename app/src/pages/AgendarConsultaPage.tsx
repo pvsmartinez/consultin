@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useClinic } from '../hooks/useClinic'
 import { useAvailabilitySlots } from '../hooks/useAvailabilitySlots'
 import { useProfessionals } from '../hooks/useProfessionals'
@@ -51,7 +52,7 @@ export default function AgendarConsultaPage() {
 
   // Booked appointments for selected prof+date — prevents double-booking occupied slots
   const { data: bookedRanges = [], isLoading: loadingBooked } = useQuery({
-    queryKey: ['booked-slots', effectiveProf, selectedDate],
+    queryKey: QK.booking.slots(effectiveProf, selectedDate),
     enabled: !!effectiveProf && !!selectedDate,
     queryFn: async () => {
       const TZ = 'America/Sao_Paulo'

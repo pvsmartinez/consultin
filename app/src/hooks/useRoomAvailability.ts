@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { RoomAvailabilitySlot } from '../types'
 import type { Json } from '../types/database'
@@ -24,10 +25,9 @@ function mapRow(r: Record<string, unknown>): RoomAvailabilitySlot {
 export function useRoomAvailabilitySlots() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
-  const key = ['room-availability-slots', profile?.clinicId ?? null]
 
   const query = useQuery({
-    queryKey: key,
+    queryKey: QK.rooms.availability(profile?.clinicId),
     enabled: !!profile?.clinicId,
     staleTime: 2 * 60_000,
     queryFn: async (): Promise<RoomAvailabilitySlot[]> => {
@@ -63,7 +63,7 @@ export function useRoomAvailabilitySlots() {
       })
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.availability(profile?.clinicId) }),
   })
 
   return { ...query, upsert }
@@ -76,7 +76,7 @@ export function useRoomAvailabilitySlots() {
 export function useClinicAvailabilitySlots() {
   const { profile } = useAuthContext()
   return useQuery({
-    queryKey: ['clinic-availability-slots-all', profile?.clinicId ?? null],
+    queryKey: QK.rooms.clinicAvailability(profile?.clinicId),
     enabled: !!profile?.clinicId,
     staleTime: 60_000,
     queryFn: async (): Promise<Array<{

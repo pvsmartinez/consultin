@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { ClinicInvite, UserRole } from '../types'
 
@@ -26,7 +27,7 @@ function mapInviteRow(r: Record<string, unknown>): ClinicInvite {
 // access" view instead of the "no access" view.
 export function useMyInvite(email: string | undefined) {
   return useQuery<ClinicInvite | null>({
-    queryKey: ['myInvite', email],
+    queryKey: QK.clinic.myInvite(email),
     enabled: !!email,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -46,7 +47,7 @@ export function useMyInvite(email: string | undefined) {
 // Lists pending (not yet accepted) invites for the current user's clinic.
 export function usePendingInvites() {
   return useQuery<ClinicInvite[]>({
-    queryKey: ['pendingInvites'],
+    queryKey: QK.clinic.pendingInvites(),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinic_invites')
@@ -64,7 +65,7 @@ export function usePendingInvites() {
 // Available to any authenticated user (RLS "authenticated_read_clinics" policy).
 export function useClinicsPublic() {
   return useQuery<{ id: string; name: string }[]>({
-    queryKey: ['clinicsPublic'],
+    queryKey: QK.clinic.publicList(),
     staleTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -124,7 +125,7 @@ export function useCreateInvite() {
         return { invite, emailSent: false, emailReason: 'send_error' }
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pendingInvites'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.pendingInvites() }),
   })
 }
 
@@ -169,7 +170,7 @@ export function useDeleteInvite() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pendingInvites'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.pendingInvites() }),
   })
 }
 
@@ -276,7 +277,7 @@ export function useAcceptInvite() {
 export function useMyClinicMemberships() {
   const { session } = useAuthContext()
   return useQuery({
-    queryKey: ['my-clinic-memberships', session?.user.id],
+    queryKey: QK.clinic.myClinics(session?.user.id),
     enabled: !!session?.user.id,
     queryFn: async () => {
       const { data, error } = await supabase

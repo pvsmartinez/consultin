@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
+import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapClinic } from '../utils/mappers'
 import type { Clinic, UserRole } from '../types'
@@ -69,7 +70,7 @@ export function useClinic() {
   const clinicId = profile?.clinicId
 
   const query = useQuery({
-    queryKey: ['clinic', clinicId],
+    queryKey: QK.clinic.detail(clinicId),
     enabled: !!clinicId,
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -94,7 +95,7 @@ export function useClinic() {
       if (error) throw error
       return mapClinic(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic', clinicId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
   })
 
   return { ...query, update, isLoading: query.isPending && query.isFetching }
@@ -105,7 +106,7 @@ export function useClinicMembers() {
   const clinicId = profile?.clinicId
 
   return useQuery<ClinicMember[]>({
-    queryKey: ['clinic-members', clinicId],
+    queryKey: QK.clinic.members(clinicId),
     enabled: !!clinicId,
     staleTime: 2 * 60_000,
     queryFn: async () => {
@@ -151,7 +152,7 @@ export function useUpdateMemberRole() {
         .eq('id', memberId)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-members', profile?.clinicId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.members(profile?.clinicId) }),
   })
 }
 
@@ -168,7 +169,7 @@ export function useRemoveClinicMember() {
         .eq('id', memberId)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-members', profile?.clinicId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.members(profile?.clinicId) }),
   })
 }
 
@@ -187,7 +188,7 @@ export function useClinicInvites() {
   const clinicId = profile?.clinicId
 
   return useQuery<ClinicInvite[]>({
-    queryKey: ['clinic-invites', clinicId],
+    queryKey: QK.clinic.invites(clinicId),
     enabled: !!clinicId,
     staleTime: 2 * 60_000,
     queryFn: async () => {
@@ -222,7 +223,7 @@ export function useResendInvite() {
       return { sent: data?.sent ?? false, reason: data?.reason }
     },
     onSuccess: (result) => {
-      qc.invalidateQueries({ queryKey: ['clinic-invites', profile?.clinicId] })
+      qc.invalidateQueries({ queryKey: QK.clinic.invites(profile?.clinicId) })
       if (result.sent) {
         toast.success('Convite reenviado por e-mail!')
       } else if (result.reason === 'already_registered') {
@@ -246,6 +247,6 @@ export function useCancelInvite() {
         .eq('id', inviteId)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clinic-invites', profile?.clinicId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.invites(profile?.clinicId) }),
   })
 }
