@@ -65,6 +65,7 @@ export function usePendingInvites() {
 export function useClinicsPublic() {
   return useQuery<{ id: string; name: string }[]>({
     queryKey: ['clinicsPublic'],
+    staleTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinics')

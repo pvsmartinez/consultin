@@ -21,6 +21,7 @@ export function useWhatsappFaqs() {
   return useQuery<WhatsappFaq[]>({
     queryKey: ['whatsapp-faqs', profile?.clinicId],
     enabled: !!profile?.clinicId,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('whatsapp_faqs')

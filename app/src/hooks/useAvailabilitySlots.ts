@@ -26,6 +26,7 @@ export function useAvailabilitySlots(professionalId: string, clinicIdOverride?: 
   const query = useQuery({
     queryKey: key,
     enabled: !!professionalId,
+    staleTime: 2 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('availability_slots')

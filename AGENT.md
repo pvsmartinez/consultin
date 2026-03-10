@@ -271,6 +271,87 @@ CREATE POLICY "example" ON my_table
 
 ---
 
+## Performance Rules — OBRIGATÓRIO
+
+> Estas regras foram estabelecidas após uma auditoria em março/2026 que identificou carregamentos de 10s+.
+
+### 1. Nunca criar um hook `useQuery` que duplica dados já em cache
+
+Todo dado que já é buscado por um hook existente **deve reusar o mesmo queryKey**.
+Criar um segundo hook para os mesmos dados com uma key diferente gera um fetch extra toda vez que a página é montada, mesmo que o dado já esteja na memória.
+
+```typescript
+// ❌ ERRADO — 'professionals-list-report' nunca vai ter cache hit
+// porque o app guarda sob ['professionals', clinicId]
+export function useProfessionalsList() {
+  return useQuery({ queryKey: ['professionals-list-report'], ... })
+}
+
+// ✅ CORRETO — reutiliza o cache de useProfessionals()
+import { useProfessionals } from './useProfessionals'
+const { data: allProfs } = useProfessionals()
+const actives = allProfs.filter(p => p.active)
+```
+
+**Lista de dados que já têm cache no startup (não recriar):**
+- `['professionals', clinicId]` — `useProfessionals()`
+- `['clinic', clinicId]` — `useClinic()`
+- `['my-professional-records', userId]` — `useMyProfessionalRecords()`
+
+### 2. Nunca encadear queries dependentes (waterfall)
+
+Se A depende do resultado de B, que depende de C → você tem um waterfall. O tempo de carregamento vira A + B + C.
+
+Regras para evitar:
+- **Seede dados no startup:** o RPC `get_startup_data()` em `AuthContext.tsx` já retorna profile + clinic + professionals + my-professional-records. Se um hook novo precisar de dados que chegam no startup, seed-o ali.
+- **Use `Promise.all` quando houver múltiplos fetches independentes** dentro de um mesmo `queryFn`.
+- **Gate queries com `enabled`:** uma query não deve disparar enquanto depende de outra que ainda não resolveu.
+
+```typescript
+// ❌ ERRADO — 3 RTTs sequenciais
+const { data: a } = await fetchA()
+if (!a) return
+const { data: b } = await fetchB(a.id)
+if (!b) return
+const { data: c } = await fetchC(b.id)
+
+// ✅ CORRETO — quando A, B, C são independentes
+const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()])
+```
+
+### 3. Sempre definir `staleTime` explícito quando diferir do default
+
+O QueryClient global tem `staleTime: 60_000` (1 min). Qualquer hook que precisar de comportamento diferente **deve declarar explicitamente**.
+
+| Tipo de dado | staleTime recomendado |
+|---|---|
+| Dados de configuração da clínica (clinic, rooms, service types) | `5 * 60_000` (5 min) |
+| Listas de referência (professionals, availability, FAQs) | `2 * 60_000` (2 min) |
+| Dados transacionais do dia (appointments, notifications) | `30_000` a `60_000` (30–60s) |
+| Dados de relatório (mês fechado) | `5 * 60_000` (5 min) |
+| Queries em tempo real (whatsapp messages) | não usar React Query — usar Realtime direto |
+
+### 4. Nunca usar `select('*')` em tabelas grandes sem necessidade
+
+Sempre liste as colunas necessárias. Use `PATIENT_LIST_COLS` para listas de pacientes.
+Use `select('*')` apenas em páginas de detalhe onde todos os campos são exibidos.
+
+### 5. `useMyProfessionalRecords` tem fallback por email — mantenha o índice
+
+A tabela `professionals` deve ter o índice funcional `lower(email)` (migration `0039`).
+Se esse índice for removido, o fallback vira table scan.
+
+### 6. Auth timeout não deve passar de 5s
+
+O timeout em `AuthContext.tsx` está em `5000ms`. **Não aumentar.**
+Um timeout maior tem impacto direct na UX quando o usuário abre o app com rede lenta.
+
+### 7. Toda query sequencial nova em um hook → abrir PR com benchmark
+
+Antes de criar qualquer query que aguarda o resultado de outra para disparar (seja via `enabled:` ou await encadeado), documente no PR o motivo e valide se não há como paralelizar.
+
+---
+
 ## Environment & Credentials (KEEP THIS UPDATED)
 
 > **If any of the values below change, update this section immediately so future agents don't waste time with wrong credentials.**

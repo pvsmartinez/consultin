@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Safety net: if auth never resolves (token refresh hang, network issue),
-    // clear state and show login after 10s. Do NOT await signOut — it can hang too.
+    // clear state and show login after 5s. Do NOT await signOut — it can hang too.
     const timeout = setTimeout(() => {
       if (settled) return
       console.warn('Auth timed out — clearing session')
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCachedProfile(null)
       setLoading(false)
       settle()
-    }, 10000)
+    }, 5000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       settle()

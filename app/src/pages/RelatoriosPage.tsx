@@ -9,7 +9,8 @@ import {
 } from '@phosphor-icons/react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { useReportData, useProfessionalsList } from '../hooks/useRelatorios'
+import { useReportData } from '../hooks/useRelatorios'
+import { useProfessionals } from '../hooks/useProfessionals'
 import { formatBRL } from '../utils/currency'
 import { APPOINTMENT_STATUS_LABELS, SEX_LABELS } from '../types'
 import {
@@ -65,7 +66,8 @@ export default function RelatoriosPage() {
   const [exportingFinance, setExportingFinance] = useState(false)
 
   const { data = [], isLoading } = useReportData(month, professionalId)
-  const { data: professionals = [] } = useProfessionalsList()
+  const { data: allProfessionals = [] } = useProfessionals()
+  const professionals = allProfessionals.filter(p => p.active)
 
   const monthLabel = format(month, "MMMM 'de' yyyy", { locale: ptBR })
   const fileMonth  = format(month, 'yyyy-MM')

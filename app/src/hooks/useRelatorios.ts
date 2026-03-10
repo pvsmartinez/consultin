@@ -10,6 +10,7 @@ export function useReportData(month: Date, professionalId: string) {
 
   return useQuery({
     queryKey: ['report', monthStart, professionalId],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       let q = supabase
         .from('appointments')
@@ -24,23 +25,6 @@ export function useReportData(month: Date, professionalId: string) {
         .order('starts_at')
       if (professionalId) q = q.eq('professional_id', professionalId)
       const { data, error } = await q
-      if (error) throw error
-      return data ?? []
-    },
-  })
-}
-
-// ─── Active professionals list for filter dropdown ────────────────────────────
-
-export function useProfessionalsList() {
-  return useQuery({
-    queryKey: ['professionals-list-report'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('professionals')
-        .select('id, name')
-        .eq('active', true)
-        .order('name')
       if (error) throw error
       return data ?? []
     },
