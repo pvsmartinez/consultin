@@ -1,12 +1,7 @@
 /**
- * Shared constants used across multiple files.
- * Import from here — do NOT redefine locally.
+ * Re-exported from @pvsmartinez/shared.
+ * Import directly from here so internal paths don't change.
  */
+export type { BrState } from '@pvsmartinez/shared'
+export { BR_STATES } from '@pvsmartinez/shared'
 
-export const BR_STATES = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
-] as const
-
-export type BrState = typeof BR_STATES[number]

@@ -9,11 +9,11 @@ import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
-import { useRooms, useCreateRoom } from '../hooks/useRooms'
+import { useRooms } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
-import RoomScheduleDrawer from '../components/rooms/RoomScheduleDrawer'
+import RoomsDrawer from '../components/rooms/RoomsDrawer'
 import type { Appointment } from '../types'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -159,55 +159,7 @@ function ExtendModal({ data, onJustThis, onAlways, onCancel }: {
   )
 }
 
-// ─── quick room creation ───────────────────────────────────────────────────
-
-const ROOM_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#ef4444']
-
-function AddRoomModal({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState('')
-  const [color, setColor] = useState(ROOM_COLORS[0])
-  const { mutateAsync, isPending } = useCreateRoom()
-
-  async function handleCreate() {
-    if (!name.trim()) return
-    try {
-      await mutateAsync({ name: name.trim(), color })
-      toast.success(`Sala "${name}" criada`)
-      onClose()
-    } catch {
-      toast.error('Erro ao criar sala')
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-72">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-semibold text-gray-800">Nova sala</p>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
-        </div>
-        <input
-          autoFocus value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleCreate()}
-          placeholder="Nome da sala"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
-        />
-        <div className="flex gap-2 mb-4">
-          {ROOM_COLORS.map(c => (
-            <button key={c} type="button" onClick={() => setColor(c)}
-              className={`w-6 h-6 rounded-full border-2 transition-all ${color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
-              style={{ background: c }} />
-          ))}
-        </div>
-        <button onClick={handleCreate} disabled={isPending || !name.trim()}
-          className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
-          {isPending ? 'Criando...' : 'Criar sala'}
-        </button>
-      </div>
-    </div>
-  )
-}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean }) {
   const calendarRef = useRef<FullCalendar>(null)
@@ -221,8 +173,7 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const [filterProfId, setFilterProfId]     = useState<string>('')
   const [extendConfirm, setExtendConfirm]   = useState<ExtendConfirm | null>(null)
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
-  const [addRoomOpen, setAddRoomOpen]       = useState(false)
-  const [schedulingRoomId, setSchedulingRoomId] = useState<string | null>(null)
+  const [roomsDrawerOpen, setRoomsDrawerOpen] = useState(false)
 
   const { role }                          = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
@@ -501,6 +452,13 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
               ))}
             </select>
           )}
+          {/* Salas button — always visible for admins */}
+          {!isPersonalView && role === 'admin' && (
+            <button onClick={() => setRoomsDrawerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors">
+              <DoorOpen size={14} /> Salas
+            </button>
+          )}
           {/* Room/prof toggle — only if clinic has more than 1 room */}
           {!isPersonalView && activeRoomCount > 1 && (
             <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
@@ -517,12 +475,6 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
                 </button>
               ))}
             </div>
-          )}
-          {agendaView === 'room' && !isPersonalView && activeRoomCount > 1 && (
-            <button onClick={() => setAddRoomOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors">
-              <Plus size={13} /> Sala
-            </button>
           )}
           {!isPersonalView && (
             <button onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
@@ -595,8 +547,8 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
               <div className="flex items-center gap-1.5 group w-full justify-between">
                 <span className="text-sm font-medium truncate">{arg.resource.title}</span>
                 <button
-                  onClick={e => { e.stopPropagation(); setSchedulingRoomId(rid) }}
-                  title="Editar horários desta sala"
+                  onClick={e => { e.stopPropagation(); setRoomsDrawerOpen(true) }}
+                  title="Gerenciar salas"
                   className="flex-shrink-0 p-1 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
                 >
                   <Clock size={13} />
@@ -626,15 +578,8 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
         />
       )}
 
-      {addRoomOpen && (
-        <AddRoomModal onClose={() => setAddRoomOpen(false)} />
-      )}
-
-      {schedulingRoomId && (
-        <RoomScheduleDrawer
-          roomId={schedulingRoomId}
-          onClose={() => setSchedulingRoomId(null)}
-        />
+      {roomsDrawerOpen && (
+        <RoomsDrawer onClose={() => setRoomsDrawerOpen(false)} />
       )}
 
       {closedSlotPending && (

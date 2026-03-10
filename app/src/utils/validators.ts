@@ -1,9 +1,21 @@
 /**
- * Brazilian data validators
- * All return { valid: boolean; error?: string }
+ * Re-exported from @pvsmartinez/shared.
+ * Import directly from here so internal paths don't change.
  */
+export type { AddressFromCEP } from '@pvsmartinez/shared'
+export {
+  validateCPF,
+  formatCPF,
+  validateCNPJ,
+  formatCNPJ,
+  validateCpfCnpj,
+  maskCpfCnpj,
+  validatePhone,
+  formatPhone,
+  maskCEP,
+  fetchAddressByCEP,
+} from '@pvsmartinez/shared'
 
-export function validateCPF(cpf: string): { valid: boolean; error?: string } {
   const digits = cpf.replace(/\D/g, '')
   if (digits.length !== 11) return { valid: false, error: 'CPF deve ter 11 dígitos' }
   if (/^(\d)\1{10}$/.test(digits)) return { valid: false, error: 'CPF inválido' }
