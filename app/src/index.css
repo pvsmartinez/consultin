@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Consultin theme ─────────────────────────────────────────────── */
+:root {
+  /* SideNav: dark sidebar */
+  --ui-nav-bg: #030712;
+  --ui-nav-border: #1f2937;
+  --ui-nav-item-text: #9ca3af;
+  --ui-nav-item-hover-bg: rgba(255, 255, 255, 0.05);
+  --ui-nav-item-hover-text: #e5e7eb;
+  --ui-nav-item-active-bg: rgb(20 184 166 / 0.15);
+  --ui-nav-item-active-text: #5eead4;
+
+  /* TopBar */
+  --ui-topbar-bg: #030712;
+  --ui-topbar-border: #1f2937;
+  --ui-topbar-height: 56px;
+
+  /* Brand */
+  --ui-brand-primary: #14b8a6;
+
+  /* Atoms */
+  --ui-badge-bg: #ef4444;
+  --ui-badge-text: #ffffff;
+  --ui-avatar-bg: #374151;
+  --ui-avatar-text: #d1d5db;
+}
+
+/* Nav item hover (driven by CSS var) */
+.nav-item-default:hover {
+  background-color: var(--ui-nav-item-hover-bg) !important;
+  color: var(--ui-nav-item-hover-text) !important;
+}
+
 :root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
