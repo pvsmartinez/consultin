@@ -16,15 +16,9 @@ interface AuthContextValue {
   loading: boolean
   recoveryMode: boolean
   clearRecoveryMode: () => void
-  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>
-  signInWithGoogle: () => Promise<void>
-  signInWithApple: () => Promise<void>
   signOut: () => Promise<void>
   hasPermission: (key: string) => boolean
   refreshProfile: () => Promise<void>
-  // OTP password reset: send code → verify code → NovaSenhaPage takes over
-  sendPasswordResetOtp: (email: string) => Promise<{ error: string | null }>
-  verifyPasswordResetOtp: (email: string, token: string) => Promise<{ error: string | null }>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -257,17 +251,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { settle(); subscription.unsubscribe() }
   }, [])
 
-  const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error: error?.message ?? null }
-  }
-
-  const signInWithGoogle = () =>
-    supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } }).then(() => undefined)
-
-  const signInWithApple = () =>
-    supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin } }).then(() => undefined)
-
   const signOut = async () => {
     // Clear local state immediately — never wait for network (can hang silently)
     setSession(null)
@@ -276,21 +259,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.signOut().catch(() => { /* ignore */ })
   }
   const clearRecoveryMode = () => setRecoveryMode(false)
-
-  // Step 1: send 6-digit OTP to the user's email (recovery flow)
-  const sendPasswordResetOtp = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/nova-senha`,
-    })
-    return { error: error?.message ?? null }
-  }
-
-  // Step 2: verify code → fires PASSWORD_RECOVERY → setRecoveryMode(true) via onAuthStateChange
-  const verifyPasswordResetOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'recovery' })
-    if (!error) setRecoveryMode(true)
-    return { error: error?.message ?? null }
-  }
 
   const hasPermission = (key: string): boolean => {
     if (!profile) return false
@@ -315,9 +283,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session, profile, role: profile ? primaryRole(profile.roles) : null, loading,
       isSuperAdmin: profile?.isSuperAdmin ?? false,
       recoveryMode, clearRecoveryMode,
-      signInWithEmail, signInWithGoogle, signInWithApple, signOut, hasPermission,
+      signOut, hasPermission,
       refreshProfile,
-      sendPasswordResetOtp, verifyPasswordResetOtp,
     }}>
       {children}
     </AuthContext.Provider>
