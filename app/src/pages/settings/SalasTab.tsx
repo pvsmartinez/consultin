@@ -101,7 +101,32 @@ export default function SalasTab() {
       {isLoading ? (
         <p className="text-sm text-gray-400 text-center py-6">Carregando...</p>
       ) : rooms.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-8">Nenhuma sala cadastrada.</p>
+        <div className="border-2 border-dashed border-gray-200 rounded-xl py-10 text-center space-y-3">
+          <div className="w-8 h-8 rounded-full bg-gray-100 mx-auto flex items-center justify-center">
+            <Check size={16} className="text-gray-400" />
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Nenhuma sala cadastrada</p>
+            <p className="text-xs text-gray-400 mt-0.5">Crie a primeira sala ou use o padrão abaixo</p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <button
+              onClick={async () => {
+                try {
+                  await createRoom.mutateAsync({ name: 'Sala 1', color: ROOM_COLORS[0] })
+                  toast.success('Sala padrão criada')
+                } catch { toast.error('Erro ao criar sala') }
+              }}
+              disabled={createRoom.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              <Check size={14} /> Criar "Sala 1"
+            </button>
+            <button onClick={openNew} className="text-sm text-blue-600 hover:underline">
+              Personalizar →
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-2">
           {rooms.map(r => (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { MagnifyingGlass, Plus, User, UploadSimple, X } from '@phosphor-icons/react'
+import { useNavigate, Link } from 'react-router-dom'
+import { MagnifyingGlass, Plus, User, UploadSimple, X, Sliders } from '@phosphor-icons/react'
 import PatientDrawer from '../components/patients/PatientDrawer'
 import { usePatients, PATIENTS_PAGE_SIZE } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
@@ -25,6 +25,15 @@ export default function PatientsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-gray-800">Pacientes</h1>
         <div className="flex items-center gap-2">
+          <Link
+            to="/configuracoes"
+            state={{ tab: 'campos' }}
+            className="flex items-center gap-1.5 border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm px-3 py-2 rounded-lg transition"
+            title="Personalizar campos do cadastro de pacientes"
+          >
+            <Sliders size={15} />
+            <span className="hidden sm:inline">Personalizar campos</span>
+          </Link>
           <button
             onClick={() => setImportOpen(true)}
             className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition"

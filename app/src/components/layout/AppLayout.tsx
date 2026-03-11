@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   CalendarBlank,
   CalendarCheck,
@@ -18,7 +18,7 @@ import {
   CreditCard,
   Sun,
 } from '@phosphor-icons/react'
-import { AppShell, SideNav, NavItem, NavGroup, Avatar, Button } from '@pvsmartinez/shared/ui'
+import { AppShell, SideNav, NavItem, NavGroup, Avatar, Button, TopBar, BottomTabBar, TabItem } from '@pvsmartinez/shared/ui'
 import AppointmentModal from '../appointments/AppointmentModal'
 import type { UserRole } from '../../types'
 import { USER_ROLE_LABELS } from '../../types'
@@ -60,6 +60,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const hasLinkedProfessional = !isProfessional && myProfRecords.length > 0
   const canSeeNotifications = role === 'admin' || role === 'receptionist'
   const navigate = useNavigate()
+  const location = useLocation()
   const { unreadCount } = useClinicNotifications(navigate)
   const notifBadge = canSeeNotifications ? unreadCount : 0
   const isTestMode = isSuperAdmin && !!profile?.clinicId
@@ -158,7 +159,36 @@ export default function AppLayout({ children }: AppLayoutProps) {
   )
 
   return (
-    <AppShell variant="sidebar" className="bg-slate-50">
+    <AppShell variant="responsive" className="bg-slate-50">
+      {/* Mobile only: top bar (hidden on desktop via responsive variant) */}
+      <TopBar
+        left={
+          <div className="flex items-center gap-2">
+            <Stethoscope size={18} className="text-teal-400 flex-shrink-0" />
+            <div className="min-w-0">
+              <span className="font-semibold text-sm text-white">Consultin</span>
+              {clinic?.name && (
+                <p className="text-[10px] text-gray-400 leading-none mt-0.5 truncate max-w-[160px]">
+                  {clinic.name}
+                </p>
+              )}
+            </div>
+          </div>
+        }
+        right={
+          canSchedule ? (
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={<Plus size={12} weight="bold" />}
+              onClick={() => setNewApptOpen(true)}
+            >
+              Nova
+            </Button>
+          ) : undefined
+        }
+      />
+
       <SideNav header={sideNavHeader} footer={sideNavFooter}>
         {visibleNav.map(({ to, icon, label, labelProfissional }) => (
           <NavItem
@@ -203,6 +233,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Mobile only: bottom tab bar (hidden on desktop via responsive variant) */}
+      <BottomTabBar>
+        {visibleNav.slice(0, 4).map(({ to, icon, label, labelProfissional }) => (
+          <TabItem
+            key={to}
+            icon={icon}
+            label={isProfessional ? labelProfissional : label}
+            isActive={location.pathname.startsWith(to)}
+            onClick={() => navigate(to)}
+          />
+        ))}
+      </BottomTabBar>
 
       <AppointmentModal
         open={newApptOpen}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus, PencilSimple, Trash, Check, X, CurrencyDollar, Clock } from '@phosphor-icons/react'
+import { Plus, PencilSimple, Trash, Check, X, CurrencyDollar, Clock, ClipboardText } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useServiceTypes, useCreateServiceType, useUpdateServiceType, useDeleteServiceType } from '../../hooks/useServiceTypes'
+import { useClinic } from '../../hooks/useClinic'
 import { SERVICE_TYPE_COLORS } from '../../types'
 import type { ServiceType, ServiceTypeInput } from '../../types'
 import { formatBRL } from '../../utils/currency'
@@ -29,6 +30,7 @@ export default function ServicosTab() {
   const create = useCreateServiceType()
   const update = useUpdateServiceType()
   const remove = useDeleteServiceType()
+  const { data: clinic } = useClinic()
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<ServiceType | null>(null)
@@ -119,6 +121,12 @@ export default function ServicosTab() {
             Cadastre os tipos de atendimento da sua clínica — consulta inicial, retorno, avaliação, etc.
             A duração e o valor de cada serviço serão pré-preenchidos ao agendar.
           </p>
+          {clinic?.anamnesisFields && clinic.anamnesisFields.length > 0 && (
+            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+              <ClipboardText size={12} />
+              Formulário de anamnese configurado com {clinic.anamnesisFields.length} pergunta{clinic.anamnesisFields.length !== 1 ? 's' : ''}.
+            </p>
+          )}
         </div>
         <button
           onClick={openNew}
@@ -227,10 +235,29 @@ export default function ServicosTab() {
       {isLoading ? (
         <p className="text-sm text-gray-400 text-center py-6">Carregando...</p>
       ) : services.length === 0 && !showForm ? (
-        <div className="border-2 border-dashed border-gray-200 rounded-xl py-10 text-center">
-          <CurrencyDollar size={28} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-sm text-gray-400">Nenhum serviço cadastrado.</p>
-          <p className="text-xs text-gray-300 mt-1">Clique em "Novo serviço" para começar.</p>
+        <div className="border-2 border-dashed border-gray-200 rounded-xl py-10 text-center space-y-3">
+          <CurrencyDollar size={28} className="mx-auto text-gray-300" />
+          <div>
+            <p className="text-sm text-gray-500 font-medium">Nenhum serviço cadastrado</p>
+            <p className="text-xs text-gray-400 mt-0.5">Crie o primeiro serviço ou use o padrão abaixo</p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <button
+              onClick={async () => {
+                try {
+                  await create.mutateAsync({ name: 'Atendimento geral', durationMinutes: 30, priceCents: null, color: SERVICE_TYPE_COLORS[0], active: true })
+                  toast.success('Serviço padrão criado')
+                } catch { toast.error('Erro ao criar serviço') }
+              }}
+              disabled={create.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            >
+              <Check size={14} /> Criar "Atendimento geral"
+            </button>
+            <button onClick={openNew} className="text-sm text-blue-600 hover:underline">
+              Personalizar →
+            </button>
+          </div>
         </div>
       ) : (
         <ul className="space-y-2">

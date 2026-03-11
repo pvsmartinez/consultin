@@ -1,27 +1,41 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { Clinic } from '../../types'
 import { PATIENT_BUILTIN_FIELDS, PROFESSIONAL_BUILTIN_FIELDS } from '../../types'
 import EntityFieldsPanel from '../../components/fields/EntityFieldsPanel'
 
 type EntityTab = 'pacientes' | 'profissionais'
 
+const ENTITY_LABELS: Record<EntityTab, string> = {
+  pacientes:      'Pacientes',
+  profissionais:  'Profissionais',
+}
+
 export default function CamposTab({ clinic }: { clinic: Clinic }) {
   const [entityTab, setEntityTab] = useState<EntityTab>('pacientes')
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-gray-500">
-        Configure quais campos aparecem nos formulários de cadastro desta clínica.
-        Todos os campos padrão ficam ativos por padrão — desative os que não forem necessários
-        e adicione campos extras conforme a especialidade da clínica.
-      </p>
+      <div>
+        <p className="text-sm text-gray-500">
+          Configure quais campos aparecem nos formulários de cadastro. Ative, desative ou adicione
+          campos extras conforme a especialidade da clínica.
+        </p>
+        <p className="text-xs text-gray-400 mt-1.5">
+          Para configurar o formulário de anamnese dos pacientes, vá em{' '}
+          <Link to="/configuracoes" className="text-blue-600 hover:underline font-medium">
+            Configurações → Serviços
+          </Link>{' '}
+          e edite o serviço desejado.
+        </p>
+      </div>
 
       {/* Entity sub-tabs */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {(['pacientes', 'profissionais'] as EntityTab[]).map(e => (
+        {(Object.keys(ENTITY_LABELS) as EntityTab[]).map(e => (
           <button key={e} onClick={() => setEntityTab(e)}
-            className={`px-4 py-1.5 text-sm rounded-lg transition-colors capitalize ${entityTab === e ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
-            {e.charAt(0).toUpperCase() + e.slice(1)}
+            className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${entityTab === e ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+            {ENTITY_LABELS[e]}
           </button>
         ))}
       </div>
