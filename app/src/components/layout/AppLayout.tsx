@@ -4,7 +4,6 @@ import {
   CalendarBlank,
   CalendarCheck,
   Users,
-  ChartBar,
   Stethoscope,
   SignOut,
   UsersFour,
@@ -18,6 +17,7 @@ import {
   UserCircle,
   Plus,
   CreditCard,
+  Sun,
 } from '@phosphor-icons/react'
 import AppointmentModal from '../appointments/AppointmentModal'
 import type { UserRole } from '../../types'
@@ -30,7 +30,7 @@ import { useClinicNotifications } from '../../hooks/useClinicNotifications'
 import ErrorBoundary from '../ErrorBoundary'
 
 const navItems = [
-  { to: '/dashboard',         icon: ChartBar,             label: 'Dashboard',        labelProfissional: 'Meu Painel',     permission: null },
+  { to: '/hoje',              icon: Sun,                  label: 'Hoje',             labelProfissional: 'Hoje',           permission: null },
   { to: '/agenda',            icon: CalendarBlank,         label: 'Agenda',           labelProfissional: 'Minha Agenda',   permission: null },
   { to: '/minha-disponibilidade', icon: Clock,           label: 'Meus Horários',   labelProfissional: 'Meus Horários',         permission: 'canManageOwnAvailability' as const },
   { to: '/pacientes',     icon: Users,                 label: 'Pacientes',      labelProfissional: 'Pacientes',      permission: 'canViewPatients' as const },

@@ -26,8 +26,11 @@ const AssinaturaPage         = lazy(() => import('../pages/AssinaturaPage'))
 export default function StaffRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/" element={<Navigate to="/hoje" replace />} />
+      {/* /hoje is the primary landing page (daily overview) */}
+      <Route path="/hoje" element={<DashboardPage />} />
+      {/* keep old /dashboard URL working */}
+      <Route path="/dashboard" element={<Navigate to="/hoje" replace />} />
 
       {/* Pacientes */}
       <Route path="/pacientes" element={
@@ -75,7 +78,7 @@ export default function StaffRoutes() {
 
       <Route path="/acesso-negado" element={<AccessDeniedPage />} />
       <Route path="/minha-conta"   element={<MinhaContaPage />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/hoje" replace />} />
     </Routes>
   )
 }

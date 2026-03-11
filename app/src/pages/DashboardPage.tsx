@@ -182,8 +182,7 @@ function ClinicDashboard() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-        <p className="text-sm text-gray-400 capitalize mt-0.5">{todayLabel}</p>
+        <h1 className="text-xl font-semibold text-gray-800">Hoje &bull; <span className="font-normal capitalize">{todayLabel}</span></h1>
       </div>
 
       {/* Alerts — shown when there are action items */}
