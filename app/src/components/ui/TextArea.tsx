@@ -1,3 +1,4 @@
+import { TextArea as SharedTextArea, Label } from '@pvsmartinez/shared/ui'
 import type { TextareaHTMLAttributes } from 'react'
 
 interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -5,23 +6,22 @@ interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: string
 }
 
-export default function TextArea({ label, error, id, className = '', ...props }: TextAreaProps) {
+export default function TextArea({ label, error, id, className, ...props }: TextAreaProps) {
   const textareaId = id ?? label.toLowerCase().replace(/\s+/g, '-')
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={textareaId} className="text-sm font-medium text-gray-700">
-        {label}
-        {props.required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <textarea
+      <Label htmlFor={textareaId} required={!!props.required}>{label}</Label>
+      <SharedTextArea
         id={textareaId}
         rows={3}
-        className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none
-          ${error ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'}
-          ${className}`}
+        error={!!error}
+        className={className}
         {...props}
       />
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && (
+        <span className="text-xs" style={{ color: 'var(--ui-danger-text)' }}>{error}</span>
+      )}
     </div>
   )
 }
+

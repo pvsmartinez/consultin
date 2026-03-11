@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { X, QrCode, Copy, CheckCircle, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { Modal } from '@pvsmartinez/shared/ui'
 import {
   useCreateAppointmentCharge,
   useSyncPaymentStatus,
@@ -146,8 +147,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
   const canTransfer = isReceived && bankAccount && payment?.transferStatus === 'PENDING'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+    <Modal open={true} onClose={onClose} maxWidth="sm">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -315,7 +315,6 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

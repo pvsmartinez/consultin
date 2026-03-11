@@ -182,6 +182,14 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, string> = {
   no_show:    'bg-yellow-100 text-yellow-700',
 }
 
+export const APPOINTMENT_STATUS_VARIANTS: Record<AppointmentStatus, 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
+  scheduled:  'info',
+  confirmed:  'success',
+  completed:  'default',
+  cancelled:  'danger',
+  no_show:    'warning',
+}
+
 // ─── Service Type (appointment type with price + duration + color) ──────────
 export interface ServiceType {
   id: string

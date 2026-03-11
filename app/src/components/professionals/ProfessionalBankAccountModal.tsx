@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Bank } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { Modal } from '@pvsmartinez/shared/ui'
 import Input from '../ui/Input'
 import { useUpsertBankAccount, useProfessionalBankAccount } from '../../hooks/useProfessionalBankAccount'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -103,8 +104,7 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+    <Modal open={true} onClose={onClose} maxWidth="md">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -199,7 +199,6 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

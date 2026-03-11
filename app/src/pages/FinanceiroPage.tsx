@@ -6,10 +6,10 @@ import { useFinancial, PAYMENT_METHOD_LABELS } from '../hooks/useFinancial'
 import type { AppointmentPaymentMethod } from '../hooks/useFinancial'
 import { formatBRL } from '../utils/currency'
 import { useClinic } from '../hooks/useClinic'
-import Badge from '../components/ui/Badge'
+import { Badge } from '@pvsmartinez/shared/ui'
 import AppointmentPaymentModal from '../components/appointments/AppointmentPaymentModal'
 import PaymentRegistrationModal from '../components/appointments/PaymentRegistrationModal'
-import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
+import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_VARIANTS } from '../types'
 import type { Appointment } from '../types'
 import RelatoriosPage from './RelatoriosPage'
 
@@ -146,10 +146,9 @@ export default function FinanceiroPage() {
                     {row.professional?.name ?? '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge
-                      label={APPOINTMENT_STATUS_LABELS[row.status]}
-                      className={APPOINTMENT_STATUS_COLORS[row.status]}
-                    />
+                    <Badge variant={APPOINTMENT_STATUS_VARIANTS[row.status]}>
+                      {APPOINTMENT_STATUS_LABELS[row.status]}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-right text-gray-700">
                     {formatBRL(row.chargeAmountCents)}

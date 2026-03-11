@@ -5,7 +5,7 @@ import PatientDrawer from '../components/patients/PatientDrawer'
 import { usePatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
 import { useClinic } from '../hooks/useClinic'
-import Badge from '../components/ui/Badge'
+import { Badge } from '@pvsmartinez/shared/ui'
 import { formatDate, formatDateTime } from '../utils/date'
 import PatientRecordsPanel from '../components/patients/PatientRecordsPanel'
 import PatientFilesPanel from '../components/patients/PatientFilesPanel'
@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import {
   SEX_LABELS,
   APPOINTMENT_STATUS_LABELS,
-  APPOINTMENT_STATUS_COLORS,
+  APPOINTMENT_STATUS_VARIANTS,
 } from '../types'
 
 function InfoRow({ label, value, copyable }: { label: string; value: string | null | undefined; copyable?: boolean }) {
@@ -209,10 +209,9 @@ export default function PatientDetailPage() {
                   )}
                   {apt.notes && <p className="text-xs text-gray-400 mt-0.5 italic">{apt.notes}</p>}
                 </div>
-                <Badge
-                  label={APPOINTMENT_STATUS_LABELS[apt.status]}
-                  className={APPOINTMENT_STATUS_COLORS[apt.status]}
-                />
+                <Badge variant={APPOINTMENT_STATUS_VARIANTS[apt.status]}>
+                  {APPOINTMENT_STATUS_LABELS[apt.status]}
+                </Badge>
               </li>
             ))}
           </ul>

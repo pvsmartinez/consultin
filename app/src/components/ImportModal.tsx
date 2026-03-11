@@ -1,6 +1,7 @@
 import { useState, useRef, ChangeEvent } from 'react'
-import { UploadSimple, X, Check, Warning } from '@phosphor-icons/react'
+import { UploadSimple, Check, Warning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { Modal } from '@pvsmartinez/shared/ui'
 import { format, parse, isValid } from 'date-fns'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -218,26 +219,12 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     }
   }
 
-  if (!open) return null
-
   // ── Preview rows (first 5) ──
   const previewRows = rows.slice(0, 5)
   const mappedFields = PATIENT_FIELDS.filter(f => mapping[f.key])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">
-            Importar pacientes via CSV
-          </h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
-          </button>
-        </div>
-
+    <Modal open={open} onClose={handleClose} title="Importar pacientes via CSV" maxWidth="lg">
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
           {/* ─ Step: Upload ─ */}
@@ -384,7 +371,6 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
