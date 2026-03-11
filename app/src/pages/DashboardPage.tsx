@@ -1,7 +1,8 @@
-import { format, startOfMonth, endOfMonth } from 'date-fns'
+import { useState } from 'react'
+import { format, startOfMonth, endOfMonth, differenceInMinutes } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Link } from 'react-router-dom'
-import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, MagnifyingGlass, Phone, WhatsappLogo, Check } from '@phosphor-icons/react'
+import { CalendarBlank, Users, CurrencyCircleDollar, Clock, Stethoscope, ArrowRight, Copy, Warning, CheckCircle, CurrencyDollar, Plus, MagnifyingGlass, Phone, WhatsappLogo, Check, X, DoorOpen, Tag, Note } from '@phosphor-icons/react'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
 import type { Clinic } from '../types'
@@ -45,11 +46,204 @@ function getProfName(prof: TodayAppointment['professional']): string {
   return prof.name
 }
 
+function getProfSpecialty(prof: TodayAppointment['professional']): string | null {
+  const p = Array.isArray(prof) ? prof[0] : prof
+  return p?.specialty ?? null
+}
+
+function getRoomName(room: TodayAppointment['room']): string | null {
+  if (!room) return null
+  const r = Array.isArray(room) ? room[0] : room
+  return r?.name ?? null
+}
+
+function getRoomColor(room: TodayAppointment['room']): string | null {
+  if (!room) return null
+  const r = Array.isArray(room) ? room[0] : room
+  return (r as { color?: string })?.color ?? null
+}
+
+function getServiceName(s: TodayAppointment['service_type']): string | null {
+  if (!s) return null
+  const t = Array.isArray(s) ? s[0] : s
+  return t?.name ?? null
+}
+
 function getPatientPhone(patient: TodayAppointment['patient']): string | null {
   const raw = Array.isArray(patient) ? patient[0]?.phone : patient?.phone
   if (!raw) return null
   const digits = raw.replace(/\D/g, '')
   return digits.startsWith('55') ? digits : `55${digits}`
+}
+
+function getPatientId(patient: TodayAppointment['patient']): string | null {
+  const p = Array.isArray(patient) ? patient[0] : patient
+  return (p as { id?: string } | null)?.id ?? null
+}
+
+// ─── Appointment Detail Side Panel ───────────────────────────────────────────
+
+function AppointmentPanel({
+  appt,
+  onClose,
+  onStatusChange,
+}: {
+  appt: TodayAppointment
+  onClose: () => void
+  onStatusChange: (id: string, status: AppointmentStatus) => void
+}) {
+  const statusClasses = APPOINTMENT_STATUS_COLORS[appt.status as keyof typeof APPOINTMENT_STATUS_COLORS] ?? 'bg-gray-100 text-gray-500'
+  const statusLabel   = APPOINTMENT_STATUS_LABELS[appt.status as keyof typeof APPOINTMENT_STATUS_LABELS] ?? appt.status
+  const startTime     = format(new Date(appt.starts_at), 'HH:mm')
+  const endTime       = format(new Date(appt.ends_at),   'HH:mm')
+  const duration      = differenceInMinutes(new Date(appt.ends_at), new Date(appt.starts_at))
+  const patientName   = getPatientName(appt.patient)
+  const patientPhone  = getPatientPhone(appt.patient)
+  const patientId     = getPatientId(appt.patient)
+  const profName      = getProfName(appt.professional)
+  const profSpecialty = getProfSpecialty(appt.professional)
+  const roomName      = getRoomName(appt.room)
+  const roomColor     = getRoomColor(appt.room)
+  const serviceName   = getServiceName(appt.service_type)
+  const isPending     = appt.status === 'scheduled' || appt.status === 'confirmed'
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-30" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl border-l border-gray-100 z-40 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusClasses}`}>{statusLabel}</span>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Horário */}
+          <div className="px-5 py-4 border-b border-gray-50">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Horário</p>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-2xl font-semibold text-gray-900 tabular-nums">
+                {startTime}
+              </div>
+              <span className="text-gray-300 font-light text-lg">→</span>
+              <div className="text-2xl font-semibold text-gray-900 tabular-nums">{endTime}</div>
+              <span className="ml-auto text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">{duration} min</span>
+            </div>
+          </div>
+
+          {/* Paciente */}
+          <div className="px-5 py-4 border-b border-gray-50">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Paciente</p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{patientName}</p>
+                {patientPhone && (
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <a href={`tel:+${patientPhone}`}
+                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors">
+                      <Phone size={13} /> {patientPhone.replace('55', '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}
+                    </a>
+                    <a href={`https://wa.me/${patientPhone}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-green-500 transition-colors">
+                      <WhatsappLogo size={13} /> WhatsApp
+                    </a>
+                  </div>
+                )}
+              </div>
+              {patientId && (
+                <Link to={`/pacientes/${patientId}`}
+                  className="flex-shrink-0 text-xs text-blue-600 border border-blue-200 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                  Ver ficha
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Profissional */}
+          <div className="px-5 py-4 border-b border-gray-50">
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Profissional</p>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                <Stethoscope size={15} className="text-violet-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{profName}</p>
+                {profSpecialty && <p className="text-xs text-gray-400">{profSpecialty}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Sala + Serviço */}
+          <div className="px-5 py-4 border-b border-gray-50 space-y-3">
+            {roomName && (
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: roomColor ? `${roomColor}20` : '#f1f5f9' }}>
+                  <DoorOpen size={15} style={{ color: roomColor ?? '#64748b' }} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Sala</p>
+                  <p className="text-sm font-medium text-gray-800">{roomName}</p>
+                </div>
+              </div>
+            )}
+            {serviceName && (
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <Tag size={15} className="text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Tipo de consulta</p>
+                  <p className="text-sm font-medium text-gray-800">{serviceName}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Observações */}
+          {appt.notes && (
+            <div className="px-5 py-4 border-b border-gray-50">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Note size={13} className="text-gray-400" />
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Observações</p>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{appt.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Actions footer */}
+        {isPending && (
+          <div className="px-5 py-4 border-t border-gray-100 space-y-2">
+            {appt.status === 'scheduled' && (
+              <button onClick={() => onStatusChange(appt.id, 'confirmed')}
+                className="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium transition-colors">
+                ✓ Confirmar chegada
+              </button>
+            )}
+            {appt.status === 'confirmed' && (
+              <button onClick={() => onStatusChange(appt.id, 'completed')}
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors">
+                ✓ Marcar como realizado
+              </button>
+            )}
+            <button onClick={() => onStatusChange(appt.id, 'no_show')}
+              className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 text-sm font-medium transition-colors">
+              Marcar como falta
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  )
 }
 
 // ─── Onboarding Checklist ─────────────────────────────────────────────────────
@@ -160,6 +354,7 @@ function ClinicDashboard() {
   const { data: alerts = [] } = useClinicAlerts()
   const updateStatus = useUpdateAppointmentStatus()
   const todayLabel = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
+  const [selectedAppt, setSelectedAppt] = useState<TodayAppointment | null>(null)
 
   const sorted = [...todayList].sort((a, b) =>
     (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9)
@@ -173,6 +368,8 @@ function ClinicDashboard() {
         status === 'completed' ? 'Marcado como realizado' :
         'Marcado como falta'
       )
+      // update selected panel if open
+      setSelectedAppt(prev => prev?.id === id ? { ...prev, status } : prev)
     } catch (e) {
       console.error('[markStatus] erro ao atualizar status:', e)
       toast.error('Erro ao atualizar status')
@@ -247,7 +444,7 @@ function ClinicDashboard() {
         )}
       </div>
 
-      {/* Quick actions — most common receptionist tasks */}
+      {/* Quick actions */}
       <div className="flex flex-wrap gap-2 mb-6">
         <Link
           to="/agenda"
@@ -276,84 +473,75 @@ function ClinicDashboard() {
             </Link>
           </div>
 
-        {todayLoading ? (
-          <p className="text-sm text-gray-400">Carregando...</p>
-        ) : sorted.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 py-10 text-center space-y-3">
-            <p className="text-sm text-gray-400">Nenhuma consulta agendada para hoje.</p>
-            <Link
-              to="/agenda"
-              className="inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors"
-            >
-              <Plus size={14} weight="bold" /> Agendar consulta
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {sorted.map(appt => {
-              const statusClasses = APPOINTMENT_STATUS_COLORS[appt.status as keyof typeof APPOINTMENT_STATUS_COLORS] ?? 'bg-gray-100 text-gray-500'
-              const statusLabel = APPOINTMENT_STATUS_LABELS[appt.status as keyof typeof APPOINTMENT_STATUS_LABELS] ?? appt.status
-              const timeLabel = format(new Date(appt.starts_at), 'HH:mm')
-              const isPending = appt.status === 'scheduled' || appt.status === 'confirmed'
-              return (
-                <div key={appt.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 text-sm font-mono text-gray-500 w-12 flex-shrink-0">
-                    <Clock size={13} />
-                    {timeLabel}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{getPatientName(appt.patient)}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs text-gray-400 truncate">{getProfName(appt.professional)}</p>
-                      {getPatientPhone(appt.patient) && (
-                        <>
-                          <a href={`tel:+${getPatientPhone(appt.patient)}`} title="Ligar"
-                            className="text-gray-300 hover:text-blue-500 transition-colors flex-shrink-0" onClick={e => e.stopPropagation()}>
-                            <Phone size={12} />
-                          </a>
-                          <a href={`https://wa.me/${getPatientPhone(appt.patient)}`} target="_blank" rel="noopener noreferrer" title="WhatsApp"
-                            className="text-gray-300 hover:text-green-500 transition-colors flex-shrink-0" onClick={e => e.stopPropagation()}>
-                            <WhatsappLogo size={12} />
-                          </a>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${statusClasses}`}>
-                    {statusLabel}
-                  </span>
-                  {isPending && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {appt.status === 'scheduled' && (
-                        <button
-                          onClick={() => markStatus(appt.id, 'confirmed')}
-                          className="text-xs text-teal-600 border border-teal-200 rounded-lg px-2 py-0.5 hover:bg-teal-50 transition-colors whitespace-nowrap"
-                        >
-                          Chegou
-                        </button>
-                      )}
-                      <button
-                        onClick={() => markStatus(appt.id, 'completed')}
-                        className="text-xs text-blue-600 border border-blue-200 rounded-lg px-2 py-0.5 hover:bg-blue-50 transition-colors whitespace-nowrap"
-                      >
-                        Realizado
-                      </button>
-                      <button
-                        onClick={() => markStatus(appt.id, 'no_show')}
-                        className="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-0.5 hover:bg-gray-50 transition-colors whitespace-nowrap"
-                      >
-                        Falta
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+          {todayLoading ? (
+            <p className="text-sm text-gray-400">Carregando...</p>
+          ) : sorted.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 py-10 text-center space-y-3">
+              <p className="text-sm text-gray-400">Nenhuma consulta agendada para hoje.</p>
+              <Link
+                to="/agenda"
+                className="inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors"
+              >
+                <Plus size={14} weight="bold" /> Agendar consulta
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sorted.map(appt => {
+                const statusClasses = APPOINTMENT_STATUS_COLORS[appt.status as keyof typeof APPOINTMENT_STATUS_COLORS] ?? 'bg-gray-100 text-gray-500'
+                const statusLabel   = APPOINTMENT_STATUS_LABELS[appt.status as keyof typeof APPOINTMENT_STATUS_LABELS] ?? appt.status
+                const startTime     = format(new Date(appt.starts_at), 'HH:mm')
+                const endTime       = format(new Date(appt.ends_at),   'HH:mm')
+                const patientName   = getPatientName(appt.patient)
+                const profName      = getProfName(appt.professional)
+                const roomName      = getRoomName(appt.room)
+                const roomColor     = getRoomColor(appt.room)
+                const isSelected    = selectedAppt?.id === appt.id
 
-        {/* Profissionais hoje \u2014 1/3 width */}
+                return (
+                  <button
+                    key={appt.id}
+                    onClick={() => setSelectedAppt(isSelected ? null : appt)}
+                    className={`w-full text-left bg-white border rounded-xl px-4 py-3 flex items-center gap-3 transition-all cursor-pointer hover:shadow-sm ${
+                      isSelected ? 'border-blue-300 shadow-sm ring-1 ring-blue-200' : 'border-gray-100 hover:border-gray-200'
+                    }`}
+                  >
+                    {/* Horário início → fim */}
+                    <div className="flex flex-col items-center w-14 flex-shrink-0">
+                      <span className="text-sm font-semibold tabular-nums text-gray-800">{startTime}</span>
+                      <span className="text-[10px] text-gray-300 leading-none my-0.5">↓</span>
+                      <span className="text-xs tabular-nums text-gray-400">{endTime}</span>
+                    </div>
+
+                    {/* Divider colorido de sala */}
+                    <div className="w-1 self-stretch rounded-full flex-shrink-0"
+                      style={{ backgroundColor: roomColor ?? '#e2e8f0' }} />
+
+                    {/* Info principal */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{patientName}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-gray-400 truncate">{profName}</span>
+                        {roomName && (
+                          <span className="flex items-center gap-0.5 text-xs text-gray-400 flex-shrink-0">
+                            · <DoorOpen size={11} className="inline" /> {roomName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status badge */}
+                    <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${statusClasses}`}>
+                      {statusLabel}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Profissionais hoje — 1/3 width */}
         <div className="lg:col-span-1">
           <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Profissionais hoje</h2>
           {profsToday.length === 0 ? (
@@ -384,6 +572,15 @@ function ClinicDashboard() {
           )}
         </div>
       </div>
+
+      {/* Appointment detail side panel */}
+      {selectedAppt && (
+        <AppointmentPanel
+          appt={selectedAppt}
+          onClose={() => setSelectedAppt(null)}
+          onStatusChange={markStatus}
+        />
+      )}
     </div>
   )
 }

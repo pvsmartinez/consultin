@@ -9,9 +9,14 @@ import { useAuthContext } from '../contexts/AuthContext'
 export interface TodayAppointment {
   id: string
   starts_at: string
+  ends_at: string
   status: string
-  patient: { name: string; phone: string | null } | { name: string; phone: string | null }[] | null
-  professional: { name: string } | { name: string }[] | null
+  notes: string | null
+  patient_id: string | null
+  patient: { id?: string; name: string; phone: string | null; cpf?: string | null } | { id?: string; name: string; phone: string | null; cpf?: string | null }[] | null
+  professional: { id?: string; name: string; specialty?: string | null } | { id?: string; name: string; specialty?: string | null }[] | null
+  room: { id?: string; name: string; color?: string } | { id?: string; name: string; color?: string }[] | null
+  service_type: { id?: string; name: string; color?: string | null; duration_minutes?: number | null } | { id?: string; name: string; color?: string | null; duration_minutes?: number | null }[] | null
 }
 
 export function useTodayAppointments() {
@@ -25,7 +30,13 @@ export function useTodayAppointments() {
       const now = new Date()
       const { data } = await supabase
         .from('appointments')
-        .select('id, starts_at, status, patient:patients(name, phone), professional:professionals(name)')
+        .select(`
+          id, starts_at, ends_at, status, notes, patient_id,
+          patient:patients(id, name, phone, cpf),
+          professional:professionals(id, name, specialty),
+          room:clinic_rooms(id, name, color),
+          service_type:service_types(id, name, color, duration_minutes)
+        `)
         .gte('starts_at', startOfDay(now).toISOString())
         .lte('starts_at', endOfDay(now).toISOString())
         .neq('status', 'cancelled')
