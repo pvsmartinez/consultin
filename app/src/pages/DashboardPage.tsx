@@ -173,7 +173,8 @@ function ClinicDashboard() {
         status === 'completed' ? 'Marcado como realizado' :
         'Marcado como falta'
       )
-    } catch {
+    } catch (e) {
+      console.error('[markStatus] erro ao atualizar status:', e)
       toast.error('Erro ao atualizar status')
     }
   }

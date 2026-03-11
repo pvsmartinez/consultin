@@ -38,7 +38,8 @@ export default function SalaDeEsperaPage() {
   async function checkIn(id: string) {
     try {
       await updateStatus.mutateAsync({ id, status: 'confirmed' })
-    } catch {
+    } catch (e) {
+      console.error('[checkIn] erro ao registrar chegada:', e)
       toast.error('Erro ao registrar chegada')
     }
   }
