@@ -1,3 +1,5 @@
+@import '@pvsmartinez/shared/ui/theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -106,7 +108,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: var(--ui-bg);
 }
 
 /* ─── Skeleton shimmer animation ────────────────────────────────────────── */
@@ -118,12 +120,12 @@ body {
 /* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+::-webkit-scrollbar-thumb { background-color: var(--ui-border-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--ui-text-dim); }
 
 /* ─── Focus ring ─────────────────────────────────────────────────────────── */
 *:focus-visible {
-  outline: 2px solid #0d9488;
+  outline: 2px solid var(--ui-brand-primary);
   outline-offset: 2px;
 }
 
@@ -131,8 +133,8 @@ body {
 
 /* Toolbar buttons */
 .fc .fc-button-primary {
-  background-color: #0d9488 !important;
-  border-color: #0d9488 !important;
+  background-color: var(--ui-brand-primary) !important;
+  border-color: var(--ui-brand-primary) !important;
   font-size: 0.8125rem;
   font-weight: 500;
   border-radius: 0.5rem !important;
@@ -159,11 +161,11 @@ body {
 }
 
 /* Today highlight */
-.fc .fc-day-today { background: rgba(13, 148, 136, 0.05) !important; }
+.fc .fc-day-today { background: rgba(20, 184, 166, 0.05) !important; }
 
 /* Today's date number in month/grid views */
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background-color: #0d9488;
+  background-color: var(--ui-brand-primary);
   color: white;
   border-radius: 50%;
   min-width: 1.5rem;
@@ -177,25 +179,25 @@ body {
 }
 
 /* Now indicator */
-.fc .fc-timegrid-now-indicator-line { border-color: #0d9488; }
+.fc .fc-timegrid-now-indicator-line { border-color: var(--ui-brand-primary); }
 .fc .fc-timegrid-now-indicator-arrow {
-  border-top-color: #0d9488;
-  border-bottom-color: #0d9488;
+  border-top-color: var(--ui-brand-primary);
+  border-bottom-color: var(--ui-brand-primary);
 }
 
 /* Grid borders — very subtle */
-.fc td, .fc th { border-color: #f1f5f9 !important; }
-.fc .fc-scrollgrid { border-color: #e2e8f0 !important; }
+.fc td, .fc th { border-color: var(--ui-surface-2) !important; }
+.fc .fc-scrollgrid { border-color: var(--ui-border-2) !important; }
 
 /* Slot time labels */
-.fc .fc-timegrid-slot-label { font-size: 0.6875rem; color: #94a3b8; }
+.fc .fc-timegrid-slot-label { font-size: 0.6875rem; color: var(--ui-text-muted); }
 
 /* Column headers */
-.fc .fc-col-header-cell { background: #f8fafc; }
+.fc .fc-col-header-cell { background: var(--ui-bg); }
 .fc .fc-col-header-cell-cushion {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: #475569;
+  color: var(--ui-text-muted);
   padding: 6px 4px;
   text-decoration: none !important;
 }
@@ -210,5 +212,5 @@ body {
 .fc-event .fc-event-time { font-size: 0.6875rem !important; opacity: 0.85; }
 
 /* Toolbar title */
-.fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; color: #0f172a; }
+.fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; color: var(--ui-text-bright); }
 .fc .fc-toolbar { gap: 0.5rem; flex-wrap: wrap; }

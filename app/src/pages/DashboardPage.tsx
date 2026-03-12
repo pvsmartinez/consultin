@@ -186,8 +186,8 @@ function AppointmentPanel({
             {roomName && (
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: roomColor ? `${roomColor}20` : '#f1f5f9' }}>
-                  <DoorOpen size={15} style={{ color: roomColor ?? '#64748b' }} />
+                  style={{ backgroundColor: roomColor ? `${roomColor}20` : 'var(--ui-surface-2)' }}>
+                  <DoorOpen size={15} style={{ color: roomColor ?? 'var(--ui-text-muted)' }} />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Sala</p>
@@ -515,7 +515,7 @@ function ClinicDashboard() {
 
                     {/* Divider colorido de sala */}
                     <div className="w-1 self-stretch rounded-full flex-shrink-0"
-                      style={{ backgroundColor: roomColor ?? '#e2e8f0' }} />
+                      style={{ backgroundColor: roomColor ?? 'var(--ui-border-2)' }} />
 
                     {/* Info principal */}
                     <div className="flex-1 min-w-0">

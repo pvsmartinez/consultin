@@ -71,15 +71,15 @@ export default function LoginPage() {
       redirectTo={window.location.origin}
       footer={
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+          <p style={{ fontSize: 12, color: 'var(--ui-text-muted)', margin: 0 }}>
             É uma clínica?{' '}
-            <Link to="/cadastro-clinica" style={{ color: '#2563eb', fontWeight: 500, textDecoration: 'none' }}>
+            <Link to="/cadastro-clinica" style={{ color: 'var(--ui-info-text)', fontWeight: 500, textDecoration: 'none' }}>
               Solicite seu acesso
             </Link>
           </p>
           <Link
             to="/"
-            style={{ fontSize: 12, color: '#9ca3af', display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', textDecoration: 'none' }}
+            style={{ fontSize: 12, color: 'var(--ui-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', textDecoration: 'none' }}
           >
             <ArrowLeft size={12} />
             Início

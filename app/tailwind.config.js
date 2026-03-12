@@ -11,6 +11,8 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
+        // CSS-var brand alias — use `brand` / `bg-brand` / `text-brand` in components
+        brand: { DEFAULT: 'var(--ui-brand-primary)' },
         // Remap brand primary: teal replaces generic blue across all components
         blue: {
           50:  '#f0fdfa',
