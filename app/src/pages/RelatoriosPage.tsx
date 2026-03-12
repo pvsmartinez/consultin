@@ -11,7 +11,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { useReportData } from '../hooks/useRelatorios'
 import { useProfessionals } from '../hooks/useProfessionals'
-import { formatBRL } from '../utils/currency'
+import { formatBRL, formatBRLReais } from '../utils/currency'
 import { APPOINTMENT_STATUS_LABELS, SEX_LABELS } from '../types'
 import {
   exportAppointmentsCSV,
@@ -326,7 +326,7 @@ export default function RelatoriosPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number | undefined) => v != null ? `R$ ${v.toFixed(2)}` : ''} />
+                <Tooltip formatter={(v: number | undefined) => v != null ? formatBRLReais(v) : ''} />
                 <Line type="monotone" dataKey="faturamento" stroke="#0d9488" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>

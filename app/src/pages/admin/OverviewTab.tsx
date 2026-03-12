@@ -1,5 +1,6 @@
 import { ArrowClockwise } from '@phosphor-icons/react'
 import { useAdminOverview } from '../../hooks/useAdmin'
+import { formatNumber } from '../../utils/currency'
 
 export default function OverviewTab() {
   const { data: ov, isLoading, refetch, isFetching } = useAdminOverview()
@@ -29,7 +30,7 @@ export default function OverviewTab() {
             ].map(k => (
               <div key={k.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                 <p className="text-xs text-gray-500 mb-1">{k.label}</p>
-                <p className={`text-2xl font-bold ${k.color}`}>{k.value.toLocaleString('pt-BR')}</p>
+                <p className={`text-2xl font-bold ${k.color}`}>{formatNumber(k.value)}</p>
               </div>
             ))}
           </div>

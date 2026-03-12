@@ -1,31 +1,9 @@
 /**
  * Utility to export arrays of objects as CSV files.
- * No external dependencies — uses native browser APIs.
+ * Generic primitives (arrayToCsv, downloadFile, parseCSV) live in @pvsmartinez/shared.
  */
-
-/** Convert a 2D array of strings to a CSV string (RFC 4180). */
-function arrayToCsv(headers: string[], rows: string[][]): string {
-  const escape = (v: string) => {
-    if (v.includes(',') || v.includes('"') || v.includes('\n')) {
-      return `"${v.replace(/"/g, '""')}"`
-    }
-    return v
-  }
-  const lines = [headers, ...rows].map(row => row.map(escape).join(','))
-  return lines.join('\r\n')
-}
-
-/** Trigger a browser download of the given content as a file. */
-function downloadFile(content: string, filename: string, mime = 'text/csv;charset=utf-8;') {
-  const BOM = '\uFEFF' // UTF-8 BOM so Excel opens correctly
-  const blob = new Blob([BOM + content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
+import { arrayToCsv, downloadFile } from '@pvsmartinez/shared'
+export { parseCSV } from '@pvsmartinez/shared'
 
 // ─── Appointment export ──────────────────────────────────────────────────────
 
@@ -109,37 +87,4 @@ export function exportFinanceCSV(rows: FinanceExportRow[], filename: string) {
   const headers = ['Data', 'Paciente', 'Profissional', 'Valor cobrado', 'Valor pago', 'Pago em', 'Status']
   const body = rows.map(r => [r.date, r.patient, r.professional, r.chargeAmount, r.paidAmount, r.paidAt, r.status])
   downloadFile(arrayToCsv(headers, body), filename)
-}
-
-// ─── CSV parse (for import) ──────────────────────────────────────────────────
-
-/** Parse a CSV string into { headers, rows }. Handles quoted fields. */
-export function parseCSV(text: string): { headers: string[]; rows: string[][] } {
-  // Normalize line endings
-  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim() !== '')
-
-  const parseRow = (line: string): string[] => {
-    const result: string[] = []
-    let cur = ''
-    let inQuote = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (inQuote) {
-        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++ }
-        else if (ch === '"') { inQuote = false }
-        else { cur += ch }
-      } else {
-        if (ch === '"') { inQuote = true }
-        else if (ch === ',') { result.push(cur.trim()); cur = '' }
-        else { cur += ch }
-      }
-    }
-    result.push(cur.trim())
-    return result
-  }
-
-  if (lines.length === 0) return { headers: [], rows: [] }
-  const headers = parseRow(lines[0])
-  const rows = lines.slice(1).map(parseRow)
-  return { headers, rows }
 }
