@@ -10,11 +10,18 @@ import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { useClinic } from '../hooks/useClinic'
 import { useAvailabilitySlots } from '../hooks/useAvailabilitySlots'
+import { useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useAppointmentMutations } from '../hooks/useAppointmentsMutations'
 import { useMyPatient } from '../hooks/usePatients'
 import { useServiceTypes } from '../hooks/useServiceTypes'
 import { formatBRL } from '../utils/currency'
+
+type BookedRange = {
+  professionalId: string
+  startsMs: number
+  endsMs: number
+}
 
 export default function AgendarConsultaPage() {
   const navigate = useNavigate()
@@ -39,81 +46,147 @@ export default function AgendarConsultaPage() {
   const [saving,              setSaving]               = useState(false)
   const [confirmed, setConfirmed] = useState<{ profName: string; date: string; time: string; serviceName?: string } | null>(null)
 
-  // When professional selection is disabled, default to first professional
-  const autoProf = !allowProfSelection ? professionals[0]?.id ?? '' : ''
-  const effectiveProf = allowProfSelection ? selectedProf : autoProf
-
   const selectedService = activeServiceTypes.find(s => s.id === selectedServiceType) ?? null
   // Use service type duration if selected, otherwise use clinic default
   const effectiveSlotDuration = selectedService?.durationMinutes ?? slotDuration
+  const bookingQueryProfId = allowProfSelection ? selectedProf : '__auto__'
 
   const minDate = format(addDays(new Date(), 1), 'yyyy-MM-dd')
   const maxDate = format(addDays(new Date(), 90), 'yyyy-MM-dd')
 
-  // Booked appointments for selected prof+date — prevents double-booking occupied slots
+  // Booked appointments for the selected day.
+  // When the patient chooses the professional, fetch only that professional's bookings.
+  // Otherwise, fetch bookings for all active professionals so we can auto-assign one
+  // who is genuinely free for the chosen slot.
   const { data: bookedRanges = [], isLoading: loadingBooked } = useQuery({
-    queryKey: QK.booking.slots(effectiveProf, selectedDate),
-    enabled: !!effectiveProf && !!selectedDate,
-    queryFn: async () => {
+    queryKey: QK.booking.slots(bookingQueryProfId, selectedDate),
+    enabled: !!selectedDate && (allowProfSelection ? !!selectedProf : professionals.length > 0),
+    queryFn: async (): Promise<BookedRange[]> => {
       const TZ = 'America/Sao_Paulo'
       const dayStartUTC = fromZonedTime(`${selectedDate}T00:00:00`, TZ).toISOString()
       const dayEndUTC   = fromZonedTime(`${selectedDate}T23:59:59`, TZ).toISOString()
-      const { data } = await supabase
+      let query = supabase
         .from('appointments')
-        .select('starts_at, ends_at')
-        .eq('professional_id', effectiveProf)
+        .select('professional_id, starts_at, ends_at')
         .gte('starts_at', dayStartUTC)
         .lte('starts_at', dayEndUTC)
         .neq('status', 'cancelled')
+      if (allowProfSelection) {
+        query = query.eq('professional_id', selectedProf)
+      } else {
+        query = query.in('professional_id', professionals.map(p => p.id))
+      }
+      const { data, error } = await query
+      if (error) throw error
       return (data ?? []).map(a => ({
+        professionalId: a.professional_id as string,
         startsMs: parseISO(a.starts_at as string).getTime(),
         endsMs:   parseISO(a.ends_at   as string).getTime(),
       }))
     },
   })
 
-  // Availability slots for the effective professional
-  const { data: availSlots = [] } = useAvailabilitySlots(effectiveProf)
+  // Availability slots for the explicitly selected professional.
+  const { data: selectedProfAvailSlots = [] } = useAvailabilitySlots(selectedProf)
+  // Clinic-wide availability for all professionals, used when the clinic auto-assigns.
+  const { data: clinicAvailSlots = [] } = useClinicAvailabilitySlots()
 
-  // Derive available times from professional's weekly schedule for selectedDate
-  const availableTimes = useMemo(() => {
-    if (!selectedDate || !effectiveProf || availSlots.length === 0) return []
-    const dt = new Date(`${selectedDate}T12:00:00`)
-    const weekday = dt.getDay() // 0=Sun…6=Sat
-    const weekNum = getISOWeek(dt)
-    const dateParity = weekNum % 2 === 0 ? 'even' : 'odd'
-    const daySlots = availSlots.filter(
-      s => s.weekday === weekday && s.active && (!s.weekParity || s.weekParity === dateParity)
-    )
-    if (daySlots.length === 0) return []
-    const times: string[] = []
-    for (const slot of daySlots) {
-      const [sh, sm] = slot.startTime.split(':').map(Number)
-      const [eh, em] = slot.endTime.split(':').map(Number)
-      let cur = sh * 60 + sm
-      const end = eh * 60 + em
-      while (cur + effectiveSlotDuration <= end) {
-        times.push(
-          `${String(Math.floor(cur / 60)).padStart(2, '0')}:${String(cur % 60).padStart(2, '0')}`
-        )
-        cur += effectiveSlotDuration
-      }
-    }
-    return times
-  }, [selectedDate, effectiveProf, availSlots, effectiveSlotDuration])
-
-  // Returns true if a slot time string (HH:mm) overlaps with any booked appointment.
-  // Checks the FULL interval [slotStart, slotStart + slotDuration) — not just the start time.
-  function isSlotBooked(timeHHMM: string): boolean {
+  function isSlotBooked(professionalId: string, timeHHMM: string): boolean {
     if (bookedRanges.length === 0 || !selectedDate) return false
     const TZ = 'America/Sao_Paulo'
     const slotStartMs = fromZonedTime(`${selectedDate}T${timeHHMM}:00`, TZ).getTime()
     const slotEndMs   = slotStartMs + effectiveSlotDuration * 60_000
-    return bookedRanges.some(r => r.startsMs < slotEndMs && r.endsMs > slotStartMs)
+    return bookedRanges.some(r => (
+      r.professionalId === professionalId
+      && r.startsMs < slotEndMs
+      && r.endsMs > slotStartMs
+    ))
   }
 
-  // Clear time choice whenever the effective prof, date, or service type changes
-  useEffect(() => { setSelectedTime('') }, [effectiveProf, selectedDate, selectedServiceType])
+  const availableProfessionalsByTime = useMemo(() => {
+    const availableByTime = new Map<string, string[]>()
+    if (!selectedDate || professionals.length === 0) return availableByTime
+
+    const dt = new Date(`${selectedDate}T12:00:00`)
+    const weekday = dt.getDay() // 0=Sun…6=Sat
+    const weekNum = getISOWeek(dt)
+    const dateParity = weekNum % 2 === 0 ? 'even' : 'odd'
+
+    const pushTime = (time: string, professionalId: string) => {
+      if (isSlotBooked(professionalId, time)) return
+      const current = availableByTime.get(time)
+      if (current) current.push(professionalId)
+      else availableByTime.set(time, [professionalId])
+    }
+
+    if (allowProfSelection) {
+      if (!selectedProf || selectedProfAvailSlots.length === 0) return availableByTime
+      const daySlots = selectedProfAvailSlots.filter(
+        s => s.weekday === weekday && s.active && (!s.weekParity || s.weekParity === dateParity)
+      )
+      for (const slot of daySlots) {
+        const [sh, sm] = slot.startTime.split(':').map(Number)
+        const [eh, em] = slot.endTime.split(':').map(Number)
+        let cur = sh * 60 + sm
+        const end = eh * 60 + em
+        while (cur + effectiveSlotDuration <= end) {
+          const time = `${String(Math.floor(cur / 60)).padStart(2, '0')}:${String(cur % 60).padStart(2, '0')}`
+          pushTime(time, selectedProf)
+          cur += effectiveSlotDuration
+        }
+      }
+      return availableByTime
+    }
+
+    for (const professional of professionals) {
+      const daySlots = clinicAvailSlots.filter(
+        s => s.professional_id === professional.id
+          && s.weekday === weekday
+          && s.active
+          && (!s.week_parity || s.week_parity === dateParity)
+      )
+      for (const slot of daySlots) {
+        const [sh, sm] = slot.start_time.split(':').map(Number)
+        const [eh, em] = slot.end_time.split(':').map(Number)
+        let cur = sh * 60 + sm
+        const end = eh * 60 + em
+        while (cur + effectiveSlotDuration <= end) {
+          const time = `${String(Math.floor(cur / 60)).padStart(2, '0')}:${String(cur % 60).padStart(2, '0')}`
+          pushTime(time, professional.id)
+          cur += effectiveSlotDuration
+        }
+      }
+    }
+
+    return availableByTime
+  }, [
+    selectedDate,
+    professionals,
+    allowProfSelection,
+    selectedProf,
+    selectedProfAvailSlots,
+    clinicAvailSlots,
+    effectiveSlotDuration,
+    bookedRanges,
+  ])
+
+  const effectiveProf = allowProfSelection
+    ? selectedProf
+    : (selectedTime ? availableProfessionalsByTime.get(selectedTime)?.[0] ?? '' : '')
+
+  // Derive visible time options from the available professionals map.
+  const availableTimes = useMemo(() => {
+    return Array.from(availableProfessionalsByTime.keys()).sort((a, b) => a.localeCompare(b))
+  }, [availableProfessionalsByTime])
+
+  // Clear time choice whenever the manually selected professional, date, or service changes.
+  useEffect(() => { setSelectedTime('') }, [selectedProf, selectedDate, selectedServiceType])
+
+  useEffect(() => {
+    if (selectedTime && !availableProfessionalsByTime.has(selectedTime)) {
+      setSelectedTime('')
+    }
+  }, [selectedTime, availableProfessionalsByTime])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -149,7 +222,7 @@ export default function AgendarConsultaPage() {
     }
   }
 
-  const selectedProfName   = professionals.find(p => p.id === effectiveProf)?.name ?? ''
+  const selectedProfName = professionals.find(p => p.id === effectiveProf)?.name ?? ''
 
   // ── Confirmation screen ─────────────────────────────────────────────────────
   if (confirmed) {
@@ -317,7 +390,7 @@ export default function AgendarConsultaPage() {
             <p className="text-xs text-gray-400">
               {allowProfSelection
                 ? 'Selecione o profissional e a data para ver os horários.'
-                : 'Selecione a data para ver os horários disponíveis.'}
+                : 'Selecione a data para ver os horários disponíveis entre os profissionais ativos.'}
             </p>
           ) : loadingBooked ? (
             <p className="text-xs text-gray-400">Carregando horários disponíveis...</p>
@@ -326,19 +399,15 @@ export default function AgendarConsultaPage() {
           ) : (
             <div className="grid grid-cols-5 gap-1.5">
               {availableTimes.map(t => {
-                const booked = isSlotBooked(t)
                 return (
                   <button
                     key={t}
                     type="button"
-                    disabled={booked}
                     onClick={() => setSelectedTime(t)}
                     className={`py-1.5 rounded-lg text-xs font-medium border transition ${
-                      booked
-                        ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed line-through'
-                        : selectedTime === t
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                      selectedTime === t
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
                     }`}
                   >
                     {t}
@@ -378,7 +447,9 @@ export default function AgendarConsultaPage() {
             <p className="text-xs">
               {allowProfSelection
                 ? <><span className="font-medium">{selectedProfName}</span> — </>
-                : 'Profissional será alocado automaticamente — '
+                : selectedProfName
+                  ? <><span className="font-medium">{selectedProfName}</span> — alocado automaticamente — </>
+                  : 'Profissional será alocado automaticamente pela disponibilidade — '
               }
               {format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR })} às {selectedTime}
             </p>

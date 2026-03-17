@@ -3,21 +3,27 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Trash, RepeatOnce, Warning, UserPlus } from '@phosphor-icons/react'
+import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
 import Input from '../ui/Input'
 import TextArea from '../ui/TextArea'
+import AppointmentPaymentModal from './AppointmentPaymentModal'
 import { useProfessionals } from '../../hooks/useProfessionals'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
+import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
 import { usePatients, useCreatePatient } from '../../hooks/usePatients'
+import { useClinic } from '../../hooks/useClinic'
 import { useRooms } from '../../hooks/useRooms'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useServiceTypes } from '../../hooks/useServiceTypes'
+import { useAuthContext } from '../../contexts/AuthContext'
 import {
   APPOINTMENT_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
+  PAYMENT_STATUS_LABELS,
   type Appointment,
   type AppointmentStatus,
 } from '../../types'
@@ -97,13 +103,17 @@ export default function AppointmentModal({
   initialPatientId, initialPatientName,
 }: Props) {
   const isEditing = !!appointment
+  const { hasPermission } = useAuthContext()
+  const { data: clinic } = useClinic()
   const { data: professionals = [] } = useProfessionals()
   const { create, update, cancel } = useAppointmentMutations()
+  const { data: payments = [] } = useAppointmentPayments(appointment?.id)
   const { data: rooms = [] } = useRooms()
   const { data: serviceTypes = [] } = useServiceTypes()
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [showExtras, setShowExtras]       = useState(false)
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [returnPreset, setReturnPreset]   = useState<ReturnPreset>('none')
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null)
@@ -121,6 +131,9 @@ export default function AppointmentModal({
   const recurrenceType  = watch('recurrenceType')
   const recurrenceCount = watch('recurrenceCount')
   const durationMinVal  = watch('durationMin')
+  const latestPayment = payments[0] ?? null
+  const canManagePayments = isEditing && !!appointment && clinic?.paymentsEnabled && hasPermission('canViewFinancial')
+  const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
 
   const activeServiceTypes = serviceTypes.filter(s => s.active)
 
@@ -651,6 +664,54 @@ export default function AppointmentModal({
               </div>
             )}
 
+            {canManagePayments && appointment && (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                      <CurrencyCircleDollar size={15} className="text-indigo-600" />
+                      Pagamento da consulta
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {latestPayment
+                        ? 'A cobrança desta consulta já foi iniciada e pode ser acompanhada aqui.'
+                        : 'Abra a cobrança sem sair da consulta para reduzir troca de tela com o Financeiro.'}
+                    </p>
+                  </div>
+                  {latestPayment && (
+                    <span className={`text-[11px] font-medium px-2 py-1 rounded-full ${PAYMENT_STATUS_COLORS[latestPayment.status]}`}>
+                      {PAYMENT_STATUS_LABELS[latestPayment.status]}
+                    </span>
+                  )}
+                </div>
+
+                {patientNeedsCpfForCharge && (
+                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                    <Warning size={14} className="shrink-0 mt-0.5" />
+                    <span>
+                      O paciente ainda não tem CPF cadastrado. A cobrança via Asaas só poderá ser gerada depois de completar esse dado no cadastro.
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+                  <span>
+                    {latestPayment
+                      ? 'Você pode atualizar o status, ver o QR PIX ou seguir com o repasse ao profissional.'
+                      : 'Use este atalho quando quiser cobrar logo após agendar ou editar a consulta.'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModalOpen(true)}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    <CurrencyCircleDollar size={14} />
+                    {latestPayment ? 'Abrir cobrança' : 'Cobrar consulta'}
+                  </button>
+                </div>
+              </div>
+            )}
+
               </div>
             )}
 
@@ -689,6 +750,13 @@ export default function AppointmentModal({
           </div>{/* end scrollable body */}
         </Dialog.Content>
       </Dialog.Portal>
+      {paymentModalOpen && appointment && (
+        <AppointmentPaymentModal
+          appointment={appointment}
+          existingPayment={latestPayment}
+          onClose={() => setPaymentModalOpen(false)}
+        />
+      )}
     </Dialog.Root>
   )
 }

@@ -72,6 +72,10 @@ coverage/
 *.sqlite
 *.db
 
+# Tauri
+app/src-tauri/target/
+app/src-tauri/gen/
+
 # Uploads / Assets gerados
 uploads/
 public/uploads/
