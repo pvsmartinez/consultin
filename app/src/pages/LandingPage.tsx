@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Seo } from '../components/seo/Seo'
+import { trackPublicEvent } from '../lib/publicAnalytics'
+import { SEO_DEFAULT_IMAGE, SEO_SITE_URL } from '../lib/seo'
 import {
   Stethoscope, CalendarBlank, Users, CurrencyDollar,
   ChartLine, WhatsappLogo, Heartbeat, Syringe,
@@ -7,6 +10,95 @@ import {
   Sparkle, ShieldCheck, Lightning, Star,
   Buildings, UserCircle, Hospital,
 } from '@phosphor-icons/react'
+
+function trackLandingClick(event: MouseEvent<HTMLElement>) {
+  if (!(event.target instanceof HTMLElement)) return
+
+  const anchor = event.target.closest<HTMLElement>('[data-analytics-event]')
+
+  if (!anchor) return
+
+  const eventName = anchor.dataset.analyticsEvent
+  const placement = anchor.dataset.analyticsPlacement ?? null
+
+  if (eventName === 'login_cta_click' || eventName === 'signup_cta_click') {
+    trackPublicEvent(eventName, {
+      placement,
+    })
+  }
+}
+
+const homeFaqs = [
+  {
+    question: 'O Consultin serve para clínicas pequenas?',
+    answer: 'Sim. O produto foi pensado para clínicas e consultórios brasileiros que precisam organizar agenda, pacientes, financeiro e equipe sem implantar um sistema pesado.',
+  },
+  {
+    question: 'O sistema ajuda a reduzir faltas?',
+    answer: 'Sim. O Consultin centraliza agenda e comunicação com suporte a confirmações e lembretes, o que ajuda a diminuir ausências e retrabalho da recepção.',
+  },
+  {
+    question: 'Dá para usar em diferentes especialidades?',
+    answer: 'Sim. O fluxo foi desenhado para odontologia, psicologia, estética, fisioterapia, clínica geral e outras operações de atendimento recorrente.',
+  },
+  {
+    question: 'Preciso instalar alguma coisa?',
+    answer: 'Não. A operação principal roda no navegador, com acesso simples para gestores, recepção e profissionais da clínica.',
+  },
+]
+
+const homeStructuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      name: 'Consultin',
+      url: SEO_SITE_URL,
+      image: SEO_DEFAULT_IMAGE,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      inLanguage: 'pt-BR',
+      areaServed: 'BR',
+      description: 'Software de gestão para clínicas e consultórios no Brasil com agenda, prontuário, financeiro e atendimento em um só lugar.',
+      keywords: 'software para clínicas, sistema para consultório, agenda médica online, prontuário eletrônico, gestão de clínicas',
+      offers: {
+        '@type': 'Offer',
+        availability: 'https://schema.org/InStock',
+        priceCurrency: 'BRL',
+        url: `${SEO_SITE_URL}/cadastro-clinica`,
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'Consultin',
+        url: SEO_SITE_URL,
+      },
+    },
+    {
+      '@type': 'Organization',
+      name: 'Consultin',
+      url: SEO_SITE_URL,
+      logo: SEO_DEFAULT_IMAGE,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'suporte@consultin.com.br',
+        areaServed: 'BR',
+        availableLanguage: 'pt-BR',
+      },
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: homeFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer,
+        },
+      })),
+    },
+  ],
+}
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
@@ -33,10 +125,14 @@ function Navbar() {
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-3">
           <Link to="/login"
+            data-analytics-event="login_cta_click"
+            data-analytics-placement="navbar-desktop"
             className="text-sm text-gray-600 hover:text-blue-600 font-medium transition px-3 py-2">
             Entrar
           </Link>
           <Link to="/cadastro-clinica"
+            data-analytics-event="signup_cta_click"
+            data-analytics-placement="navbar-desktop"
             className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition shadow-sm">
             Cadastrar clínica
           </Link>
@@ -63,8 +159,8 @@ function Navbar() {
           <a href="#como-funciona" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Como funciona</a>
           <a href="#especialidades" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Especialidades</a>
           <div className="flex gap-2 pt-2">
-            <Link to="/login" className="flex-1 text-sm text-center border border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg">Entrar</Link>
-            <Link to="/cadastro-clinica" className="flex-1 text-sm text-center bg-blue-600 text-white font-medium px-4 py-2.5 rounded-lg">Cadastrar</Link>
+            <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center border border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg">Entrar</Link>
+            <Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center bg-blue-600 text-white font-medium px-4 py-2.5 rounded-lg">Cadastrar</Link>
           </div>
         </div>
       )}
@@ -102,11 +198,15 @@ function Hero() {
             {/* Main CTAs */}
             <div className="flex flex-wrap gap-3 mb-8">
               <Link to="/cadastro-clinica"
+                data-analytics-event="signup_cta_click"
+                data-analytics-placement="hero-primary"
                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg shadow-blue-200 transition text-sm">
                 Começar gratuitamente
                 <ArrowRight size={16} weight="bold" />
               </Link>
               <Link to="/login"
+                data-analytics-event="login_cta_click"
+                data-analytics-placement="hero-secondary"
                 className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 font-medium px-6 py-3.5 rounded-xl transition text-sm">
                 Já tenho conta
               </Link>
@@ -115,15 +215,15 @@ function Hero() {
             {/* Profile type selector */}
             <div className="flex flex-wrap gap-3">
               <p className="w-full text-xs font-medium text-gray-400 uppercase tracking-wider">Quem você é?</p>
-              <Link to="/cadastro-clinica" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
+              <Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="persona-manager" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
                 <Buildings size={18} className="text-blue-500" />
                 Sou gestor de clínica
               </Link>
-              <Link to="/login" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 text-gray-600 hover:text-indigo-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
+              <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="persona-professional" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 text-gray-600 hover:text-indigo-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
                 <UserCircle size={18} className="text-indigo-500" />
                 Sou profissional de saúde
               </Link>
-              <Link to="/login" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-gray-600 hover:text-teal-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
+              <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="persona-patient" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-gray-600 hover:text-teal-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
                 <Heartbeat size={18} className="text-teal-500" />
                 Sou paciente
               </Link>
@@ -442,6 +542,94 @@ function TrustBar() {
   )
 }
 
+function SearchIntentSection() {
+  const pages = [
+    {
+      href: '/sistema-para-clinicas',
+      title: 'Sistema para clínicas',
+      description: 'Página focada em gestão, operação e crescimento de clínicas brasileiras.',
+    },
+    {
+      href: '/software-para-consultorios',
+      title: 'Software para consultórios',
+      description: 'Conteúdo direcionado a consultórios enxutos que precisam de mais controle sem burocracia.',
+    },
+    {
+      href: '/agenda-medica-online',
+      title: 'Agenda médica online',
+      description: 'Fluxo de agendamento, confirmação e produtividade da recepção em uma página dedicada.',
+    },
+  ]
+
+  return (
+    <section className="py-20 bg-slate-50 border-y border-slate-100">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-2xl mb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600 mb-3">
+            Guias públicos
+          </p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+            Páginas feitas para quem está pesquisando solução para clínica no Brasil
+          </h2>
+          <p className="text-gray-500 leading-relaxed">
+            Se você ainda está comparando opções, estes guias resumem os problemas mais comuns da
+            operação de clínica e mostram onde o Consultin entra na rotina.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5">
+          {pages.map((page) => (
+            <a
+              key={page.href}
+              href={page.href}
+              className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+            >
+              <p className="text-sm font-semibold text-blue-600 mb-3">Leitura recomendada</p>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-700 transition">
+                {page.title}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5">{page.description}</p>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition">
+                Abrir página
+                <ArrowRight size={16} weight="bold" />
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FAQSection() {
+  return (
+    <section className="py-20 bg-white">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600 mb-3">
+            Perguntas frequentes
+          </p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+            Dúvidas comuns de clínicas e consultórios
+          </h2>
+          <p className="text-gray-500">
+            Respostas objetivas para quem está avaliando um software de gestão em português.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {homeFaqs.map((faq) => (
+            <article key={faq.question} className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">{faq.question}</h3>
+              <p className="text-sm leading-relaxed text-gray-600">{faq.answer}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ─── Final CTA ───────────────────────────────────────────────────────────────
 function FinalCTA() {
   return (
@@ -460,11 +648,15 @@ function FinalCTA() {
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           <Link to="/cadastro-clinica"
+            data-analytics-event="signup_cta_click"
+            data-analytics-placement="final-cta"
             className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-bold px-8 py-4 rounded-xl shadow-lg transition text-sm">
             Cadastrar minha clínica
             <ArrowRight size={16} weight="bold" />
           </Link>
           <Link to="/login"
+            data-analytics-event="login_cta_click"
+            data-analytics-placement="final-cta"
             className="inline-flex items-center gap-2 border-2 border-white/40 text-white hover:bg-white/10 font-medium px-8 py-4 rounded-xl transition text-sm">
             Fazer login
           </Link>
@@ -505,8 +697,8 @@ function Footer() {
             <div>
               <p className="text-white font-medium mb-3">Acesso</p>
               <ul className="space-y-2">
-                <li><Link to="/login" className="hover:text-white transition">Entrar</Link></li>
-                <li><Link to="/cadastro-clinica" className="hover:text-white transition">Cadastrar clínica</Link></li>
+                <li><Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="footer" className="hover:text-white transition">Entrar</Link></li>
+                <li><Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="footer" className="hover:text-white transition">Cadastrar clínica</Link></li>
               </ul>
             </div>
             <div>
@@ -530,17 +722,34 @@ function Footer() {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main>
-        <Hero />
-        <Features />
-        <HowItWorks />
-        <Specialties />
-        <TrustBar />
-        <FinalCTA />
-      </main>
-      <Footer />
-    </div>
+    <>
+      <Seo
+        title="Consultin | Software de gestão para clínicas no Brasil"
+        description="Software para clínicas e consultórios brasileiros com agenda médica, prontuário, financeiro, equipe e atendimento em um só lugar."
+        canonicalPath="/"
+        keywords={[
+          'software para clínicas',
+          'sistema para consultório',
+          'agenda médica online',
+          'gestão de clínicas',
+          'prontuário eletrônico para clínicas',
+        ]}
+        structuredData={homeStructuredData}
+      />
+      <div className="min-h-screen" onClickCapture={trackLandingClick}>
+        <Navbar />
+        <main>
+          <Hero />
+          <Features />
+          <HowItWorks />
+          <Specialties />
+          <SearchIntentSection />
+          <FAQSection />
+          <TrustBar />
+          <FinalCTA />
+        </main>
+        <Footer />
+      </div>
+    </>
   )
 }

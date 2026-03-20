@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { IMaskInput } from 'react-imask'
 import { Link } from 'react-router-dom'
 import { supabase } from '../services/supabase'
+import { trackPublicEvent } from '../lib/publicAnalytics'
+import { Seo } from '../components/seo/Seo'
 
 const schema = z.object({
   clinicName:      z.string().min(2, 'Nome da clínica obrigatório'),
@@ -42,6 +44,7 @@ export default function CadastroClinicaPage() {
 
       if (error) throw new Error(error.message)
 
+      trackPublicEvent('clinic_signup_submit')
       setSubmitted(true)
     } catch (e: unknown) {
       setServerError((e as Error).message ?? 'Erro ao enviar solicitação. Tente novamente.')
@@ -50,124 +53,150 @@ export default function CadastroClinicaPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center space-y-4">
-          <CheckCircle size={48} className="text-green-500 mx-auto" />
-          <h1 className="text-lg font-semibold text-gray-800">Solicitação enviada!</h1>
-          <p className="text-sm text-gray-500">
-            Recebemos seu cadastro e em breve você receberá um e-mail de confirmação com as instruções de acesso.
-          </p>
-          <p className="text-xs text-gray-400">
-            Dúvidas? Entre em contato pelo e-mail <span className="font-medium">suporte@consultin.app</span>
-          </p>
-          <Link to="/" className="block text-sm text-blue-600 hover:underline mt-2">
-            Voltar para o login
-          </Link>
+      <>
+        <Seo
+          title="Cadastro de clínica | Consultin"
+          description="Solicite o acesso da sua clínica ao Consultin e centralize agenda, pacientes, financeiro e WhatsApp em uma única operação."
+          canonicalPath="/cadastro-clinica"
+          keywords={[
+            'cadastro de clínica',
+            'software para clínicas',
+            'sistema para consultório',
+            'gestão de clínica',
+          ]}
+        />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center space-y-4">
+            <CheckCircle size={48} className="text-green-500 mx-auto" />
+            <h1 className="text-lg font-semibold text-gray-800">Solicitação enviada!</h1>
+            <p className="text-sm text-gray-500">
+              Recebemos seu cadastro e em breve você receberá um e-mail de confirmação com as instruções de acesso.
+            </p>
+            <p className="text-xs text-gray-400">
+              Dúvidas? Entre em contato pelo e-mail <span className="font-medium">suporte@consultin.com.br</span>
+            </p>
+            <Link to="/" className="block text-sm text-blue-600 hover:underline mt-2">
+              Voltar para o início
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-2">
-          <Stethoscope size={24} className="text-blue-600" />
-          <span className="text-lg font-semibold text-gray-800">Consultin</span>
-        </div>
-        <h1 className="text-base font-semibold text-gray-800 mb-1">Cadastre sua clínica</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          Preencha os dados abaixo. Nossa equipe revisará e entrará em contato em breve.
-        </p>
+    <>
+      <Seo
+        title="Cadastro de clínica | Consultin"
+        description="Peça acesso ao Consultin e comece a organizar agenda, pacientes, prontuário, financeiro e atendimento da sua clínica no Brasil."
+        canonicalPath="/cadastro-clinica"
+        keywords={[
+          'cadastro de clínica',
+          'software para clínicas',
+          'sistema para consultório',
+          'agenda médica online',
+        ]}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-2">
+            <Stethoscope size={24} className="text-blue-600" />
+            <span className="text-lg font-semibold text-gray-800">Consultin</span>
+          </div>
+          <h1 className="text-base font-semibold text-gray-800 mb-1">Cadastre sua clínica</h1>
+          <p className="text-sm text-gray-500 mb-6">
+            Preencha os dados abaixo. Nossa equipe revisará e entrará em contato em breve.
+          </p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Clinic name */}
-          <Field label="Nome da clínica *" error={errors.clinicName?.message}>
-            <input
-              {...register('clinicName')}
-              placeholder="Ex: Clínica Saúde & Vida"
-              className={inputClass(!!errors.clinicName)}
-            />
-          </Field>
-
-          {/* CNPJ */}
-          <Field label="CNPJ">
-            <Controller control={control} name="cnpj" render={({ field }) => (
-              <IMaskInput
-                mask="00.000.000/0000-00"
-                value={field.value ?? ''}
-                onAccept={(val: string) => field.onChange(val)}
-                placeholder="00.000.000/0001-00"
-                className={inputClass(false)}
-              />
-            )} />
-          </Field>
-
-          {/* Email + Phone (2 cols) */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="E-mail *" error={errors.email?.message} className="col-span-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Clinic name */}
+            <Field label="Nome da clínica *" error={errors.clinicName?.message}>
               <input
-                {...register('email')}
-                type="email"
-                placeholder="contato@suaclinica.com"
-                className={inputClass(!!errors.email)}
+                {...register('clinicName')}
+                placeholder="Ex: Clínica Saúde & Vida"
+                className={inputClass(!!errors.clinicName)}
               />
             </Field>
-            <Field label="Telefone" className="col-span-2">
-              <Controller control={control} name="phone" render={({ field }) => (
+
+            {/* CNPJ */}
+            <Field label="CNPJ">
+              <Controller control={control} name="cnpj" render={({ field }) => (
                 <IMaskInput
-                  mask={[{ mask: '(00) 0000-0000' }, { mask: '(00) 00000-0000' }]}
+                  mask="00.000.000/0000-00"
                   value={field.value ?? ''}
                   onAccept={(val: string) => field.onChange(val)}
-                  placeholder="(11) 99999-9999"
+                  placeholder="00.000.000/0001-00"
                   className={inputClass(false)}
                 />
               )} />
             </Field>
-          </div>
 
-          {/* Responsible name */}
-          <Field label="Seu nome completo *" error={errors.responsibleName?.message}>
-            <input
-              {...register('responsibleName')}
-              placeholder="Nome do responsável pela clínica"
-              className={inputClass(!!errors.responsibleName)}
-            />
-          </Field>
+            {/* Email + Phone (2 cols) */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="E-mail *" error={errors.email?.message} className="col-span-2">
+                <input
+                  {...register('email')}
+                  type="email"
+                  placeholder="contato@suaclinica.com"
+                  className={inputClass(!!errors.email)}
+                />
+              </Field>
+              <Field label="Telefone" className="col-span-2">
+                <Controller control={control} name="phone" render={({ field }) => (
+                  <IMaskInput
+                    mask={[{ mask: '(00) 0000-0000' }, { mask: '(00) 00000-0000' }]}
+                    value={field.value ?? ''}
+                    onAccept={(val: string) => field.onChange(val)}
+                    placeholder="(11) 99999-9999"
+                    className={inputClass(false)}
+                  />
+                )} />
+              </Field>
+            </div>
 
-          {/* Message */}
-          <Field label="Mensagem (opcional)">
-            <textarea
-              {...register('message')}
-              rows={3}
-              placeholder="Conte um pouco sobre sua clínica, especialidade, número de profissionais…"
-              className={`${inputClass(false)} resize-none`}
-            />
-          </Field>
+            {/* Responsible name */}
+            <Field label="Seu nome completo *" error={errors.responsibleName?.message}>
+              <input
+                {...register('responsibleName')}
+                placeholder="Nome do responsável pela clínica"
+                className={inputClass(!!errors.responsibleName)}
+              />
+            </Field>
 
-          {serverError && (
-            <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {serverError}
-            </p>
-          )}
+            {/* Message */}
+            <Field label="Mensagem (opcional)">
+              <textarea
+                {...register('message')}
+                rows={3}
+                placeholder="Conte um pouco sobre sua clínica, especialidade, número de profissionais..."
+                className={`${inputClass(false)} resize-none`}
+              />
+            </Field>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
-            {isSubmitting ? 'Enviando solicitação…' : 'Enviar solicitação'}
-          </button>
-        </form>
+            {serverError && (
+              <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {serverError}
+              </p>
+            )}
 
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Já tem acesso?{' '}
-          <Link to="/" className="text-blue-600 hover:underline font-medium">
-            Fazer login
-          </Link>
-        </p>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
+              {isSubmitting ? 'Enviando solicitação...' : 'Enviar solicitação'}
+            </button>
+          </form>
+
+          <p className="mt-4 text-center text-sm text-gray-500">
+            Já tem acesso?{' '}
+            <Link to="/" className="text-blue-600 hover:underline font-medium">
+              Fazer login
+            </Link>
+          </p>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

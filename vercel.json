@@ -3,6 +3,18 @@
   "outputDirectory": "app/dist",
   "rewrites": [
     {
+      "source": "/sistema-para-clinicas",
+      "destination": "/sistema-para-clinicas.html"
+    },
+    {
+      "source": "/software-para-consultorios",
+      "destination": "/software-para-consultorios.html"
+    },
+    {
+      "source": "/agenda-medica-online",
+      "destination": "/agenda-medica-online.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

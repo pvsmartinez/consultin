@@ -33,8 +33,10 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
+          supabase functions deploy admin-stats --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy admin-users --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy send-clinic-invite --project-ref nxztzehgnkdmluogxehi
+          supabase functions deploy track-public-analytics --project-ref nxztzehgnkdmluogxehi
 
   # Vercel deploys automatically via GitHub integration on the same push.
   # No explicit step needed — it runs in parallel with this job.

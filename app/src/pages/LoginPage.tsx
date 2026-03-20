@@ -2,6 +2,7 @@ import { AuthScreen } from '@pvsmartinez/shared'
 import { Stethoscope, ArrowLeft } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../services/supabase'
+import { Seo } from '../components/seo/Seo'
 
 const ConsultinLogo = () => (
   <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
@@ -53,39 +54,47 @@ const CONSULTIN_THEME = {
 
 export default function LoginPage() {
   return (
-    <AuthScreen
-      supabase={supabase}
-      brand={{
-        logo: <ConsultinLogo />,
-        name: 'Consultin',
-        subtitle: 'Acesse sua conta',
-      }}
-      theme={CONSULTIN_THEME}
-      features={{
-        google: true,
-        apple: true,
-        signUp: false,
-        forgotPassword: true,
-        forgotPasswordOtpType: 'recovery',
-      }}
-      redirectTo={window.location.origin}
-      footer={
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--ui-text-muted)', margin: 0 }}>
-            É uma clínica?{' '}
-            <Link to="/cadastro-clinica" style={{ color: 'var(--ui-info-text)', fontWeight: 500, textDecoration: 'none' }}>
-              Solicite seu acesso
+    <>
+      <Seo
+        title="Login | Consultin"
+        description="Acesse sua conta no Consultin para gerenciar agenda, pacientes, financeiro e operação da clínica."
+        canonicalPath="/login"
+        noindex
+      />
+      <AuthScreen
+        supabase={supabase}
+        brand={{
+          logo: <ConsultinLogo />,
+          name: 'Consultin',
+          subtitle: 'Acesse sua conta',
+        }}
+        theme={CONSULTIN_THEME}
+        features={{
+          google: true,
+          apple: true,
+          signUp: false,
+          forgotPassword: true,
+          forgotPasswordOtpType: 'recovery',
+        }}
+        redirectTo={window.location.origin}
+        footer={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: 'var(--ui-text-muted)', margin: 0 }}>
+              É uma clínica?{' '}
+              <Link to="/cadastro-clinica" style={{ color: 'var(--ui-info-text)', fontWeight: 500, textDecoration: 'none' }}>
+                Solicite seu acesso
+              </Link>
+            </p>
+            <Link
+              to="/"
+              style={{ fontSize: 12, color: 'var(--ui-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', textDecoration: 'none' }}
+            >
+              <ArrowLeft size={12} />
+              Início
             </Link>
-          </p>
-          <Link
-            to="/"
-            style={{ fontSize: 12, color: 'var(--ui-text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'center', textDecoration: 'none' }}
-          >
-            <ArrowLeft size={12} />
-            Início
-          </Link>
-        </div>
-      }
-    />
+          </div>
+        }
+      />
+    </>
   )
 }
