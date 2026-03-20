@@ -1,7 +1,66 @@
 {
   "buildCommand": "cd app && npm install && npm run build",
   "outputDirectory": "app/dist",
+  "redirects": [
+    {
+      "source": "/clinica-odontologica/",
+      "destination": "/clinica-odontologica",
+      "permanent": true
+    },
+    {
+      "source": "/clinica-de-psicologia/",
+      "destination": "/clinica-de-psicologia",
+      "permanent": true
+    },
+    {
+      "source": "/clinica-de-estetica/",
+      "destination": "/clinica-de-estetica",
+      "permanent": true
+    },
+    {
+      "source": "/clinica-de-fisioterapia/",
+      "destination": "/clinica-de-fisioterapia",
+      "permanent": true
+    },
+    {
+      "source": "/sistema-para-clinicas/",
+      "destination": "/sistema-para-clinicas",
+      "permanent": true
+    },
+    {
+      "source": "/software-para-consultorios/",
+      "destination": "/software-para-consultorios",
+      "permanent": true
+    },
+    {
+      "source": "/agenda-medica-online/",
+      "destination": "/agenda-medica-online",
+      "permanent": true
+    },
+    {
+      "source": "/login/",
+      "destination": "/login",
+      "permanent": true
+    },
+    {
+      "source": "/cadastro-clinica/",
+      "destination": "/cadastro-clinica",
+      "permanent": true
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/cadastro-clinica",
+      "destination": "/index.html"
+    },
     {
       "source": "/clinica-odontologica",
       "destination": "/clinica-odontologica.html"
@@ -29,10 +88,6 @@
     {
       "source": "/agenda-medica-online",
       "destination": "/agenda-medica-online.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
     }
   ]
 }
