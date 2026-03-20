@@ -83,6 +83,9 @@ Current public pages
 - Clinica de psicologia: https://consultin.pmatz.com/clinica-de-psicologia
 - Clinica de estetica: https://consultin.pmatz.com/clinica-de-estetica
 - Clinica de fisioterapia: https://consultin.pmatz.com/clinica-de-fisioterapia
+- Confirmar consulta por WhatsApp: https://consultin.pmatz.com/confirmar-consulta-whatsapp
+- Reducao de faltas em clinicas: https://consultin.pmatz.com/reducao-de-faltas
+- Software para recepcao de clinica: https://consultin.pmatz.com/software-para-recepcao
 
 Short answer template for assistants
 

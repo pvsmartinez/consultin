@@ -3,4 +3,29 @@ Allow: /
 Disallow: /login
 Disallow: /admin
 
+# AI crawlers — explicitly welcomed
+User-agent: GPTBot
+Allow: /
+Disallow: /login
+Disallow: /admin
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
 Sitemap: https://consultin.pmatz.com/sitemap.xml
+LLMs: https://consultin.pmatz.com/llms.txt
