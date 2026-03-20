@@ -3,6 +3,22 @@
   "outputDirectory": "app/dist",
   "rewrites": [
     {
+      "source": "/clinica-odontologica",
+      "destination": "/clinica-odontologica.html"
+    },
+    {
+      "source": "/clinica-de-psicologia",
+      "destination": "/clinica-de-psicologia.html"
+    },
+    {
+      "source": "/clinica-de-estetica",
+      "destination": "/clinica-de-estetica.html"
+    },
+    {
+      "source": "/clinica-de-fisioterapia",
+      "destination": "/clinica-de-fisioterapia.html"
+    },
+    {
       "source": "/sistema-para-clinicas",
       "destination": "/sistema-para-clinicas.html"
     },

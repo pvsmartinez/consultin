@@ -601,6 +601,70 @@ function SearchIntentSection() {
   )
 }
 
+function UseCaseSection() {
+  const pages = [
+    {
+      href: '/clinica-odontologica',
+      title: 'Clínica odontológica',
+      description: 'Agenda recorrente, retorno, encaixes e coordenação entre recepção, profissional e financeiro.',
+    },
+    {
+      href: '/clinica-de-psicologia',
+      title: 'Clínica de psicologia',
+      description: 'Fluxo para sessões recorrentes, agenda previsível, faltas e organização de pacientes.',
+    },
+    {
+      href: '/clinica-de-estetica',
+      title: 'Clínica de estética',
+      description: 'Operação com procedimentos, recorrência, pacotes e rotina comercial mais próxima do atendimento.',
+    },
+    {
+      href: '/clinica-de-fisioterapia',
+      title: 'Clínica de fisioterapia',
+      description: 'Visão clara de tratamentos em série, agenda da equipe e ocupação da clínica no dia a dia.',
+    },
+  ]
+
+  return (
+    <section className="py-20 bg-white border-y border-slate-100">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="max-w-2xl mb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600 mb-3">
+            Casos de uso
+          </p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+            Landings para realidades específicas de clínicas brasileiras
+          </h2>
+          <p className="text-gray-500 leading-relaxed">
+            O Consultin não serve para um único tipo de operação. Estas páginas explicam o produto
+            na linguagem de especialidades e rotinas que aparecem com frequência na busca orgânica.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
+          {pages.map((page) => (
+            <a
+              key={page.href}
+              href={page.href}
+              className="group rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm transition hover:-translate-y-1 hover:bg-white hover:shadow-xl"
+            >
+              <p className="text-sm font-semibold text-indigo-600 mb-3">Página por especialidade</p>
+              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-700 transition">
+                {page.title}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5">{page.description}</p>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 group-hover:text-indigo-700 transition">
+                Ver caso de uso
+                <ArrowRight size={16} weight="bold" />
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function FAQSection() {
   return (
     <section className="py-20 bg-white">
@@ -743,6 +807,7 @@ export default function LandingPage() {
           <Features />
           <HowItWorks />
           <Specialties />
+          <UseCaseSection />
           <SearchIntentSection />
           <FAQSection />
           <TrustBar />
