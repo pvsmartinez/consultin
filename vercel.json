@@ -46,6 +46,21 @@
       "source": "/cadastro-clinica/",
       "destination": "/cadastro-clinica",
       "permanent": true
+    },
+    {
+      "source": "/confirmar-consulta-whatsapp/",
+      "destination": "/confirmar-consulta-whatsapp",
+      "permanent": true
+    },
+    {
+      "source": "/reducao-de-faltas/",
+      "destination": "/reducao-de-faltas",
+      "permanent": true
+    },
+    {
+      "source": "/software-para-recepcao/",
+      "destination": "/software-para-recepcao",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -88,6 +103,18 @@
     {
       "source": "/agenda-medica-online",
       "destination": "/agenda-medica-online.html"
+    },
+    {
+      "source": "/confirmar-consulta-whatsapp",
+      "destination": "/confirmar-consulta-whatsapp.html"
+    },
+    {
+      "source": "/reducao-de-faltas",
+      "destination": "/reducao-de-faltas.html"
+    },
+    {
+      "source": "/software-para-recepcao",
+      "destination": "/software-para-recepcao.html"
     }
   ]
 }
