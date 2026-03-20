@@ -70,7 +70,7 @@ export default function CadastroClinicaPage() {
             <CheckCircle size={48} className="text-green-500 mx-auto" />
             <h1 className="text-lg font-semibold text-gray-800">Solicitação enviada!</h1>
             <p className="text-sm text-gray-500">
-              Recebemos seu cadastro e em breve você receberá um e-mail de confirmação com as instruções de acesso.
+              Recebemos sua solicitação e ela entrará em revisão. Se for aprovada, você receberá por e-mail o convite de acesso e as instruções para definir sua senha.
             </p>
             <p className="text-xs text-gray-400">
               Dúvidas? Entre em contato pelo e-mail <span className="font-medium">suporte@consultin.com.br</span>

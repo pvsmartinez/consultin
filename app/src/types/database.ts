@@ -412,6 +412,7 @@ export type Database = {
           anamnesis_fields: Json
           asaas_customer_id: string | null
           asaas_subscription_id: string | null
+          billing_override_enabled: boolean
           cancellation_hours: number
           city: string | null
           cnpj: string | null
@@ -456,6 +457,7 @@ export type Database = {
           anamnesis_fields?: Json
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
+          billing_override_enabled?: boolean
           cancellation_hours?: number
           city?: string | null
           cnpj?: string | null
@@ -500,6 +502,7 @@ export type Database = {
           anamnesis_fields?: Json
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
+          billing_override_enabled?: boolean
           cancellation_hours?: number
           city?: string | null
           cnpj?: string | null

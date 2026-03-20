@@ -144,6 +144,18 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
         </div>
       )}
 
+      {clinic.billingOverrideEnabled && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-indigo-200 bg-indigo-50">
+          <CreditCard size={20} className="text-indigo-600" />
+          <div>
+            <p className="text-sm font-medium text-indigo-950">Liberação manual ativa</p>
+            <p className="text-xs text-indigo-700 mt-0.5">
+              O módulo financeiro foi liberado manualmente por um super admin, independentemente da assinatura do Asaas.
+            </p>
+          </div>
+        </div>
+      )}
+
       {!clinic.paymentsEnabled && (
         <form onSubmit={handleSubmit(onActivate)} className="space-y-6">
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
@@ -256,7 +268,7 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
         </form>
       )}
 
-      {clinic.paymentsEnabled && profile?.roles.includes('admin') && (
+      {clinic.paymentsEnabled && clinic.asaasSubscriptionId && profile?.roles.includes('admin') && (
         <div className="border-t border-gray-200 pt-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">Cancelar assinatura</h3>
           <p className="text-sm text-gray-400 mb-3">

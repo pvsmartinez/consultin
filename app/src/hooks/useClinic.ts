@@ -36,6 +36,7 @@ function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record
     ...(defined(input.onboardingCompleted)    && { onboarding_completed:       input.onboardingCompleted }),
     // Billing
     ...(defined(input.paymentsEnabled)        && { payments_enabled:           input.paymentsEnabled }),
+    ...(defined(input.billingOverrideEnabled) && { billing_override_enabled:   input.billingOverrideEnabled }),
     ...(defined(input.asaasCustomerId)        && { asaas_customer_id:          input.asaasCustomerId }),
     ...(defined(input.asaasSubscriptionId)    && { asaas_subscription_id:      input.asaasSubscriptionId }),
     ...(defined(input.subscriptionStatus)     && { subscription_status:        input.subscriptionStatus }),

@@ -163,6 +163,25 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
     }
   }
 
+  async function handleBillingOverride(enable: boolean) {
+    const action = enable ? 'liberar' : 'bloquear'
+    if (!confirm(`${action[0].toUpperCase()}${action.slice(1)} manualmente o módulo financeiro de "${clinic.name}"?`)) return
+    try {
+      await updateClinic.mutateAsync({
+        id: clinic.id,
+        billingOverrideEnabled: enable,
+        ...(enable
+          ? { subscriptionStatus: clinic.subscriptionStatus ?? 'ACTIVE' }
+          : !clinic.asaasSubscriptionId
+            ? { subscriptionStatus: 'INACTIVE' as const }
+            : {}),
+      })
+      toast.success(enable ? 'Módulo financeiro liberado manualmente.' : 'Override manual removido.')
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao atualizar override do financeiro')
+    }
+  }
+
   // ── Add user form (pre-filled with this clinicId) ──────────────────────────
   const addUserForm = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
@@ -305,6 +324,46 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
               </div>
             </div>
           )}
+
+          <div className="rounded-xl border border-indigo-800/60 bg-indigo-950/30 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium text-indigo-300 uppercase tracking-wider">Assinatura e override</p>
+                <p className="text-sm text-gray-300 mt-1">
+                  Status Asaas: <span className="font-medium text-white">{clinic.subscriptionStatus ?? 'sem assinatura'}</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Módulo financeiro efetivo: {clinic.paymentsEnabled ? 'liberado' : 'bloqueado'}
+                  {clinic.billingOverrideEnabled ? ' via override manual' : ''}
+                </p>
+              </div>
+              <span className={`text-[10px] px-2 py-1 rounded-full border ${clinic.billingOverrideEnabled ? 'border-emerald-700/60 bg-emerald-900/40 text-emerald-300' : 'border-gray-700 bg-gray-800 text-gray-400'}`}>
+                {clinic.billingOverrideEnabled ? 'override ativo' : 'sem override'}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {!clinic.billingOverrideEnabled ? (
+                <button
+                  type="button"
+                  onClick={() => handleBillingOverride(true)}
+                  disabled={updateClinic.isPending}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40"
+                >
+                  Liberar financeiro manualmente
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleBillingOverride(false)}
+                  disabled={updateClinic.isPending}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-40"
+                >
+                  Remover override manual
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Delete clinic */}
           <div className="pt-2 border-t border-gray-800">

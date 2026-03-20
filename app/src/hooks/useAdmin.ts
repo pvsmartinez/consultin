@@ -355,23 +355,31 @@ export function useUpdateClinic() {
   return useMutation({
     mutationFn: async (input: {
       id: string
-      name: string
+      name?: string
       cnpj?: string
       phone?: string
       email?: string
       city?: string
       state?: string
+      paymentsEnabled?: boolean
+      billingOverrideEnabled?: boolean
+      subscriptionStatus?: 'ACTIVE' | 'OVERDUE' | 'INACTIVE' | 'EXPIRED' | null
     }) => {
+      const payload: Record<string, unknown> = {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.cnpj !== undefined ? { cnpj: input.cnpj || null } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone || null } : {}),
+        ...(input.email !== undefined ? { email: input.email || null } : {}),
+        ...(input.city !== undefined ? { city: input.city || null } : {}),
+        ...(input.state !== undefined ? { state: input.state || null } : {}),
+        ...(input.paymentsEnabled !== undefined ? { payments_enabled: input.paymentsEnabled } : {}),
+        ...(input.billingOverrideEnabled !== undefined ? { billing_override_enabled: input.billingOverrideEnabled } : {}),
+        ...(input.subscriptionStatus !== undefined ? { subscription_status: input.subscriptionStatus } : {}),
+      }
+
       const { error } = await supabase
         .from('clinics')
-        .update({
-          name:  input.name,
-          cnpj:  input.cnpj  || null,
-          phone: input.phone || null,
-          email: input.email || null,
-          city:  input.city  || null,
-          state: input.state || null,
-        })
+        .update(payload)
         .eq('id', input.id)
       if (error) throw error
     },

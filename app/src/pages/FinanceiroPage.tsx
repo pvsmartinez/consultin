@@ -12,6 +12,7 @@ import PaymentRegistrationModal from '../components/appointments/PaymentRegistra
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_VARIANTS } from '../types'
 import type { Appointment } from '../types'
 import RelatoriosPage from './RelatoriosPage'
+import { Link } from 'react-router-dom'
 
 type FinTab = 'lancamentos' | 'relatorios'
 
@@ -26,6 +27,32 @@ export default function FinanceiroPage() {
 
   const { data = [], isLoading } = useFinancial(month)
   const { data: clinic }         = useClinic()
+
+  if (clinic && !clinic.paymentsEnabled) {
+    return (
+      <div className="max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6">
+        <h1 className="text-xl font-semibold text-amber-950">Financeiro indisponível</h1>
+        <p className="mt-2 text-sm text-amber-900">
+          O módulo financeiro com cobranças e repasses pelo Asaas só fica disponível com a
+          assinatura ativa da clínica.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            to="/assinatura"
+            className="inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+          >
+            Ver assinatura
+          </Link>
+          <Link
+            to="/hoje"
+            className="inline-flex items-center rounded-lg border border-amber-300 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 transition-colors"
+          >
+            Voltar ao painel
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const totalCharged = data.reduce((s, r) => s + (r.chargeAmountCents ?? 0), 0)
   const totalReceived = data.reduce((s, r) => s + (r.paidAmountCents ?? 0), 0)

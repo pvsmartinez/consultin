@@ -18,6 +18,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL               = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_ANON_KEY          = Deno.env.get('SUPABASE_ANON_KEY')!
 const SUPABASE_SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const TELEGRAM_BOT_TOKEN         = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
+const TELEGRAM_PEDRO_CHAT_ID     = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
 // URL canônica do frontend — configurar via `supabase secrets set SITE_URL=https://seu-app.vercel.app`
 const SITE_URL = Deno.env.get('SITE_URL') ?? ''
 
@@ -36,6 +38,24 @@ function json(data: unknown, status = 200): Response {
 
 function err(msg: string, status = 400): Response {
   return json({ error: msg }, status)
+}
+
+async function notifyPedro(lines: Array<string | null>) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_PEDRO_CHAT_ID) return
+  const text = lines.filter(Boolean).join('\n')
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_PEDRO_CHAT_ID,
+        text,
+        parse_mode: 'Markdown',
+      }),
+    })
+  } catch (error) {
+    console.error('Telegram notification failed (non-fatal):', error)
+  }
 }
 
 // ─── Auth check ───────────────────────────────────────────────────────────────
@@ -82,7 +102,7 @@ serve(async (req: Request) => {
   const parts   = url.pathname.replace(/^.*\/admin-users\/?/, '').split('/').filter(Boolean)
   const auth    = await assertSuperAdmin(req)
   if (auth instanceof Response) return auth
-  const { adminClient } = auth
+  const { adminClient, callerUid } = auth
 
   // ── GET / → list users ──────────────────────────────────────────────────────
   if (req.method === 'GET' && parts.length === 0) {
@@ -317,8 +337,22 @@ serve(async (req: Request) => {
     // 4. Mark request as approved
     await adminClient
       .from('clinic_signup_requests')
-      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .update({
+        status: 'approved',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: callerUid,
+      })
       .eq('id', requestId)
+
+    await notifyPedro([
+      '✅ *Solicitação de clínica aprovada*',
+      `*Clínica:* ${signupReq.name}`,
+      `*Responsável:* ${signupReq.responsible_name}`,
+      `*E-mail:* ${signupReq.email}`,
+      '',
+      `*Clinic ID:* ${clinicId}`,
+      `*User ID:* ${invitedUserId}`,
+    ])
 
     return json({ clinicId, userId: invitedUserId })
   }
@@ -328,11 +362,29 @@ serve(async (req: Request) => {
     const { requestId } = await req.json() as { requestId: string }
     if (!requestId) return err('requestId obrigatório')
 
+    const { data: req_, error: fetchError } = await adminClient
+      .from('clinic_signup_requests')
+      .select('name, responsible_name, email')
+      .eq('id', requestId)
+      .single()
+    if (fetchError || !req_) return err(fetchError?.message ?? 'Solicitação não encontrada', 404)
+
     const { error } = await adminClient
       .from('clinic_signup_requests')
-      .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+      .update({
+        status: 'rejected',
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: callerUid,
+      })
       .eq('id', requestId)
     if (error) return err(error.message, 500)
+
+    await notifyPedro([
+      '⛔ *Solicitação de clínica rejeitada*',
+      `*Clínica:* ${req_.name as string}`,
+      `*Responsável:* ${req_.responsible_name as string}`,
+      `*E-mail:* ${req_.email as string}`,
+    ])
 
     return json({ rejected: requestId })
   }

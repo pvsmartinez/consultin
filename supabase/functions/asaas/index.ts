@@ -60,6 +60,22 @@ function err(msg: string, status = 400): Response {
   return json({ error: msg }, status)
 }
 
+function getRequestIp(req: Request): string {
+  const forwardedFor = req.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    const first = forwardedFor.split(',')[0]?.trim()
+    if (first) return first
+  }
+
+  const realIp = req.headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp
+
+  const cfIp = req.headers.get('cf-connecting-ip')?.trim()
+  if (cfIp) return cfIp
+
+  return '127.0.0.1'
+}
+
 /** Chama a API do Asaas com a key correta */
 async function asaasFetch(
   path: string,
@@ -80,13 +96,88 @@ async function asaasFetch(
 /** Valida o JWT do usuário e retorna o user_id */
 async function getAuthUser(
   authHeader: string | null,
-): Promise<{ userId: string } | null> {
+): Promise<{ userId: string; clinicId: string | null; isSuperAdmin: boolean } | null> {
   if (!authHeader) return null
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   const token = authHeader.replace('Bearer ', '')
   const { data: { user } } = await supabase.auth.getUser(token)
   if (!user) return null
-  return { userId: user.id }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase as any)
+    .from('user_profiles')
+    .select('clinic_id, is_super_admin')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  return {
+    userId: user.id,
+    clinicId: (profile?.clinic_id as string | null) ?? null,
+    isSuperAdmin: (profile?.is_super_admin as boolean) ?? false,
+  }
+}
+
+async function ensurePaymentsModuleEnabled(
+  supabase: ReturnType<typeof createClient>,
+  auth: { clinicId: string | null; isSuperAdmin: boolean },
+): Promise<Response | null> {
+  if (auth.isSuperAdmin) return null
+  if (!auth.clinicId) return err('Clínica não encontrada para o usuário autenticado', 403)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: clinic, error: clinicError } = await (supabase as any)
+    .from('clinics')
+    .select('payments_enabled, billing_override_enabled, subscription_status')
+    .eq('id', auth.clinicId)
+    .single()
+
+  if (clinicError) {
+    return err(`Erro ao validar assinatura da clínica: ${clinicError.message}`, 500)
+  }
+
+  if (!clinic?.payments_enabled && !clinic?.billing_override_enabled) {
+    const status = clinic?.subscription_status ? ` (${clinic.subscription_status})` : ''
+    return err(`Módulo financeiro indisponível para esta clínica${status}`, 403)
+  }
+
+  return null
+}
+
+async function ensureClinicAccess(
+  auth: { clinicId: string | null; isSuperAdmin: boolean },
+  clinicId: string,
+): Promise<Response | null> {
+  if (auth.isSuperAdmin) return null
+  if (!auth.clinicId || auth.clinicId !== clinicId) {
+    return err('Você não pode operar a assinatura de outra clínica', 403)
+  }
+  return null
+}
+
+async function ensureSubscriptionAccess(
+  supabase: ReturnType<typeof createClient>,
+  auth: { clinicId: string | null; isSuperAdmin: boolean },
+  subscriptionId: string,
+): Promise<Response | null> {
+  if (auth.isSuperAdmin) return null
+  if (!auth.clinicId) return err('Clínica não encontrada para o usuário autenticado', 403)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: clinic, error: clinicError } = await (supabase as any)
+    .from('clinics')
+    .select('id')
+    .eq('asaas_subscription_id', subscriptionId)
+    .maybeSingle()
+
+  if (clinicError) {
+    return err(`Erro ao validar assinatura: ${clinicError.message}`, 500)
+  }
+
+  if (!clinic || clinic.id !== auth.clinicId) {
+    return err('Você não pode acessar a assinatura de outra clínica', 403)
+  }
+
+  return null
 }
 
 // ─── Rota composta: ativar assinatura da clínica ──────────────────────────────
@@ -123,7 +214,10 @@ interface ActivateInput {
   creditCard?: CreditCardInput
 }
 
-async function handleActivateSubscription(req: Request): Promise<Response> {
+async function handleActivateSubscription(
+  req: Request,
+  auth: { clinicId: string | null; isSuperAdmin: boolean },
+): Promise<Response> {
   let body: ActivateInput
   try {
     body = await req.json() as ActivateInput
@@ -135,6 +229,8 @@ async function handleActivateSubscription(req: Request): Promise<Response> {
   if (!clinicId || !billingType || !responsible?.name || !responsible?.cpfCnpj) {
     return err('Campos obrigatórios: clinicId, billingType, responsible.name, responsible.cpfCnpj')
   }
+  const access = await ensureClinicAccess(auth, clinicId)
+  if (access) return access
   if (billingType === 'CREDIT_CARD' && !creditCard) {
     return err('Dados do cartão são obrigatórios para billingType CREDIT_CARD')
   }
@@ -216,7 +312,7 @@ async function handleActivateSubscription(req: Request): Promise<Response> {
         addressNumber: responsible.addressNumber ?? 'S/N',
         phone: responsible.phone ?? '',
       }
-      subBody.remoteIp = '127.0.0.1' // obrigatório pelo Asaas; em prod usa IP real
+      subBody.remoteIp = getRequestIp(req)
     }
 
     const subRes = await asaasFetch('/subscriptions', 'POST', JSON.stringify(subBody))
@@ -268,13 +364,29 @@ serve(async (req: Request) => {
     return err('Não autorizado', 401)
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
   // Extrair path a partir de /functions/v1/asaas
   const url = new URL(req.url)
   const path = url.pathname.replace(/^\/functions\/v1\/asaas/, '') || '/'
 
   // Rota composta
   if (path === '/activate-subscription' && req.method === 'POST') {
-    return handleActivateSubscription(req)
+    return handleActivateSubscription(req, auth)
+  }
+
+  const subscriptionMatch = path.match(/^\/subscriptions\/([^/]+)$/)
+  if (subscriptionMatch && (req.method === 'GET' || req.method === 'DELETE')) {
+    const gate = await ensureSubscriptionAccess(supabase, auth, subscriptionMatch[1])
+    if (gate) return gate
+  }
+
+  if (
+    req.method === 'POST'
+    && (path === '/customers' || path === '/payments' || path === '/transfers')
+  ) {
+    const gate = await ensurePaymentsModuleEnabled(supabase, auth)
+    if (gate) return gate
   }
 
   // Proxy simples → Asaas API

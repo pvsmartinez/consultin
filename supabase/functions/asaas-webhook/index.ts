@@ -9,13 +9,15 @@
  *   Enviar header: asaas-access-token: <valor igual ao ASAAS_WEBHOOK_TOKEN no Supabase Secrets>
  *
  * Eventos tratados:
- *   PAYMENT_RECEIVED  → status = RECEIVED
- *   PAYMENT_CONFIRMED → status = CONFIRMED
- *   PAYMENT_OVERDUE   → status = OVERDUE
+ *   PAYMENT_RECEIVED  → status = RECEIVED / assinatura = ACTIVE
+ *   PAYMENT_CONFIRMED → status = CONFIRMED / assinatura = ACTIVE
+ *   PAYMENT_OVERDUE   → status = OVERDUE / assinatura = OVERDUE
  *   PAYMENT_DELETED   → status = CANCELLED
  *   PAYMENT_REFUNDED  → status = REFUNDED
  *
- * Se o externalReference do pagamento for um appointment_payment.id, atualiza esse registro.
+ * Se o pagamento pertencer a uma assinatura de clínica, sincroniza
+ * clinics.subscription_status + clinics.payments_enabled.
+ * Se pertencer a uma cobrança de consulta, atualiza appointment_payments.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -46,6 +48,65 @@ const EVENT_TO_STATUS: Record<string, string> = {
   PAYMENT_REFUNDED:  'REFUNDED',
 }
 
+const EVENT_TO_SUBSCRIPTION_UPDATE: Partial<Record<string, {
+  subscriptionStatus: 'ACTIVE' | 'OVERDUE'
+  paymentsEnabled: boolean
+}>> = {
+  PAYMENT_RECEIVED:  { subscriptionStatus: 'ACTIVE',  paymentsEnabled: true },
+  PAYMENT_CONFIRMED: { subscriptionStatus: 'ACTIVE',  paymentsEnabled: true },
+  PAYMENT_OVERDUE:   { subscriptionStatus: 'OVERDUE', paymentsEnabled: false },
+}
+
+async function syncClinicSubscriptionStatus(
+  supabase: ReturnType<typeof createClient>,
+  event: string,
+  payment: { subscription?: string | null; externalReference?: string | null },
+) {
+  const update = EVENT_TO_SUBSCRIPTION_UPDATE[event]
+  if (!update) return
+
+  let clinicId: string | null = null
+
+  if (payment.subscription) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: clinicBySubscription } = await (supabase as any)
+      .from('clinics')
+      .select('id')
+      .eq('asaas_subscription_id', payment.subscription)
+      .maybeSingle()
+
+    clinicId = (clinicBySubscription?.id as string | null) ?? null
+  }
+
+  if (!clinicId && payment.externalReference) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: clinicByExternalReference } = await (supabase as any)
+      .from('clinics')
+      .select('id')
+      .eq('id', payment.externalReference)
+      .maybeSingle()
+
+    clinicId = (clinicByExternalReference?.id as string | null) ?? null
+  }
+
+  if (!clinicId) return
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from('clinics')
+    .update({
+      subscription_status: update.subscriptionStatus,
+      payments_enabled: update.paymentsEnabled,
+    })
+    .eq('id', clinicId)
+
+  if (error) {
+    console.error('[asaas-webhook] Erro ao sincronizar assinatura da clínica:', error.message)
+  } else {
+    console.log(`[asaas-webhook] clínica ${clinicId} sincronizada → ${update.subscriptionStatus}`)
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS })
@@ -61,7 +122,15 @@ serve(async (req: Request) => {
   }
 
   // ── Ler payload ────────────────────────────────────────────────────────────
-  let payload: { event: string; payment?: { id: string; status: string; externalReference?: string } }
+  let payload: {
+    event: string
+    payment?: {
+      id: string
+      status: string
+      externalReference?: string | null
+      subscription?: string | null
+    }
+  }
   try {
     payload = await req.json()
   } catch {
@@ -72,11 +141,11 @@ serve(async (req: Request) => {
 
   console.log(`[asaas-webhook] event=${event} payment=${payment?.id}`)
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
   // ── Processar evento de pagamento ─────────────────────────────────────────
   const newStatus = EVENT_TO_STATUS[event]
   if (newStatus && payment?.id) {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
     // Busca appointment_payment pelo asaas_charge_id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: apRow, error: findErr } = await (supabase as any)
@@ -114,6 +183,10 @@ serve(async (req: Request) => {
         }
       }
     }
+  }
+
+  if (payment) {
+    await syncClinicSubscriptionStatus(supabase, event, payment)
   }
 
   // Asaas espera 200 OK mesmo se não processamos o evento

@@ -33,6 +33,7 @@ export interface Clinic {
   createdAt: string
   // Asaas billing
   paymentsEnabled: boolean
+  billingOverrideEnabled: boolean
   asaasCustomerId: string | null
   asaasSubscriptionId: string | null
   subscriptionStatus: 'ACTIVE' | 'OVERDUE' | 'INACTIVE' | 'EXPIRED' | null
