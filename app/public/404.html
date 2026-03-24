@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — Página não encontrada | Consultin</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .card {
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .cross {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 28px;
+      opacity: 0.15;
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #0369a1;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 5vw, 2.25rem);
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    p {
+      font-size: 15px;
+      line-height: 1.75;
+      color: #475569;
+      margin-bottom: 32px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      background: #0369a1;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 11px 28px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #075985; }
+
+    .btn-secondary {
+      display: inline-block;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 11px 28px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-secondary:hover { border-color: #94a3b8; color: #1e293b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- cruz médica estilizada -->
+    <svg class="cross" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="16" y="4" width="16" height="40" rx="4" fill="#0369a1"/>
+      <rect x="4" y="16" width="40" height="16" rx="4" fill="#0369a1"/>
+    </svg>
+    <p class="label">Erro 404</p>
+    <h1>Página não encontrada</h1>
+    <p>
+      Esse endereço não existe no Consultin.<br>
+      Verifique o link ou acesse a home do sistema.
+    </p>
+    <div class="actions">
+      <a href="/" class="btn-primary">Ir para a home</a>
+      <a href="/cadastro-clinica" class="btn-secondary">Solicitar acesso</a>
+    </div>
+  </div>
+</body>
+</html>
