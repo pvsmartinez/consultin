@@ -7,6 +7,7 @@ import { IMaskInput } from 'react-imask'
 import { Link } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
+import { gtagEvent } from '../lib/gtag'
 import { Seo } from '../components/seo/Seo'
 
 const schema = z.object({
@@ -45,6 +46,7 @@ export default function CadastroClinicaPage() {
       if (error) throw new Error(error.message)
 
       trackPublicEvent('clinic_signup_submit')
+      gtagEvent('sign_up', { method: 'clinic_form' })
       setSubmitted(true)
     } catch (e: unknown) {
       setServerError((e as Error).message ?? 'Erro ao enviar solicitação. Tente novamente.')

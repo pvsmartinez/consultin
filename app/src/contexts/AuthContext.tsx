@@ -5,6 +5,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { primaryRole, mergedPermissions } from '../types'
+import { gtagEvent } from '../lib/gtag'
 import type { UserProfile, UserRole } from '../types'
 import { mapClinic, mapProfessional } from '../utils/mappers'
 
@@ -217,6 +218,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         setLoading(false)
         return
+      }
+
+      if (event === 'SIGNED_IN') {
+        gtagEvent('login', { method: session.user.app_metadata?.provider ?? 'email' })
       }
 
       // Prevent concurrent startup fetches (React Strict Mode runs effects twice).

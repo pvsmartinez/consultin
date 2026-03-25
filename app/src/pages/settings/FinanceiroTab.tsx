@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import Input from '../../components/ui/Input'
 import { useActivateClinicBilling, useCancelClinicBilling } from '../../hooks/useBilling'
 import { useAuthContext } from '../../contexts/AuthContext'
+import { gtagEvent } from '../../lib/gtag'
 import { validateCpfCnpj, maskCpfCnpj, maskCEP, fetchAddressByCEP, formatPhone } from '../../utils/validators'
 import type { Clinic } from '../../types'
 
@@ -102,6 +103,7 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
         },
       })
       toast.success('Assinatura ativada! Cobrança de R$\u00a0100/mês configurada no cartão.')
+      gtagEvent('purchase', { currency: 'BRL', value: 100, items: [{ item_id: 'consultin-pro', item_name: 'Consultin Pro', price: 100, quantity: 1 }] })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao ativar assinatura.')
     }
