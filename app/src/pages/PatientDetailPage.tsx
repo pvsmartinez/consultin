@@ -63,7 +63,7 @@ export default function PatientDetailPage() {
     return (
       <div className="text-center mt-20">
         <p className="text-gray-500 mb-4">Paciente não encontrado.</p>
-        <button onClick={() => navigate('/pacientes')} className="text-blue-600 text-sm hover:underline">
+        <button onClick={() => navigate('/pacientes')} className="text-[#006970] text-sm hover:underline">
           Voltar para Pacientes
         </button>
       </div>
@@ -97,7 +97,8 @@ export default function PatientDetailPage() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setScheduling(true)}
-            className="flex items-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition"
+            className="flex items-center gap-2 text-sm text-white px-3 py-1.5 rounded-xl transition-all active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             <CalendarPlus size={15} />
             Agendar
@@ -147,7 +148,7 @@ export default function PatientDetailPage() {
             href={`mailto:${patient.email}`}
             className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
           >
-            <Envelope size={15} className="text-blue-500" />
+            <Envelope size={15} className="text-[#0ea5b0]" />
             {patient.email}
           </a>
         )}

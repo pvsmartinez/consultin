@@ -4,7 +4,6 @@ import {
   CalendarBlank,
   CalendarCheck,
   Users,
-  Stethoscope,
   SignOut,
   UsersFour,
   Gear,
@@ -41,10 +40,10 @@ const navItems = [
 ]
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
-  admin:        'text-teal-300 bg-teal-900/60',
-  receptionist: 'text-cyan-300 bg-cyan-900/60',
-  professional: 'text-violet-300 bg-violet-900/60',
-  patient:      'text-gray-300 bg-gray-700',
+  admin:        'text-teal-700 bg-teal-100',
+  receptionist: 'text-cyan-700 bg-cyan-100',
+  professional: 'text-violet-700 bg-violet-100',
+  patient:      'text-gray-600 bg-gray-100',
 }
 
 interface AppLayoutProps {
@@ -80,25 +79,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
   })
 
   const sideNavHeader = (
-    <div className="p-4 border-b border-gray-800">
-      <div className="flex items-center gap-2 mb-1">
-        <Stethoscope size={22} className="text-teal-400 flex-shrink-0" />
-        <span className="font-semibold text-white tracking-tight">Consultin</span>
+    <div className="p-6 pb-4">
+      <div className="flex flex-col gap-1 mb-5">
+        <span className="text-2xl font-bold text-[#0EA5B0] tracking-tight">Consultin</span>
+        {clinic?.name && (
+          <p className="text-xs text-gray-500 font-medium truncate" title={clinic.name}>{clinic.name}</p>
+        )}
       </div>
-      {clinic?.name && (
-        <p className="text-xs text-gray-400 truncate mb-1.5" title={clinic.name}>{clinic.name}</p>
-      )}
       {role && ROLE_BADGE_COLORS[role] && (
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_BADGE_COLORS[role]}`}>
           {USER_ROLE_LABELS[role]}
         </span>
       )}
       {canSchedule && (
-        <div className="mt-3">
+        <div className="mt-4">
           <Button
             variant="primary"
             size="sm"
             className="w-full justify-center"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             leftIcon={<Plus size={14} weight="bold" />}
             onClick={() => setNewApptOpen(true)}
           >
@@ -110,12 +109,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   )
 
   const sideNavFooter = (
-    <div className="p-3 space-y-1">
+    <div className="p-4 space-y-1">
       {isSuperAdmin && (
         <NavLink to="/admin"
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              isActive ? 'bg-amber-500/15 text-amber-300 font-medium' : 'text-amber-400 hover:bg-amber-500/10'
+              isActive ? 'bg-amber-100 text-amber-700 font-medium' : 'text-amber-600 hover:bg-amber-50'
             }`
           }
         >
@@ -127,30 +126,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <NavLink
           to="/minha-conta"
           className={({ isActive }) =>
-            `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-              isActive ? 'bg-white/10' : 'hover:bg-white/5'
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              isActive ? 'bg-white shadow-sm text-[#0ea5b0]' : 'text-gray-600 hover:bg-white/60 hover:text-[#0ea5b0]'
             }`
           }
         >
-          <Avatar src={profile.avatarUrl} name={profile.name} size={24} />
-          <p className="text-xs font-medium text-gray-300 truncate">{profile.name}</p>
+          <Avatar src={profile.avatarUrl} name={profile.name} size={28} />
+          <p className="text-sm font-medium truncate">{profile.name}</p>
         </NavLink>
       )}
       {role === 'admin' && (
         <NavLink to="/assinatura"
           className={({ isActive }) =>
-            `flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors ${
-              isActive ? 'text-indigo-300 bg-indigo-500/10' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
+            `flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${
+              isActive ? 'text-[#0ea5b0] bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60 hover:text-[#0ea5b0]'
             }`
           }
         >
-          <CreditCard size={14} />
+          <CreditCard size={15} />
           Meu plano
         </NavLink>
       )}
       <button
         onClick={signOut}
-        className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-500 hover:bg-white/5 hover:text-gray-300 transition-colors"
+        className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-400 hover:bg-white/60 hover:text-gray-700 transition-colors"
       >
         <SignOut size={18} />
         Sair
@@ -159,16 +158,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
   )
 
   return (
-    <AppShell variant="responsive" className="bg-slate-50">
+    <AppShell variant="responsive" className="bg-[#f8fafb]">
       {/* Mobile only: top bar (hidden on desktop via responsive variant) */}
       <TopBar
         left={
           <div className="flex items-center gap-2">
-            <Stethoscope size={18} className="text-teal-400 flex-shrink-0" />
             <div className="min-w-0">
-              <span className="font-semibold text-sm text-white">Consultin</span>
+              <span className="font-bold text-sm text-[#0EA5B0] tracking-tight">Consultin</span>
               {clinic?.name && (
-                <p className="text-[10px] text-gray-400 leading-none mt-0.5 truncate max-w-[160px]">
+                <p className="text-[10px] text-gray-500 leading-none mt-0.5 truncate max-w-[160px]">
                   {clinic.name}
                 </p>
               )}
@@ -210,17 +208,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Content: banner (optional) + scrollable main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {isTestMode && (
-          <div className="flex items-center justify-between px-6 py-2 bg-amber-500/10 border-b border-amber-500/30 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-2 bg-amber-50 border-b border-amber-200 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <Warning size={15} className="text-amber-400" />
-              <span className="text-xs text-amber-300 font-medium">
+              <Warning size={15} className="text-amber-500" />
+              <span className="text-xs text-amber-700 font-medium">
                 Modo teste — {clinic?.name ?? 'clínica'}
               </span>
             </div>
             <button
               onClick={handleExitTestMode}
               disabled={enterClinic.isPending}
-              className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-200 border border-amber-700/50 hover:border-amber-500 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-40"
             >
               <SignIn size={13} className="rotate-180" />
               Sair da clínica

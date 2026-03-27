@@ -160,7 +160,7 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
 
       {!clinic.paymentsEnabled && (
         <form onSubmit={handleSubmit(onActivate)} className="space-y-6">
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 text-sm text-[#006970]">
             <strong>Cobrança automática:</strong> R$\u00a0100,00/mês debitado diretamente no cartão.
             Sem ação necessária após a ativação.
           </div>

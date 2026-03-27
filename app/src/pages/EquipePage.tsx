@@ -25,7 +25,7 @@ import type { Professional, UserRole, PermissionKey } from '../types'
 type Tab = 'profissionais' | 'acesso'
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  admin:         'bg-blue-100 text-blue-700',
+  admin:         'bg-teal-100 text-teal-700',
   receptionist:  'bg-teal-100 text-teal-700',
   professional:  'bg-violet-100 text-violet-700',
   patient:       'bg-gray-100 text-gray-600',
@@ -127,19 +127,20 @@ function ProfissionaisTab() {
         <p className="text-sm text-gray-400">{professionals.length} cadastrado{professionals.length !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowInviteForm(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-600 text-sm rounded-lg hover:bg-blue-50">
+            className="flex items-center gap-2 px-4 py-2 border border-teal-200 text-[#006970] text-sm rounded-xl hover:bg-teal-50 transition-colors">
             <Envelope size={16} /> Convidar
           </button>
           <button onClick={() => { setEditing(null); setModalOpen(true) }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+            className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-xl transition-all active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             <Plus size={16} /> Novo profissional
           </button>
         </div>
       </div>
 
       {showInviteForm && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-          <p className="text-sm font-medium text-blue-800 mb-3">Convidar para o sistema</p>
+        <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
+          <p className="text-sm font-medium text-[#006970] mb-3">Convidar para o sistema</p>
           <form onSubmit={handleSendInvite} className="flex flex-wrap gap-2 items-end">
             <div className="flex-1 min-w-[180px]">
               <label className="block text-xs text-gray-500 mb-1">E-mail *</label>
@@ -168,7 +169,8 @@ function ProfissionaisTab() {
               </div>
             </div>
             <button type="submit" disabled={createInvite.isPending}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="px-4 py-2 text-white text-sm rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
               {createInvite.isPending ? 'Enviando…' : 'Criar convite'}
             </button>
             <button type="button" onClick={() => setShowInviteForm(false)}
@@ -182,14 +184,14 @@ function ProfissionaisTab() {
       ) : professionals.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 py-16 text-center">
           <p className="text-sm text-gray-400">Nenhum profissional cadastrado.</p>
-          <button onClick={() => { setEditing(null); setModalOpen(true) }} className="mt-3 text-sm text-blue-600 hover:underline">Cadastrar o primeiro</button>
+          <button onClick={() => { setEditing(null); setModalOpen(true) }} className="mt-3 text-sm text-[#006970] hover:underline font-medium">Cadastrar o primeiro</button>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-100">
           {professionals.map(p => (
             <div key={p.id} className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-[#006970] font-semibold text-sm">
                   {p.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -243,7 +245,7 @@ function ProfissionaisTab() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs bg-yellow-50 text-yellow-600 rounded-full px-2 py-0.5">Aguardando</span>
                   <button onClick={() => resendEmail.mutate(inv.id)} disabled={resendEmail.isPending}
-                    className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg disabled:opacity-40" title="Reenviar e-mail">
+                    className="p-1.5 text-gray-400 hover:text-[#0ea5b0] hover:bg-teal-50 rounded-lg disabled:opacity-40" title="Reenviar e-mail">
                     <PaperPlaneTilt size={15} />
                   </button>
                   <button onClick={() => deleteInvite.mutate(inv.id)}
@@ -331,11 +333,11 @@ function AcessoTab() {
 
       <div className="space-y-2">
         {me && (
-          <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
+          <div className="flex items-center justify-between px-4 py-3 bg-teal-50 border border-teal-100 rounded-xl">
             <div className="flex items-center gap-3">
-              <UserCircle size={20} className="text-blue-500 flex-shrink-0" />
+              <UserCircle size={20} className="text-[#0ea5b0] flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-gray-800">{me.name} <span className="text-xs text-blue-500">(você)</span></p>
+                <p className="text-sm font-medium text-gray-800">{me.name} <span className="text-xs text-[#0ea5b0]">(você)</span></p>
                 <div className="flex flex-wrap gap-1 mt-0.5">
                   {me.roles.map(r => (
                     <span key={r} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[r]}`}>{USER_ROLE_LABELS[r]}</span>
@@ -464,7 +466,7 @@ function AcessoTab() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => resendInvite.mutate((inv as ClinicInvite).id)} disabled={resendInvite.isPending}
-                    className="flex items-center gap-1.5 text-xs text-blue-600 border border-blue-200 rounded-lg px-2.5 py-1.5 disabled:opacity-40">
+                    className="flex items-center gap-1.5 text-xs text-[#006970] border border-teal-200 rounded-lg px-2.5 py-1.5 disabled:opacity-40">
                     <EnvelopeSimple size={13} /> Reenviar
                   </button>
                   <button onClick={() => cancelInvite.mutate((inv as ClinicInvite).id)} disabled={cancelInvite.isPending}
@@ -515,7 +517,7 @@ export default function EquipePage() {
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
               tab === t.id
-                ? 'border-blue-600 text-blue-700'
+                ? 'border-[#0ea5b0] text-[#006970]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}>
             <t.icon size={16} />

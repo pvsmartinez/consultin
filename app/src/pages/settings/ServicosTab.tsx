@@ -130,7 +130,8 @@ export default function ServicosTab() {
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white rounded-xl flex-shrink-0 transition-all active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           <Plus size={14} /> Novo serviço
         </button>
@@ -148,7 +149,7 @@ export default function ServicosTab() {
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="Ex: Consulta inicial, Retorno, Limpeza..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
             />
           </div>
 
@@ -161,11 +162,12 @@ export default function ServicosTab() {
                   key={d}
                   type="button"
                   onClick={() => setForm(f => ({ ...f, durationMinutes: d }))}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded-xl border transition-all active:scale-[0.98] ${
                     form.durationMinutes === d
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-600 hover:border-blue-400'
+                      ? 'text-white border-transparent'
+                      : 'border-gray-300 text-gray-600 hover:border-[#0ea5b0]'
                   }`}
+                  style={form.durationMinutes === d ? { background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' } : undefined}
                 >
                   {d} min
                 </button>
@@ -176,7 +178,7 @@ export default function ServicosTab() {
                 max={480}
                 value={form.durationMinutes}
                 onChange={e => setForm(f => ({ ...f, durationMinutes: Number(e.target.value) }))}
-                className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-24 border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                 placeholder="min"
               />
             </div>
@@ -193,7 +195,7 @@ export default function ServicosTab() {
                 value={form.priceCents}
                 onChange={e => setForm(f => ({ ...f, priceCents: e.target.value }))}
                 placeholder="0,00"
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
           </div>
@@ -223,7 +225,8 @@ export default function ServicosTab() {
             <button
               onClick={submit}
               disabled={!form.name.trim() || create.isPending || update.isPending}
-              className="flex items-center gap-1 px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+              className="flex items-center gap-1 px-4 py-1.5 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               <Check size={14} /> Salvar
             </button>
@@ -254,7 +257,7 @@ export default function ServicosTab() {
             >
               <Check size={14} /> Criar "Atendimento geral"
             </button>
-            <button onClick={openNew} className="text-sm text-blue-600 hover:underline">
+            <button onClick={openNew} className="text-sm text-[#006970] hover:underline font-medium">
               Personalizar →
             </button>
           </div>
@@ -306,7 +309,7 @@ export default function ServicosTab() {
                 </button>
                 <button
                   onClick={() => openEdit(s)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#006970] hover:bg-teal-50 transition"
                 >
                   <PencilSimple size={14} />
                 </button>

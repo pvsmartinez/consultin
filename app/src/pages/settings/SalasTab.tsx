@@ -59,7 +59,8 @@ export default function SalasTab() {
           Cadastre as salas ou espaços onde os atendimentos acontecem. O sistema impedirá dois agendamentos na mesma sala ao mesmo tempo.
         </p>
         <button onClick={openNew}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex-shrink-0 ml-4">
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-white rounded-xl flex-shrink-0 ml-4 transition-all active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
           <Plus size={14} /> Nova sala
         </button>
       </div>
@@ -72,7 +73,7 @@ export default function SalasTab() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex: Consultório 1, Sala de Estética..."
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
           <div>
@@ -91,7 +92,8 @@ export default function SalasTab() {
               <X size={14} /> Cancelar
             </button>
             <button onClick={submit} disabled={!name.trim()}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
               <Check size={14} /> Salvar
             </button>
           </div>
@@ -122,7 +124,7 @@ export default function SalasTab() {
             >
               <Check size={14} /> Criar "Sala 1"
             </button>
-            <button onClick={openNew} className="text-sm text-blue-600 hover:underline">
+            <button onClick={openNew} className="text-sm text-[#006970] hover:underline font-medium">
               Personalizar →
             </button>
           </div>
@@ -144,8 +146,8 @@ export default function SalasTab() {
                   title="Configurar horários da sala"
                   className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
                     expandedAvail === r.id
-                      ? 'bg-blue-50 border-blue-300 text-blue-700'
-                      : 'border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600'
+                      ? 'bg-teal-50 border-teal-300 text-[#006970]'
+                      : 'border-gray-200 text-gray-500 hover:border-[#0ea5b0] hover:text-[#006970]'
                   }`}
                 >
                   <Clock size={12} />

@@ -119,7 +119,7 @@ export default function AnamnesisTab({ clinic }: { clinic: Clinic }) {
               value={newField.label}
               onChange={e => setNewField(p => ({ ...p, label: e.target.value }))}
               placeholder="Ex: Tem alguma alergia?"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
           <div>
@@ -127,7 +127,7 @@ export default function AnamnesisTab({ clinic }: { clinic: Clinic }) {
             <select
               value={newField.type}
               onChange={e => setNewField(p => ({ ...p, type: e.target.value as CustomFieldType, optionsRaw: '' }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             >
               {FIELD_TYPES.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -146,7 +146,7 @@ export default function AnamnesisTab({ clinic }: { clinic: Clinic }) {
               value={newField.optionsRaw}
               onChange={e => setNewField(p => ({ ...p, optionsRaw: e.target.value }))}
               placeholder="Ex: Sim, Não, Às vezes"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
         )}
@@ -163,7 +163,7 @@ export default function AnamnesisTab({ clinic }: { clinic: Clinic }) {
 
         <button
           onClick={addField}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#006970] border border-teal-200 rounded-xl hover:bg-teal-50 transition"
         >
           <Plus size={14} />
           Adicionar pergunta
@@ -174,7 +174,8 @@ export default function AnamnesisTab({ clinic }: { clinic: Clinic }) {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="px-5 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+          className="px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.99]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
       >
         {saving ? 'Salvando...' : 'Salvar anamnese'}
       </button>

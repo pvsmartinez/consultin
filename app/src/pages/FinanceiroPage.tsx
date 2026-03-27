@@ -104,7 +104,7 @@ export default function FinanceiroPage() {
           {!isThisMonth(month) && (
             <button
               onClick={() => setMonth(new Date())}
-              className="text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-50 transition-colors"
+              className="text-xs text-[#006970] hover:text-[#004f55] border border-teal-200 rounded-xl px-2.5 py-1 hover:bg-teal-50 transition-colors"
             >
               Mês atual
             </button>
@@ -201,7 +201,7 @@ export default function FinanceiroPage() {
                           patientName: row.patient?.name ?? 'Paciente',
                           chargeAmountCents: row.chargeAmountCents,
                         })}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:underline whitespace-nowrap"
+                        className="flex items-center gap-1 text-xs text-[#006970] hover:underline whitespace-nowrap"
                       >
                         <CurrencyCircleDollar size={14} />
                         Registrar
@@ -256,7 +256,7 @@ export default function FinanceiroPage() {
 
 function KpiCard({ label, value, color }: { label: string; value: string; color: 'blue' | 'green' | 'red' | 'gray' }) {
   const classes = {
-    blue:  'bg-blue-50 border-blue-100',
+    blue:  'bg-teal-50 border-teal-100',
     green: 'bg-green-50 border-green-100',
     red:   'bg-red-50 border-red-100',
     gray:  'bg-gray-50 border-gray-100',

@@ -31,7 +31,7 @@ const EMPTY_FORM: PatientInput = {
 function DrawerSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-6">
-      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 pb-2 border-b border-gray-100">
+      <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-[0.18em] mb-3 pb-2 border-b border-gray-100">
         {title}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -55,7 +55,7 @@ function MaskedInput({
       <IMaskInput
         mask={mask} value={value} onAccept={(v: string) => onAccept(v)}
         placeholder={placeholder}
-        className="border border-gray-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+        className="border border-gray-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] transition"
       />
     </div>
   )
@@ -168,20 +168,32 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+        className="fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] z-40 transition-opacity"
         onClick={onClose}
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-[#fcfdfd] shadow-2xl z-50 flex flex-col border-l border-white/60">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-base font-semibold text-gray-800">
-            {isEdit ? 'Editar Paciente' : 'Novo Paciente'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
-          </button>
+        <div className="px-6 py-5 border-b border-gray-200 flex-shrink-0 bg-white/80 backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0] mb-2">
+                Cadastro clínico
+              </p>
+              <h2 className="text-xl font-semibold text-gray-900 tracking-tight">
+                {isEdit ? 'Editar paciente' : 'Novo paciente'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {isEdit
+                  ? 'Atualize dados cadastrais, vínculo com portal e informações de contato.'
+                  : 'Cadastre um novo paciente sem sair da agenda ou da lista principal.'}
+              </p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors rounded-xl hover:bg-gray-100 p-2">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -190,6 +202,22 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
             <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Carregando...</div>
           ) : (
             <form id="patient-drawer-form" onSubmit={handleSubmit}>
+              <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Resumo</p>
+                    <p className="text-lg font-semibold text-gray-900">{form.name?.trim() || 'Paciente sem nome ainda'}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {form.phone || form.email || 'Preencha ao menos um contato para facilitar confirmações e lembretes.'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-teal-50 border border-teal-100 px-3 py-2 text-right min-w-[150px]">
+                    <p className="text-[11px] uppercase tracking-wide text-[#0ea5b0] mb-1">Status</p>
+                    <p className="text-sm font-semibold text-[#006970]">{isEdit ? 'Cadastro existente' : 'Novo cadastro'}</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Dados pessoais */}
               <DrawerSection title="Dados Pessoais">
                 <div className="sm:col-span-2">
@@ -211,34 +239,35 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
                     onAccept={val => set('cpf', val)} placeholder="000.000.000-00" />
                 )}
                 {isFieldVisible('cpf') && cpfSuggestion && !cpfLinked && (
-                  <div className="sm:col-span-2 flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-                    <LinkSimple size={18} className="mt-0.5 shrink-0 text-blue-600" />
+                  <div className="sm:col-span-2 flex items-start gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm">
+                    <LinkSimple size={18} className="mt-0.5 shrink-0 text-[#0ea5b0]" />
                     <div className="flex-1">
-                      <p className="font-medium text-blue-800">CPF pertence a uma conta existente</p>
-                      <p className="text-blue-700 mt-0.5">
+                      <p className="font-medium text-[#006970]">CPF pertence a uma conta existente</p>
+                      <p className="text-[#006970] mt-0.5">
                         <span className="font-medium">{cpfSuggestion.displayName}</span> já tem acesso ao portal. Vincular?
                       </p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button type="button"
                         onClick={() => { setForm(p => ({ ...p, userId: cpfSuggestion.userId })); setCpfLinked(true); setCpfSuggestion(null) }}
-                        className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">
+                        className="px-3 py-2 text-xs font-medium text-white rounded-xl transition-all active:scale-[0.99]"
+                        style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                         Vincular
                       </button>
                       <button type="button" onClick={() => setCpfSuggestion(null)}
-                        className="px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 rounded-lg transition">
+                        className="px-3 py-2 text-xs font-medium text-[#006970] hover:bg-white rounded-xl transition">
                         Ignorar
                       </button>
                     </div>
                   </div>
                 )}
                 {isFieldVisible('cpf') && (cpfLinked || (isEdit && form.userId)) && (
-                  <div className="sm:col-span-2 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-800">
-                    <LinkSimple size={16} className="text-green-600" />
+                  <div className="sm:col-span-2 flex items-center gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm text-[#006970]">
+                    <LinkSimple size={16} className="text-[#0ea5b0]" />
                     <span>Prontuário vinculado ao portal do paciente</span>
                     {!isEdit && (
                       <button type="button" onClick={() => { setForm(p => ({ ...p, userId: null })); setCpfLinked(false) }}
-                        className="ml-auto text-green-700 hover:text-green-900 transition">
+                        className="ml-auto text-[#006970] hover:text-[#004f55] transition">
                         <XCircle size={16} />
                       </button>
                     )}
@@ -269,7 +298,7 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
                   <div className="relative">
                     <MaskedInput label="CEP" mask="00000-000" value={form.addressZip ?? ''}
                       onAccept={handleCepLookup} placeholder="00000-000" />
-                    {cepLoading && <SpinnerGap size={14} className="absolute right-3 top-9 text-blue-500 animate-spin" />}
+                    {cepLoading && <SpinnerGap size={14} className="absolute right-3 top-9 text-[#0ea5b0] animate-spin" />}
                   </div>
                   <Input label="Número" value={form.addressNumber ?? ''}
                     onChange={e => set('addressNumber', e.target.value)} placeholder="123" />
@@ -320,11 +349,12 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
           {error && <p className="text-sm text-red-600 flex-1">{error}</p>}
           <div className="flex items-center gap-2 ml-auto">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition">
+              className="px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition">
               Cancelar
             </button>
             <button type="submit" form="patient-drawer-form" disabled={saving}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50">
+              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
               <FloppyDisk size={16} />
               {saving ? 'Salvando...' : isEdit ? 'Salvar alterações' : 'Salvar paciente'}
             </button>

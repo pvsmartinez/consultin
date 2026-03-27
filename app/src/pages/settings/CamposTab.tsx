@@ -23,7 +23,7 @@ export default function CamposTab({ clinic }: { clinic: Clinic }) {
         </p>
         <p className="text-xs text-gray-400 mt-1.5">
           Para configurar o formulário de anamnese dos pacientes, vá em{' '}
-          <Link to="/configuracoes" className="text-blue-600 hover:underline font-medium">
+          <Link to="/configuracoes" className="text-[#006970] hover:underline font-medium">
             Configurações → Serviços
           </Link>{' '}
           e edite o serviço desejado.

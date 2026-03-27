@@ -160,7 +160,7 @@ function AppointmentPanel({
               </div>
               {patientId && (
                 <Link to={`/pacientes/${patientId}`}
-                  className="flex-shrink-0 text-xs text-blue-600 border border-blue-200 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                  className="flex-shrink-0 text-xs text-[#006970] border border-teal-200 hover:bg-teal-50 px-2.5 py-1.5 rounded-lg transition-colors">
                   Ver ficha
                 </Link>
               )}
@@ -197,8 +197,8 @@ function AppointmentPanel({
             )}
             {serviceName && (
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Tag size={15} className="text-blue-500" />
+                <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center flex-shrink-0">
+                  <Tag size={15} className="text-[#0ea5b0]" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Tipo de consulta</p>
@@ -231,7 +231,8 @@ function AppointmentPanel({
             )}
             {appt.status === 'confirmed' && (
               <button onClick={() => onStatusChange(appt.id, 'completed')}
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors">
+                className="w-full py-2.5 rounded-xl text-white text-sm font-medium transition-all active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                 ✓ Marcar como realizado
               </button>
             )}
@@ -286,7 +287,7 @@ function OnboardingChecklist({
   const allDone      = requiredDone === required.length
 
   return (
-    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-8">
+    <div className="bg-teal-50 border border-teal-100 rounded-2xl p-5 mb-8">
       <div className="flex items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-sm font-semibold text-gray-800">Primeiros passos</h2>
@@ -296,9 +297,10 @@ function OnboardingChecklist({
           onClick={onDismiss}
           className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
             allDone
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'text-white hover:opacity-90'
               : 'text-gray-400 hover:text-gray-600'
           }`}
+          style={allDone ? { background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' } : undefined}
         >
           {allDone ? 'Concluir ✓' : 'Pular'}
         </button>
@@ -310,7 +312,7 @@ function OnboardingChecklist({
             key={i}
             to={step.to}
             className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 border transition-colors ${
-              step.done ? 'border-gray-100 opacity-60' : 'border-gray-200 hover:border-blue-300'
+              step.done ? 'border-gray-100 opacity-60' : 'border-gray-200 hover:border-[#0ea5b0]/40'
             }`}
           >
             <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -420,8 +422,8 @@ function ClinicDashboard() {
           <KpiCard
             label="Consultas hoje"
             value={isLoading ? '...' : String(data?.todayCount ?? 0)}
-            icon={<CalendarBlank size={20} className="text-blue-500" />}
-            color="blue"
+            icon={<CalendarBlank size={20} className="text-[#0ea5b0]" />}
+            color="teal"
           />
         </Link>
         <Link to="/pacientes">
@@ -448,14 +450,15 @@ function ClinicDashboard() {
       <div className="flex flex-wrap gap-2 mb-6">
         <Link
           to="/agenda"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium transition-all active:scale-95"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           <Plus size={15} weight="bold" />
           Nova consulta
         </Link>
         <Link
           to="/pacientes"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-blue-300 text-gray-700 hover:text-blue-700 text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#0ea5b0]/40 text-gray-700 hover:text-[#0ea5b0] text-sm font-medium transition-colors"
         >
           <MagnifyingGlass size={15} />
           Buscar paciente
@@ -468,7 +471,7 @@ function ClinicDashboard() {
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Agenda de hoje</h2>
-            <Link to="/agenda" className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+            <Link to="/agenda" className="flex items-center gap-1 text-xs text-[#0ea5b0] hover:text-[#006970]">
               Ver calendário <ArrowRight size={12} />
             </Link>
           </div>
@@ -480,7 +483,7 @@ function ClinicDashboard() {
               <p className="text-sm text-gray-400">Nenhuma consulta agendada para hoje.</p>
               <Link
                 to="/agenda"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-[#006970] border border-teal-200 hover:bg-teal-50 px-4 py-2 rounded-lg transition-colors"
               >
                 <Plus size={14} weight="bold" /> Agendar consulta
               </Link>
@@ -503,7 +506,7 @@ function ClinicDashboard() {
                     key={appt.id}
                     onClick={() => setSelectedAppt(isSelected ? null : appt)}
                     className={`w-full text-left bg-white border rounded-xl px-4 py-3 flex items-center gap-3 transition-all cursor-pointer hover:shadow-sm ${
-                      isSelected ? 'border-blue-300 shadow-sm ring-1 ring-blue-200' : 'border-gray-100 hover:border-gray-200'
+                      isSelected ? 'border-[#0ea5b0]/40 shadow-sm ring-1 ring-[#0ea5b0]/20' : 'border-gray-100 hover:border-gray-200'
                     }`}
                   >
                     {/* Horário início → fim */}
@@ -557,7 +560,7 @@ function ClinicDashboard() {
                       <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
                       {p.specialty && <p className="text-xs text-gray-400 truncate">{p.specialty}</p>}
                     </div>
-                    <span className="flex-shrink-0 text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                    <span className="flex-shrink-0 text-xs font-semibold text-[#006970] bg-teal-50 px-2 py-0.5 rounded-full">
                       {p.appointmentCount} {p.appointmentCount === 1 ? 'consulta' : 'consultas'}
                     </span>
                   </div>
@@ -602,7 +605,7 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
         </h1>
         <p className="text-sm text-gray-400 capitalize mt-0.5">{today}</p>
         {data?.specialty && (
-          <p className="text-xs text-blue-500 mt-1 font-medium">{data.specialty}</p>
+          <p className="text-xs text-[#0ea5b0] mt-1 font-medium">{data.specialty}</p>
         )}
       </div>
 
@@ -611,8 +614,8 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
         <KpiCard
           label="Suas consultas hoje"
           value={isLoading ? '...' : String(data?.todayCount ?? 0)}
-          icon={<CalendarBlank size={20} className="text-blue-500" />}
-          color="blue"
+          icon={<CalendarBlank size={20} className="text-[#0ea5b0]" />}
+          color="teal"
         />
         <KpiCard
           label="Seus pacientes"
@@ -661,21 +664,22 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
               const timeLabel = format(new Date(appt.starts_at), 'HH:mm')
               const patientId = appt.patient_id
               return (
-                <li key={appt.id} className={`rounded-xl p-4 flex items-start justify-between gap-4 ${
-                  isNext
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
-                    : 'bg-white border border-gray-100'
-                }`}>
+                <li key={appt.id}
+                  className={`rounded-xl p-4 flex items-start justify-between gap-4 ${
+                    isNext ? 'text-white shadow-md' : 'bg-white border border-gray-100'
+                  }`}
+                  style={isNext ? { background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' } : undefined}
+                >
                   <div className="space-y-0.5 flex-1 min-w-0">
                     {isNext && (
                       <p className={`text-[10px] font-semibold uppercase tracking-wide mb-1 ${
-                        isNext ? 'text-blue-200' : 'text-gray-400'
+                        isNext ? 'text-teal-100' : 'text-gray-400'
                       }`}>Próxima</p>
                     )}
                     <p className={`text-sm font-semibold ${isNext ? 'text-white' : 'text-gray-800'}`}>
                       {getPatientName(appt.patient)}
                     </p>
-                    <div className={`flex items-center gap-3 text-xs ${isNext ? 'text-blue-100' : 'text-gray-500'}`}>
+                    <div className={`flex items-center gap-3 text-xs ${isNext ? 'text-teal-100' : 'text-gray-500'}`}>
                       <span className="flex items-center gap-1"><CalendarBlank size={11} /> {dateLabel}</span>
                       <span className="flex items-center gap-1"><Clock size={11} /> {timeLabel}</span>
                     </div>
@@ -685,7 +689,7 @@ function ProfessionalDashboard({ email, profileName, userId }: { email: string; 
                       patientId ? (
                         <Link
                           to={`/pacientes/${patientId}`}
-                          className="flex items-center gap-1.5 text-xs font-semibold bg-white text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                          className="flex items-center gap-1.5 text-xs font-semibold bg-white text-[#006970] px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors"
                         >
                           <Stethoscope size={13} /> Iniciar consulta
                         </Link>
@@ -781,9 +785,9 @@ export default function DashboardPage() {
 function KpiCard({
   label, value, icon, color,
 }: {
-  label: string; value: string; icon: React.ReactNode; color: 'blue' | 'green' | 'purple'
+  label: string; value: string; icon: React.ReactNode; color: 'teal' | 'green' | 'purple'
 }) {
-  const bg = { blue: 'bg-blue-50', green: 'bg-green-50', purple: 'bg-purple-50' }[color]
+  const bg = { teal: 'bg-teal-50', green: 'bg-green-50', purple: 'bg-purple-50' }[color]
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-start gap-4 hover:shadow-sm hover:border-gray-300 transition-all cursor-pointer">
       <div className={`${bg} rounded-lg p-2.5 flex-shrink-0`}>{icon}</div>

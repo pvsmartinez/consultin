@@ -18,13 +18,39 @@ export default function PatientsPage() {
   // Reset to first page whenever the search term changes
   useEffect(() => { setPage(0) }, [debouncedSearch])
   const { patients, loading, refetch, total, pageCount } = usePatients(debouncedSearch, page)
+  const visibleCount = patients.length
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-gray-800">Pacientes</h1>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6">
+      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">Gestão clínica</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">Pacientes</h1>
+                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-teal-50 text-[#006970] border border-teal-100">
+                  {total} cadastrados
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mt-2 max-w-2xl">
+                Busque rápido por nome, CPF ou telefone e entre direto na ficha do paciente.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+              <div className="rounded-2xl bg-[#f8fafb] px-4 py-3 border border-gray-100 min-w-[160px]">
+                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Nesta página</p>
+                <p className="text-lg font-semibold text-gray-900">{visibleCount}</p>
+              </div>
+              <div className="rounded-2xl bg-[#f8fafb] px-4 py-3 border border-gray-100 min-w-[160px]">
+                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Busca ativa</p>
+                <p className="text-lg font-semibold text-gray-900">{search ? 'Sim' : 'Não'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
           <Link
             to="/configuracoes"
             state={{ tab: 'campos' }}
@@ -43,36 +69,37 @@ export default function PatientsPage() {
           </button>
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+            className="flex items-center gap-2 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             <Plus size={16} />
             Novo paciente
           </button>
         </div>
-      </div>
+        </div>
 
-      {/* Search */}
-      <div className="relative mb-4 max-w-md">
-        <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nome, CPF ou telefone..."
-          className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            title="Limpar busca"
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
+        <div className="relative mt-6 max-w-xl">
+          <MagnifyingGlass size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nome, CPF ou telefone..."
+            className="w-full border border-gray-200 bg-[#f8fafb] rounded-2xl pl-11 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Limpar busca"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </section>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -98,12 +125,12 @@ export default function PatientsPage() {
                 <tr
                   key={p.id}
                   onClick={() => navigate(`/pacientes/${p.id}`)}
-                  className={`cursor-pointer hover:bg-blue-50 transition ${i > 0 ? 'border-t border-gray-100' : ''}`}
+                  className={`cursor-pointer hover:bg-teal-50 transition ${i > 0 ? 'border-t border-gray-100' : ''}`}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <User size={14} className="text-blue-600" />
+                      <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+                        <User size={14} className="text-[#006970]" />
                       </div>
                       <span className="font-medium text-gray-800">{p.name}</span>
                     </div>
@@ -133,13 +160,13 @@ export default function PatientsPage() {
               <button
                 onClick={() => setPage(p => p - 1)}
                 disabled={page === 0}
-                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600 disabled:cursor-not-allowed transition-colors"
+                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-[#0ea5b0] disabled:cursor-not-allowed transition-colors"
               >← Anterior</button>
               <span className="text-xs text-gray-500">Pág. {page + 1} / {pageCount}</span>
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={page >= pageCount - 1}
-                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600 disabled:cursor-not-allowed transition-colors"
+                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-[#0ea5b0] disabled:cursor-not-allowed transition-colors"
               >Próxima →</button>
             </div>
           )}

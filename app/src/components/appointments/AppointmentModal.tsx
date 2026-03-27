@@ -309,17 +309,29 @@ export default function AppointmentModal({
   return (
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40" />
-        <Dialog.Content className="fixed inset-y-0 right-0 z-50 bg-white shadow-2xl w-full max-w-lg flex flex-col focus:outline-none data-[state=open]:animate-slide-in-right">
+        <Dialog.Overlay className="fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] z-40" />
+        <Dialog.Content className="fixed inset-y-0 right-0 z-50 bg-[#fcfdfd] shadow-2xl w-full max-w-xl flex flex-col focus:outline-none data-[state=open]:animate-slide-in-right border-l border-white/60">
 
           {/* Drawer header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-            <Dialog.Title className="text-base font-semibold text-gray-800">
-              {isEditing ? 'Editar consulta' : 'Nova consulta'}
-            </Dialog.Title>
-            <Dialog.Close asChild>
-              <button className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
-            </Dialog.Close>
+          <div className="px-6 py-5 border-b border-gray-100 shrink-0 bg-white/80 backdrop-blur-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0] mb-2">
+                  Agenda clínica
+                </p>
+                <Dialog.Title className="text-xl font-semibold text-gray-900 tracking-tight">
+                  {isEditing ? 'Editar consulta' : 'Nova consulta'}
+                </Dialog.Title>
+                <p className="text-sm text-gray-500 mt-1">
+                  {isEditing
+                    ? 'Atualize horário, profissional, cobrança e observações sem sair da agenda.'
+                    : 'Agende uma consulta com o mínimo de atrito e já deixe o retorno configurado, se precisar.'}
+                </p>
+              </div>
+              <Dialog.Close asChild>
+                <button className="text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 p-2 transition-colors"><X size={18} /></button>
+              </Dialog.Close>
+            </div>
           </div>
 
           {/* Scrollable body */}
@@ -366,8 +378,8 @@ export default function AppointmentModal({
 
               {selectedPatient ? (
                 /* Selected state — show chip with clear button */
-                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                  <span className="text-sm font-medium text-blue-800">{selectedPatient.name}</span>
+                <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-xl px-3 py-2.5">
+                  <span className="text-sm font-medium text-[#006970]">{selectedPatient.name}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -375,7 +387,7 @@ export default function AppointmentModal({
                       setValue('patientId', '')
                       setPatientSearch('')
                     }}
-                    className="ml-2 text-blue-400 hover:text-blue-600 shrink-0"
+                    className="ml-2 text-[#0ea5b0] hover:text-[#006970] shrink-0"
                   >
                     <X size={15} />
                   </button>
@@ -388,7 +400,7 @@ export default function AppointmentModal({
                     value={patientSearch}
                     onChange={e => { setPatientSearch(e.target.value); setShowQuickPatient(false) }}
                     placeholder="Buscar por nome ou CPF..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                     autoComplete="off"
                   />
                   {patientSearch.trim() && !showQuickPatient && (
@@ -403,7 +415,7 @@ export default function AppointmentModal({
                             setValue('patientId', p.id)
                             setPatientSearch('')
                           }}
-                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-blue-50 border-b border-gray-100 last:border-0 flex items-baseline gap-2"
+                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 border-b border-gray-100 last:border-0 flex items-baseline gap-2 transition-colors"
                         >
                           <span className="font-medium text-gray-800">{p.name}</span>
                           {p.cpf && <span className="text-xs text-gray-400">{p.cpf}</span>}
@@ -413,7 +425,7 @@ export default function AppointmentModal({
                         type="button"
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => { setShowQuickPatient(true); setQuickName(patientSearch) }}
-                        className="w-full text-left px-3 py-2.5 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-1.5 border-t border-gray-100"
+                        className="w-full text-left px-3 py-2.5 text-sm text-[#006970] hover:bg-teal-50 flex items-center gap-1.5 border-t border-gray-100 transition-colors"
                       >
                         <UserPlus size={14} />
                         {patients.length === 0 ? `Criar paciente "${patientSearch}"` : 'Criar novo paciente'}
@@ -425,25 +437,26 @@ export default function AppointmentModal({
 
               {/* Quick-create form */}
               {showQuickPatient && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
-                  <p className="text-xs font-medium text-blue-700">Cadastro rápido de paciente</p>
+                <div className="mt-2 p-3 bg-teal-50 border border-teal-200 rounded-2xl space-y-2">
+                  <p className="text-xs font-medium text-[#006970]">Cadastro rápido de paciente</p>
                   <input
                     type="text"
                     value={quickName}
                     onChange={e => setQuickName(e.target.value)}
                     placeholder="Nome *"
-                    className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                    className="w-full border border-teal-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                   />
                   <input
                     type="text"
                     value={quickCpf}
                     onChange={e => setQuickCpf(e.target.value)}
                     placeholder="CPF (opcional)"
-                    className="w-full border border-blue-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                    className="w-full border border-teal-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                   />
                   <div className="flex gap-2">
                     <button type="button" onClick={handleQuickPatient} disabled={createPatient.isPending}
-                      className="flex-1 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+                      className="flex-1 py-2 text-xs text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+                      style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                       {createPatient.isPending ? 'Criando...' : 'Criar e selecionar'}
                     </button>
                     <button type="button" onClick={() => setShowQuickPatient(false)}
@@ -471,7 +484,7 @@ export default function AppointmentModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                   {...register('professionalId')}
                 >
                   <option value="">Selecione o profissional...</option>
@@ -503,7 +516,7 @@ export default function AppointmentModal({
                       }
                     }
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                 >
                   <option value="">Selecionar serviço... (opcional)</option>
                   {activeServiceTypes.map(s => (
@@ -521,7 +534,7 @@ export default function AppointmentModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duração</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                   {...register('durationMin')}
                 >
                   {durationOptions.map(d => (
@@ -535,7 +548,7 @@ export default function AppointmentModal({
             <button
               type="button"
               onClick={() => setShowExtras(v => !v)}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors py-0.5"
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#0ea5b0] transition-colors py-0.5"
             >
               <span className={`transition-transform ${showExtras ? 'rotate-90' : ''}`}>▶</span>
               {showExtras ? 'Menos opções' : 'Mais opções'}
@@ -554,7 +567,7 @@ export default function AppointmentModal({
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sala / consultório</label>
                   <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                     {...register('roomId')}
                   >
                     <option value="">Sem sala definida</option>
@@ -567,7 +580,7 @@ export default function AppointmentModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                   {...register('status')}
                 >
                   {STATUSES.map(([value, label]) => (
@@ -596,7 +609,7 @@ export default function AppointmentModal({
 
             {/* Return / recurrence — only for new appointments */}
             {!isEditing && (
-              <div className="rounded-xl border border-gray-200 p-3 space-y-3 bg-gray-50">
+              <div className="rounded-2xl border border-gray-200 p-4 space-y-3 bg-[#f8fafb]">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <RepeatOnce size={16} className="text-gray-400" />
                   Retorno / recorrência
@@ -609,8 +622,8 @@ export default function AppointmentModal({
                       onClick={() => setReturnPreset(p.value)}
                       className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
                         returnPreset === p.value
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                          ? 'bg-[#006970] text-white border-[#006970]'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0]'
                       }`}
                     >
                       {p.label}
@@ -618,7 +631,7 @@ export default function AppointmentModal({
                   ))}
                 </div>
                 {returnPreset !== 'none' && returnPreset !== 'custom' && (
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-[#006970]">
                     Será agendado um retorno em{' '}
                     <strong>{RETURN_PRESETS.find(p => p.value === returnPreset)?.label}</strong>{' '}
                     com o mesmo profissional e horário.
@@ -630,7 +643,7 @@ export default function AppointmentModal({
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Frequência</label>
                         <select
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                           {...register('recurrenceType')}
                         >
                           {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
@@ -647,14 +660,14 @@ export default function AppointmentModal({
                             type="number"
                             min={2}
                             max={52}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                             {...register('recurrenceCount')}
                           />
                         </div>
                       )}
                     </div>
                     {recurrenceType !== 'none' && (
-                      <p className="text-xs text-blue-600">
+                      <p className="text-xs text-[#006970]">
                         Serão criadas <strong>{Math.min(Math.max(parseInt(recurrenceCount) || 1, 1), 52)}</strong> consultas{' '}
                         {RECURRENCE_LABELS[recurrenceType].toLowerCase().replace('mente', '')}.
                       </p>
@@ -665,11 +678,11 @@ export default function AppointmentModal({
             )}
 
             {canManagePayments && appointment && (
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 space-y-3">
+              <div className="rounded-2xl border border-teal-100 bg-teal-50/60 p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                      <CurrencyCircleDollar size={15} className="text-indigo-600" />
+                      <CurrencyCircleDollar size={15} className="text-[#0ea5b0]" />
                       Pagamento da consulta
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
@@ -703,7 +716,8 @@ export default function AppointmentModal({
                   <button
                     type="button"
                     onClick={() => setPaymentModalOpen(true)}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-white transition-all active:scale-[0.99]"
+                    style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
                   >
                     <CurrencyCircleDollar size={14} />
                     {latestPayment ? 'Abrir cobrança' : 'Cobrar consulta'}
@@ -716,7 +730,7 @@ export default function AppointmentModal({
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-2 pb-2">
+            <div className="flex items-center justify-between pt-4 pb-2 border-t border-gray-100 mt-2">
               {isEditing && !confirmCancel && (
                 <button type="button" onClick={() => setConfirmCancel(true)}
                   className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
@@ -735,11 +749,12 @@ export default function AppointmentModal({
               {!confirmCancel && (
                 <div className="flex gap-2 ml-auto">
                   <button type="button" onClick={onClose}
-                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
                     Fechar
                   </button>
                   <button type="submit" disabled={isSubmitting}
-                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    className="px-4 py-2 text-sm text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.99]"
+                    style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                     {isSubmitting ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>

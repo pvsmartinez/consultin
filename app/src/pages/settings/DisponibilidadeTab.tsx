@@ -37,7 +37,7 @@ export default function DisponibilidadeTab() {
         <select
           value={activeProfId}
           onChange={e => setSelectedProfId(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
         >
           {professionals.map(p => (
             <option key={p.id} value={p.id}>

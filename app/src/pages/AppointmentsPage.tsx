@@ -4,6 +4,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { Plus, DoorOpen, UserCircle, X, Lock, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
@@ -100,7 +101,8 @@ function ClosedSlotModal({
         </div>
         <div className="flex flex-col gap-2">
           <button onClick={onJustThis}
-            className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            className="w-full px-4 py-2 text-sm text-white rounded-lg transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             Agendar só desta vez
           </button>
           <button onClick={onOpenRecurring}
@@ -146,7 +148,8 @@ function ExtendModal({ data, onJustThis, onAlways, onCancel }: {
         </p>
         <div className="flex flex-col gap-2">
           <button onClick={onJustThis}
-            className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            className="w-full px-4 py-2 text-sm text-white rounded-lg transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             Só esta consulta
           </button>
           <button onClick={onAlways}
@@ -422,29 +425,45 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
   const headerRight  = 'resourceTimeGridWeek,resourceTimeGridDay'
   const fcButtonText = { today: 'Hoje', week: 'Semana', day: 'Dia', resourceTimeGridWeek: 'Semana', resourceTimeGridDay: 'Dia' }
   const activeProfessionals = professionals.filter(p => p.active)
+  const pageTitle = isPersonalView ? 'Minha Agenda' : 'Agenda'
+  const todayHeadline = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-lg font-semibold text-gray-800">
-          {isPersonalView ? 'Minha Agenda' : 'Agenda'}
-        </h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          {clinic?.workingHours && Object.keys(clinic.workingHours).length > 0 && (
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-              todayOpen
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-red-50 text-red-600 border border-red-200'
-            }`}>
-              {todayLabel}
-            </span>
+      <div className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-5">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">
+              {todayHeadline}
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">{pageTitle}</h1>
+              {clinic?.workingHours && Object.keys(clinic.workingHours).length > 0 && (
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                  todayOpen
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-red-50 text-red-600 border border-red-200'
+                }`}>
+                  {todayLabel}
+                </span>
+              )}
+            </div>
+          </div>
+          {!isPersonalView && (
+            <button onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
+              className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl transition-all active:scale-95 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+              <Plus size={16} /> Nova consulta
+            </button>
           )}
-          {/* Professional filter */}
+        </div>
+
+        <div className="mt-5 flex items-center gap-2 flex-wrap">
           {!isPersonalView && activeProfessionals.length > 1 && (
             <select
               value={filterProfId}
               onChange={e => setFilterProfId(e.target.value)}
-              className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="text-xs border border-gray-200 rounded-xl px-3 py-2 text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-[#f8fafb]"
             >
               <option value="">Todos os profissionais</option>
               {activeProfessionals.map(p => (
@@ -452,35 +471,27 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
               ))}
             </select>
           )}
-          {/* Salas button — always visible for admins */}
           {!isPersonalView && (role === 'admin' || isSuperAdmin) && (
             <button onClick={() => setRoomsDrawerOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 text-gray-600 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2 text-xs border border-gray-200 bg-[#f8fafb] text-gray-600 rounded-xl hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0] transition-colors">
               <DoorOpen size={14} /> Salas
             </button>
           )}
-          {/* Room/prof toggle — only if clinic has more than 1 room */}
           {!isPersonalView && activeRoomCount > 1 && (
-            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
+            <div className="flex items-center border border-gray-200 bg-[#f8fafb] rounded-xl overflow-hidden text-xs p-1">
               {([
                 ['room', DoorOpen,     'Por sala'],
                 ['prof', UserCircle,   'Profissional'],
               ] as const).map(([v, Icon, label]) => (
                 <button key={v} onClick={() => setAgendaView(v)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors ${
-                    agendaView === v ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${
+                    agendaView === v ? 'bg-white text-[#006970] shadow-sm' : 'text-gray-600 hover:bg-white/70'
                   }`}>
                   <Icon size={14} />
                   <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
             </div>
-          )}
-          {!isPersonalView && (
-            <button onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-              <Plus size={16} /> Nova consulta
-            </button>
           )}
         </div>
       </div>
@@ -499,11 +510,11 @@ export default function AppointmentsPage({ myOnly = false }: { myOnly?: boolean 
 
       {/* Read-only notice for professionals */}
       {isPersonalView && role === 'professional' && (
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
-          <Lock size={13} className="shrink-0 text-blue-500" />
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 border border-teal-100 rounded-xl text-xs text-[#006970]">
+          <Lock size={13} className="shrink-0 text-[#0ea5b0]" />
           <span>
             Você está vendo apenas suas próprias consultas. Para alterar sua disponibilidade, acesse{' '}
-            <a href="/minha-disponibilidade" className="font-semibold underline hover:text-blue-900">Meus Horários</a>.
+            <a href="/minha-disponibilidade" className="font-semibold underline hover:text-[#004f55]">Meus Horários</a>.
           </span>
         </div>
       )}

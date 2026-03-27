@@ -12,7 +12,7 @@ import {
 import type { UserRole, PermissionKey } from '../../types'
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  admin:          'bg-blue-100 text-blue-700',
+  admin:          'bg-teal-100 text-teal-700',
   receptionist:   'bg-teal-100 text-teal-700',
   professional:   'bg-violet-100 text-violet-700',
   patient:        'bg-gray-100 text-gray-600',
@@ -163,11 +163,11 @@ export default function UsuariosTab() {
       <div className="space-y-2">
         {/* Current user row */}
         {me && (
-          <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl">
+          <div className="flex items-center justify-between px-4 py-3 bg-teal-50 border border-teal-100 rounded-xl">
             <div className="flex items-center gap-3 min-w-0">
-              <UserCircle size={20} className="text-blue-500 flex-shrink-0" />
+              <UserCircle size={20} className="text-[#0ea5b0] flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium text-gray-800">{me.name} <span className="text-xs text-blue-500">(você)</span></p>
+                <p className="text-sm font-medium text-gray-800">{me.name} <span className="text-xs text-[#0ea5b0]">(você)</span></p>
                 <div className="flex flex-wrap gap-1 mt-0.5">
                   {me.roles.map(r => (
                     <span key={r} className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[r]}`}>
@@ -245,7 +245,7 @@ export default function UsuariosTab() {
                         onClick={() => setShowPerms(v => !v)}
                         className={`p-1.5 border rounded-lg transition-colors ${
                           showPerms
-                            ? 'text-blue-600 border-blue-300 bg-blue-50'
+                            ? 'text-[#006970] border-teal-300 bg-teal-50'
                             : 'text-gray-400 hover:text-gray-600 border-gray-200'
                         }`}
                         title="Personalizar permissões">
@@ -361,7 +361,7 @@ export default function UsuariosTab() {
                   <button
                     onClick={() => handleResend(inv)}
                     disabled={resendInvite.isPending}
-                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-300 rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-40">
+                    className="flex items-center gap-1.5 text-xs text-[#006970] hover:text-[#004f55] border border-teal-200 hover:border-teal-300 rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-40">
                     <EnvelopeSimple size={13} />
                     Reenviar
                   </button>

@@ -234,7 +234,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
         {/* FAQ knowledge base */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
           <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-            <BookOpen size={15} weight="fill" className="text-blue-500" /> Base de conhecimento (FAQ)
+            <BookOpen size={15} weight="fill" className="text-[#0ea5b0]" /> Base de conhecimento (FAQ)
           </p>
           <p className="text-xs text-gray-400">Perguntas e respostas que a IA usará para responder dúvidas frequentes.</p>
 
@@ -248,14 +248,14 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
                       value={editQ}
                       onChange={e => setEditQ(e.target.value)}
                       placeholder="Pergunta"
-                      className="w-full border border-blue-300 rounded-lg px-3 py-1.5 text-sm"
+                      className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-sm"
                     />
                     <textarea
                       value={editA}
                       onChange={e => setEditA(e.target.value)}
                       placeholder="Resposta"
                       rows={2}
-                      className="w-full border border-blue-300 rounded-lg px-3 py-1.5 text-sm resize-none"
+                      className="w-full border border-teal-200 rounded-xl px-3 py-1.5 text-sm resize-none"
                     />
                     <div className="flex gap-2">
                       <button
@@ -264,7 +264,8 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
                           setEditId(null)
                           toast.success('FAQ atualizado')
                         }}
-                        className="flex items-center gap-1 text-xs text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700"
+                        className="flex items-center gap-1 text-xs text-white px-3 py-1.5 rounded-xl transition-all active:scale-[0.98]"
+                        style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
                       >
                         <Check size={12} /> Salvar
                       </button>
@@ -282,7 +283,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={() => { setEditId(faq.id); setEditQ(faq.question); setEditA(faq.answer) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#006970] hover:bg-teal-50 transition"
                       >
                         <PencilSimple size={13} />
                       </button>
@@ -322,7 +323,8 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
                 toast.success('FAQ adicionado')
               }}
               disabled={!faqQ.trim() || !faqA.trim()}
-              className="flex items-center gap-1.5 text-xs text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+              className="flex items-center gap-1.5 text-xs text-white px-3 py-1.5 rounded-xl disabled:opacity-40 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               <Plus size={12} /> Adicionar
             </button>

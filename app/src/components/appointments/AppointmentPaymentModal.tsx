@@ -150,16 +150,19 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
     <Modal open={true} onClose={onClose} maxWidth="sm">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-800">Pagamento da consulta</h2>
-            <p className="text-xs text-gray-400">
-              {appointment.patient?.name} · {appointment.professional?.name}
-            </p>
+        <div className="px-6 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0] mb-2">Financeiro clínico</p>
+              <h2 className="text-lg font-semibold text-gray-900 tracking-tight">Pagamento da consulta</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {appointment.patient?.name} · {appointment.professional?.name}
+              </p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
-            <X size={18} />
-          </button>
         </div>
 
         <div className="p-6 space-y-5">
@@ -176,7 +179,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                   value={customAmount}
                   onChange={e => setCustomAmount(e.target.value)}
                   placeholder="0,00"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
                 />
               </div>
 
@@ -191,7 +194,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                       onClick={() => setMethod(m)}
                       className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${
                         method === m
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                          ? 'border-[#0ea5b0] bg-teal-50 text-[#006970]'
                           : 'border-gray-200 text-gray-500 hover:border-gray-300'
                       }`}
                     >
@@ -204,7 +207,8 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
               <button
                 onClick={handleCreateCharge}
                 disabled={createCharge.isPending || amountCents <= 0}
-                className="w-full py-2.5 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="w-full py-2.5 text-sm font-medium rounded-xl text-white disabled:opacity-50 transition-all active:scale-[0.99]"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 {createCharge.isPending ? 'Gerando cobrança...' : 'Gerar cobrança'}
               </button>
@@ -255,15 +259,15 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
 
               {/* QR Code PIX */}
               {pixQrCode && (
-                <div className="flex flex-col items-center gap-3 bg-gray-50 rounded-xl p-4">
-                  <QrCode size={20} className="text-gray-500" />
+                <div className="flex flex-col items-center gap-3 bg-[#f8fafb] rounded-2xl p-4 border border-gray-100">
+                  <QrCode size={20} className="text-[#0ea5b0]" />
                   <img
                     src={`data:image/png;base64,${pixQrCode}`}
                     alt="QR Code PIX"
                     className="w-40 h-40 rounded-lg"
                   />
                   <button onClick={copyPix}
-                    className="flex items-center gap-2 text-xs text-indigo-600 hover:text-indigo-700">
+                    className="flex items-center gap-2 text-xs text-[#006970] hover:text-[#004f55]">
                     {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
                     {copied ? 'Copiado!' : 'Copiar código PIX'}
                   </button>
@@ -298,7 +302,8 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
 
                 {canTransfer && (
                   <button onClick={handleTransfer} disabled={transfer.isPending}
-                    className="w-full py-2 text-sm font-medium rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors">
+                    className="w-full py-2.5 text-sm font-medium rounded-xl text-white disabled:opacity-50 transition-all active:scale-[0.99]"
+                    style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                     {transfer.isPending
                       ? 'Transferindo...'
                       : `Repassar ${formatBRL(appointment.professionalFeeCents ?? Math.round(payment.amountCents * 0.7))}`}

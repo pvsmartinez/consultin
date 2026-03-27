@@ -91,7 +91,8 @@ export default function DadosTab({ clinic }: { clinic: Clinic }) {
 
       <div className="flex justify-end">
         <button type="submit" disabled={isSubmitting}
-          className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+          className="px-5 py-2 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
           {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
         </button>
       </div>

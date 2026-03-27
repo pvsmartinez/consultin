@@ -230,16 +230,16 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
           {/* ─ Step: Upload ─ */}
           {step === 'upload' && (
             <div className="flex flex-col items-center gap-4 py-10">
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-blue-400 transition"
+              <div className="border-2 border-dashed border-gray-300 rounded-[24px] p-10 text-center cursor-pointer hover:border-[#0ea5b0] hover:bg-teal-50/40 transition w-full"
                 onClick={() => fileRef.current?.click()}>
-                <UploadSimple size={36} className="mx-auto text-gray-400 mb-3" />
+                <UploadSimple size={36} className="mx-auto text-[#0ea5b0] mb-3" />
                 <p className="text-sm font-medium text-gray-700">Clique para selecionar um arquivo CSV</p>
                 <p className="text-xs text-gray-400 mt-1">
                   A primeira linha deve conter os cabeçalhos das colunas
                 </p>
               </div>
               <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
-              <div className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3 w-full">
+              <div className="text-xs text-gray-400 bg-[#f8fafb] border border-gray-100 rounded-2xl p-4 w-full">
                 <p className="font-semibold text-gray-600 mb-1">Dica: colunas reconhecidas automaticamente</p>
                 <p>Nome, CPF, RG, Nascimento, Sexo, Telefone, E-mail, Endereço, Cidade, UF, CEP, Observações</p>
                 <p className="mt-1">Aceita exportações do Google Sheets, Excel e de outros sistemas de gestão.</p>
@@ -274,7 +274,7 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
                     <select
                       value={mapping[f.key] ?? ''}
                       onChange={e => handleMappingChange(f.key, e.target.value)}
-                      className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 border border-gray-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                     >
                       <option value="">— ignorar —</option>
                       {headers.map(h => (
@@ -350,7 +350,8 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
             {step === 'map' && (
               <button
                 onClick={goToPreview}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition"
+                className="text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 Ver prévia →
               </button>
@@ -358,14 +359,15 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
             {step === 'preview' && (
               <button
                 onClick={handleImport}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition"
+                className="flex items-center gap-2 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 <Check size={16} />
                 Importar {rows.length} paciente(s)
               </button>
             )}
             {step === 'importing' && (
-              <button disabled className="bg-blue-400 text-white text-sm font-medium px-5 py-2 rounded-lg opacity-60">
+              <button disabled className="bg-teal-300 text-white text-sm font-medium px-5 py-2.5 rounded-xl opacity-60">
                 Importando...
               </button>
             )}

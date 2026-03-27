@@ -6,29 +6,29 @@
 
 /* ── Consultin theme ─────────────────────────────────────────────── */
 :root {
-  /* SideNav: dark sidebar */
-  --ui-nav-bg: #030712;
-  --ui-nav-border: #1f2937;
-  --ui-nav-item-text: #9ca3af;
-  --ui-nav-item-hover-bg: rgba(255, 255, 255, 0.05);
-  --ui-nav-item-hover-text: #e5e7eb;
-  --ui-nav-item-active-bg: rgb(20 184 166 / 0.15);
-  --ui-nav-item-active-text: #5eead4;
+  /* SideNav: light "Clinical Sanctuary" sidebar */
+  --ui-nav-bg: #f2f4f5;
+  --ui-nav-border: transparent;
+  --ui-nav-item-text: #6b7280;
+  --ui-nav-item-hover-bg: rgba(255, 255, 255, 0.6);
+  --ui-nav-item-hover-text: #0ea5b0;
+  --ui-nav-item-active-bg: #ffffff;
+  --ui-nav-item-active-text: #0ea5b0;
 
   /* TopBar */
-  --ui-topbar-bg: #030712;
-  --ui-topbar-border: #1f2937;
-  --ui-topbar-height: 56px;
+  --ui-topbar-bg: #f8fafb;
+  --ui-topbar-border: transparent;
+  --ui-topbar-height: 64px;
 
   /* BottomTabBar (mobile nav) */
-  --ui-tabs-bg: #030712;
-  --ui-tabs-border: #1f2937;
+  --ui-tabs-bg: rgba(255, 255, 255, 0.85);
+  --ui-tabs-border: #e5e7eb;
   --ui-tabs-text: #6b7280;
-  --ui-tabs-active-text: #5eead4;
+  --ui-tabs-active-text: #006970;
   --ui-tabs-height: 56px;
 
   /* Brand */
-  --ui-brand-primary: #14b8a6;
+  --ui-brand-primary: #0ea5b0;
 
   /* Atoms */
   --ui-badge-bg: #ef4444;
@@ -88,6 +88,12 @@
 .nav-item-default:hover {
   background-color: var(--ui-nav-item-hover-bg) !important;
   color: var(--ui-nav-item-hover-text) !important;
+}
+
+/* Active nav item gets a subtle card shadow to match Stitch design */
+.nav-item-active {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 600 !important;
 }
 
 :root {

@@ -83,7 +83,7 @@ export default function NotificacoesTab() {
       </div>
 
       {/* How it works */}
-      <div className="flex gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+      <div className="flex gap-3 bg-teal-50 border border-teal-100 rounded-xl p-4 text-sm text-[#006970]">
         <Info size={16} className="flex-shrink-0 mt-0.5" />
         <p>
           As notificações são enviadas pela conta <strong>WhatsApp Business da clínica</strong>{' '}
@@ -109,7 +109,8 @@ export default function NotificacoesTab() {
           <button
             onClick={handleSavePhone}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40"
+            className="px-4 py-2 text-white text-sm font-medium rounded-xl transition-all active:scale-[0.99] disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             {saving ? 'Salvando…' : 'Salvar'}
           </button>
@@ -140,7 +141,7 @@ export default function NotificacoesTab() {
               </div>
               <button
                 onClick={() => handleToggle(field, !value)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${value ? 'bg-blue-500' : 'bg-gray-200'}`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${value ? 'bg-[#0ea5b0]' : 'bg-gray-200'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>

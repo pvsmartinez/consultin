@@ -101,7 +101,7 @@ export default function PagamentoTab({ clinic }: { clinic: Clinic }) {
             min={0}
             value={cancelH}
             onChange={e => setCancelH(e.target.value)}
-            className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           />
           <span className="text-sm text-gray-500">horas antes da consulta</span>
         </div>
@@ -116,7 +116,8 @@ export default function PagamentoTab({ clinic }: { clinic: Clinic }) {
         <button
           onClick={save}
           disabled={saving}
-          className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          className="px-5 py-2 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           {saving ? 'Salvando...' : 'Salvar configurações'}
         </button>

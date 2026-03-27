@@ -65,7 +65,7 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
             type="button"
             onClick={() => setAllowProfSelection(v => !v)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              allowProfSelection ? 'bg-blue-500' : 'bg-gray-200'
+              allowProfSelection ? 'bg-[#0ea5b0]' : 'bg-gray-200'
             }`}
           >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -82,7 +82,8 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
           {SLOT_DURATIONS.map(d => (
             <button key={d} type="button"
               onClick={() => setSlotDuration(d)}
-              className={`px-4 py-2 text-sm rounded-lg border transition-colors ${slotDuration === d ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'}`}>
+              className={`px-4 py-2 text-sm rounded-lg border transition-all active:scale-[0.98] ${slotDuration === d ? 'text-white border-transparent' : 'border-gray-300 text-gray-600 hover:border-[#0ea5b0]'}`}
+              style={slotDuration === d ? { background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' } : undefined}>
               {d} min
             </button>
           ))}
@@ -126,7 +127,8 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
 
       <div className="flex justify-end">
         <button onClick={save} disabled={saving}
-          className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+          className="px-5 py-2 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
           {saving ? 'Salvando...' : 'Salvar configurações'}
         </button>
       </div>
