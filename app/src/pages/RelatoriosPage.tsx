@@ -244,7 +244,7 @@ export default function RelatoriosPage() {
               const [y, m] = e.target.value.split('-').map(Number)
               setMonth(new Date(y, m - 1, 1))
             }}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           >
             {Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i)).map(d => (
               <option key={format(d, 'yyyy-MM')} value={format(d, 'yyyy-MM')}>
@@ -257,7 +257,7 @@ export default function RelatoriosPage() {
           <select
             value={professionalId}
             onChange={e => setProfessionalId(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           >
             <option value="">Todos os profissionais</option>
             {professionals.map(p => (
@@ -362,7 +362,7 @@ export default function RelatoriosPage() {
                 color="emerald"
               />
               <ExportCard
-                icon={<Users size={22} className="text-blue-600" />}
+                icon={<Users size={22} className="text-[#0ea5b0]" />}
                 title="Pacientes"
                 description="Todos os pacientes cadastrados"
                 loading={exportingPatients}
@@ -405,7 +405,7 @@ type ColorVariant = 'emerald' | 'blue' | 'violet'
 
 const btnColors: Record<ColorVariant, string> = {
   emerald: 'bg-emerald-600 hover:bg-emerald-700',
-  blue:    'bg-blue-600 hover:bg-blue-700',
+  blue:    'bg-[#0ea5b0] hover:bg-[#006970]',
   violet:  'bg-violet-600 hover:bg-violet-700',
 }
 

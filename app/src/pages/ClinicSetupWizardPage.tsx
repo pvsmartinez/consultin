@@ -130,11 +130,11 @@ function WizardShell({
   const currentIndex = STEPS.findIndex(s => s.key === step)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-start justify-center p-6 pt-12">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-teal-100 flex items-start justify-center p-6 pt-12">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center gap-2 mb-8">
-          <Stethoscope size={24} className="text-blue-600" />
+          <Stethoscope size={24} className="text-[#0ea5b0]" />
           <span className="text-lg font-semibold text-gray-800">Consultin</span>
           <span className="text-sm text-gray-400 ml-1">— Configuração inicial</span>
         </div>
@@ -151,13 +151,13 @@ function WizardShell({
                   onClick={() => onGoTo(s.key)}
                   disabled={i > currentIndex}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap
-                    ${active ? 'bg-blue-600 text-white' : done ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-400 cursor-default'}`}
+                    ${active ? 'bg-[#0ea5b0] text-white' : done ? 'bg-teal-100 text-teal-700 hover:bg-teal-200' : 'bg-gray-100 text-gray-400 cursor-default'}`}
                 >
                   <Icon size={13} />
                   {s.label}
                 </button>
                 {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-0.5 rounded ${i < currentIndex ? 'bg-blue-300' : 'bg-gray-200'}`} />
+                  <div className={`flex-1 h-0.5 rounded ${i < currentIndex ? 'bg-teal-300' : 'bg-gray-200'}`} />
                 )}
               </div>
             )
@@ -329,7 +329,7 @@ function StepAgenda({
         <div className="flex flex-wrap gap-2">
           {SLOT_DURATIONS.map(d => (
             <button key={d} type="button" onClick={() => setSlotDuration(d)}
-              className={`px-4 py-2 text-sm rounded-lg border transition-colors ${slotDuration === d ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:border-blue-400'}`}>
+              className={`px-4 py-2 text-sm rounded-xl border transition-colors ${slotDuration === d ? 'bg-[#0ea5b0] text-white border-transparent' : 'border-gray-300 text-gray-600 hover:border-teal-400'}`}>
               {d} min
             </button>
           ))}
@@ -445,7 +445,7 @@ function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) 
       <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2 text-sm text-gray-600">
         <p className="font-medium text-gray-700 mb-3">O que você pode fazer agora:</p>
         <p className="flex items-center gap-2">
-          <CalendarBlank size={16} className="text-blue-500 shrink-0" />
+          <CalendarBlank size={16} className="text-[#0ea5b0] shrink-0" />
           Criar o primeiro agendamento na agenda
         </p>
         <p className="flex items-center gap-2">
@@ -502,7 +502,8 @@ function WizardNavBar({
         type={nextType ?? 'button'}
         onClick={nextType !== 'submit' ? onNext : undefined}
         disabled={nextLoading}
-        className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-5 py-2 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+        style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
       >
         {nextLoading ? 'Salvando…' : nextLabel}
         {!nextLoading && <ArrowRight size={15} />}

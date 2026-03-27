@@ -101,12 +101,13 @@ export default function ProfessionalsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowInviteForm(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-600 text-sm rounded-lg hover:bg-blue-50">
+            className="flex items-center gap-2 px-4 py-2 border border-teal-200 text-[#006970] text-sm rounded-xl hover:bg-teal-50">
             <Envelope size={16} />
             Convidar
           </button>
           <button onClick={openNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+            className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-xl transition-all active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             <Plus size={16} />
             Novo profissional
           </button>
@@ -115,20 +116,20 @@ export default function ProfessionalsPage() {
 
       {/* Inline invite form */}
       {showInviteForm && (
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-          <p className="text-sm font-medium text-blue-800 mb-3">Convidar profissional para o sistema</p>
+        <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
+          <p className="text-sm font-medium text-[#006970] mb-3">Convidar profissional para o sistema</p>
           <form onSubmit={handleSendInvite} className="flex flex-wrap gap-2 items-end">
             <div className="flex-1 min-w-[180px]">
               <label className="block text-xs text-gray-500 mb-1">E-mail *</label>
               <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                 placeholder="profissional@clinica.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
             </div>
             <div className="flex-1 min-w-[140px]">
               <label className="block text-xs text-gray-500 mb-1">Nome (opcional)</label>
               <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
                 placeholder="Dr. João Silva"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Funções (múltipla escolha)</label>
@@ -149,7 +150,8 @@ export default function ProfessionalsPage() {
               </div>
             </div>
             <button type="submit" disabled={createInvite.isPending}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="px-4 py-2 text-white text-sm rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
               {createInvite.isPending ? 'Enviando…' : 'Criar convite'}
             </button>
             <button type="button" onClick={() => setShowInviteForm(false)}
@@ -166,7 +168,7 @@ export default function ProfessionalsPage() {
       ) : professionals.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 py-16 text-center">
           <p className="text-sm text-gray-400">Nenhum profissional cadastrado.</p>
-          <button onClick={openNew} className="mt-3 text-sm text-blue-600 hover:underline">
+          <button onClick={openNew} className="mt-3 text-sm text-[#006970] hover:underline">
             Cadastrar o primeiro
           </button>
         </div>
@@ -175,7 +177,7 @@ export default function ProfessionalsPage() {
           {professionals.map(p => (
             <div key={p.id} className="flex items-center justify-between px-5 py-4">
               <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-semibold text-sm">
+                <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-[#006970] font-semibold text-sm">
                   {p.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -239,7 +241,7 @@ export default function ProfessionalsPage() {
                   <button
                     onClick={() => handleResendEmail(inv.id)}
                     disabled={resendEmail.isPending}
-                    className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg disabled:opacity-40"
+                    className="p-1.5 text-gray-400 hover:text-[#0ea5b0] hover:bg-teal-50 rounded-lg disabled:opacity-40"
                     title="Reenviar e-mail de convite">
                     <PaperPlaneTilt size={15} />
                   </button>

@@ -172,7 +172,7 @@ function SessionRow({
   active:  boolean
   onClick: () => void
 }) {
-  const statusColor = session.status === 'human' ? 'bg-amber-400' : 'bg-blue-400'
+  const statusColor = session.status === 'human' ? 'bg-amber-400' : 'bg-teal-400'
   const displayName = session.patientName ?? formatPhone(session.waPhone)
   const timeStr     = format(new Date(session.lastMessageAt), 'HH:mm', { locale: ptBR })
 
@@ -267,7 +267,7 @@ function ChatPanel({
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
             session.status === 'human'
               ? 'bg-amber-100 text-amber-700'
-              : 'bg-blue-100 text-blue-700'
+              : 'bg-teal-100 text-teal-700'
           }`}>
             {session.status === 'human' ? '👤 Humano' : '🤖 AI'}
           </span>
@@ -305,7 +305,7 @@ function ChatPanel({
       {/* Input */}
       <div className="px-4 py-3 border-t border-gray-100">
         {session.aiDraft && text === session.aiDraft && (
-          <div className="flex items-center gap-1.5 text-xs text-blue-600 mb-2 bg-blue-50 rounded-lg px-3 py-1.5">
+          <div className="flex items-center gap-1.5 text-xs text-[#006970] mb-2 bg-teal-50 rounded-xl px-3 py-1.5">
             <Robot size={12} />
             Resposta sugerida pela IA — você pode editar antes de enviar.
           </div>
@@ -358,7 +358,7 @@ function MessageBubble({ message }: { message: WhatsAppMessage }) {
         <div className={`flex items-center gap-1.5 ${isInbound ? 'justify-start pl-1' : 'justify-end pr-1'}`}>
           <span className="text-[11px] text-gray-400">{timeStr}</span>
           {SentByIcon && <SentByIcon size={11} className="text-gray-400" />}
-          {!isInbound && message.deliveryStatus === 'read'      && <Checks size={12} className="text-blue-400" />}
+          {!isInbound && message.deliveryStatus === 'read'      && <Checks size={12} className="text-[#0ea5b0]" />}
           {!isInbound && message.deliveryStatus === 'delivered' && <Checks size={12} className="text-gray-400" />}
           {!isInbound && message.deliveryStatus === 'sent'      && <Check  size={12} className="text-gray-400" />}
         </div>

@@ -149,7 +149,7 @@ export function useResendInviteEmail() {
       if (result.sent) {
         toast.success('Convite reenviado por e-mail!')
       } else if (result.reason === 'already_registered') {
-        toast.info('Usuário já tem conta ativa — ele verá o convite ao fazer login em consultin.app.')
+        toast.info('Usuário já tem conta ativa — ele verá o convite ao fazer login em consultin.pmatz.com.')
       } else {
         toast.error('Não foi possível reenviar o e-mail.')
       }

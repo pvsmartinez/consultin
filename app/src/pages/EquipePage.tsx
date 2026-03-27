@@ -146,13 +146,13 @@ function ProfissionaisTab() {
               <label className="block text-xs text-gray-500 mb-1">E-mail *</label>
               <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                 placeholder="profissional@clinica.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
             </div>
             <div className="flex-1 min-w-[140px]">
               <label className="block text-xs text-gray-500 mb-1">Nome (opcional)</label>
               <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
                 placeholder="Dr. João Silva"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Funções</label>
@@ -387,7 +387,7 @@ function AcessoTab() {
                         ))}
                       </div>
                       <button onClick={() => setShowPerms(v => !v)}
-                        className={`p-1.5 border rounded-lg transition-colors ${showPerms ? 'text-blue-600 border-blue-300 bg-blue-50' : 'text-gray-400 border-gray-200'}`}
+                        className={`p-1.5 border rounded-lg transition-colors ${showPerms ? 'text-[#006970] border-teal-300 bg-teal-50' : 'text-gray-400 border-gray-200'}`}
                         title="Personalizar permissões">
                         <SlidersHorizontal size={14} />
                       </button>

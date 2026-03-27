@@ -44,7 +44,7 @@ function FieldToggleList({
           <div className="relative inline-flex items-center cursor-pointer shrink-0">
             <input type="checkbox" className="sr-only peer"
               checked={isVisible(f.key)} onChange={() => toggle(f.key)} />
-            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 transition-colors" />
+            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-[#0ea5b0] transition-colors" />
             <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4" />
           </div>
           <span className={`text-sm ${isVisible(f.key) ? 'text-gray-700' : 'text-gray-400 line-through'}`}>
@@ -212,7 +212,7 @@ export default function EntityFieldsPanel({
                 value={newField.label ?? ''}
                 onChange={e => setNewField(p => ({ ...p, label: e.target.value }))}
                 placeholder={`ex: ${entityLabel === 'paciente' ? 'Plano de saúde' : 'Área de atuação'}`}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
             <div>
@@ -220,7 +220,7 @@ export default function EntityFieldsPanel({
               <select
                 value={newField.type}
                 onChange={e => setNewField(p => ({ ...p, type: e.target.value as CustomFieldType, optionsRaw: '' }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
               >
                 {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -237,7 +237,7 @@ export default function EntityFieldsPanel({
                 onChange={e => setNewField(p => ({ ...p, optionsRaw: e.target.value }))}
                 rows={3}
                 placeholder={entityLabel === 'paciente' ? 'Particular\nUnimed\nBradesco Saúde' : 'Clínica Geral\nPediatra\nOrtodontista'}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] resize-none"
               />
             </div>
           )}
@@ -249,7 +249,7 @@ export default function EntityFieldsPanel({
               Campo obrigatório
             </label>
             <button type="button" onClick={addField}
-              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
+              className="flex items-center gap-2 text-sm text-[#006970] hover:text-[#004f55] font-medium">
               <Plus size={15} /> Adicionar
             </button>
           </div>
@@ -271,7 +271,8 @@ export default function EntityFieldsPanel({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-5 py-2 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-all active:scale-[0.99]"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             {saving ? 'Salvando…' : 'Salvar e continuar'}
             {!saving && <ArrowRight size={15} />}
@@ -280,7 +281,9 @@ export default function EntityFieldsPanel({
       ) : (
         <div className="flex justify-end">
           <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
+            className="px-5 py-2 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+          >
             {saving ? 'Salvando...' : 'Salvar configurações'}
           </button>
         </div>

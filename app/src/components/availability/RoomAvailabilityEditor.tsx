@@ -142,7 +142,7 @@ export default function RoomAvailabilityEditor({ roomId }: Props) {
           const preview = cfg?.weekParity ? parityPreview(day, cfg.weekParity) : ''
           return (
             <div key={day}
-              className={`border rounded-xl p-3 bg-white transition-colors ${active ? 'border-blue-200' : 'border-gray-100'}`}
+              className={`border rounded-xl p-3 bg-white transition-colors ${active ? 'border-teal-200' : 'border-gray-100'}`}
             >
               {/* Day toggle */}
               <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export default function RoomAvailabilityEditor({ roomId }: Props) {
                 </label>
                 {active && (
                   <button type="button" onClick={() => addSlot(day)}
-                    className="text-xs text-blue-600 hover:underline ml-auto">
+                    className="text-xs text-[#006970] hover:underline ml-auto">
                     + horário
                   </button>
                 )}
@@ -189,14 +189,14 @@ export default function RoomAvailabilityEditor({ roomId }: Props) {
                   <select
                     value={cfg.weekParity ?? ''}
                     onChange={e => setDayParity(day, (e.target.value || null) as WeekParity)}
-                    className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    className="w-full border border-gray-200 rounded-xl px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#0ea5b0]"
                   >
                     <option value="">Toda semana</option>
                     <option value="even">Quinzenal A (semanas pares)</option>
                     <option value="odd">Quinzenal B (semanas ímpares)</option>
                   </select>
                   {cfg.weekParity && preview && (
-                    <p className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
+                    <p className="text-[10px] text-[#0ea5b0] mt-0.5 flex items-center gap-1">
                       <CalendarDots size={10} />
                       Próx. {WEEKDAY_FULL[day].toLowerCase()}s: {preview}
                     </p>
@@ -216,7 +216,8 @@ export default function RoomAvailabilityEditor({ roomId }: Props) {
         <button
           onClick={save}
           disabled={saving}
-          className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          className="px-4 py-1.5 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           {saving ? 'Salvando...' : 'Salvar disponibilidade'}
         </button>

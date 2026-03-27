@@ -36,7 +36,7 @@ export default function PatientAnamnesisPage() {
     return (
       <div className="text-center mt-20">
         <p className="text-gray-500 mb-4">Paciente não encontrado.</p>
-        <button onClick={() => navigate('/pacientes')} className="text-blue-600 text-sm hover:underline">
+        <button onClick={() => navigate('/pacientes')} className="text-[#006970] text-sm hover:underline">
           Voltar para Pacientes
         </button>
       </div>
@@ -87,7 +87,7 @@ export default function PatientAnamnesisPage() {
           </p>
           <Link
             to="/configuracoes"
-            className="inline-flex items-center gap-2 mt-2 text-sm text-blue-600 hover:underline"
+            className="inline-flex items-center gap-2 mt-2 text-sm text-[#006970] hover:underline"
           >
             <Gear size={14} />
             Ir para Configurações
@@ -110,7 +110,8 @@ export default function PatientAnamnesisPage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+              className="px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               {saving ? 'Salvando...' : 'Salvar anamnese'}
             </button>

@@ -21,7 +21,7 @@ function Initials({ name }: { name: string }) {
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase()
   return (
-    <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-xl font-semibold text-blue-700 select-none">
+    <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center text-xl font-semibold text-[#006970] select-none">
       {initials}
     </div>
   )
@@ -42,7 +42,7 @@ function PasswordInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
         />
         <button
           type="button"
@@ -228,7 +228,7 @@ export default function MinhaContaPage() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="mt-1.5 text-xs text-blue-600 hover:underline"
+                  className="mt-1.5 text-xs text-[#006970] hover:underline"
                 >
                   Alterar foto
                 </button>
@@ -250,7 +250,7 @@ export default function MinhaContaPage() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
 
@@ -269,7 +269,8 @@ export default function MinhaContaPage() {
             <button
               type="submit"
               disabled={savingDados}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50"
+              className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               {savingDados ? 'Salvando...' : 'Salvar dados'}
             </button>
@@ -322,7 +323,8 @@ export default function MinhaContaPage() {
               <button
                 type="submit"
                 disabled={savingSenha || !oldPw || !newPw || !confirmPw}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50"
+                className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 {savingSenha ? 'Salvando...' : 'Alterar senha'}
               </button>
@@ -412,7 +414,7 @@ function ProviderRow({
       ) : (
         <button
           onClick={onLink}
-          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+          className="flex items-center gap-1.5 text-xs text-[#006970] hover:text-[#004f55] font-medium transition-colors"
         >
           <Link size={13} />
           Conectar

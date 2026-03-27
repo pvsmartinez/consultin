@@ -111,10 +111,10 @@ export default function OnboardingPage() {
 
   // ──────────────────────────────────────────────────────────────────────────
   const Shell = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-teal-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
         <div className="flex items-center gap-2 mb-6">
-          <Stethoscope size={24} className="text-blue-600" />
+          <Stethoscope size={24} className="text-[#0ea5b0]" />
           <span className="text-lg font-semibold text-gray-800">Consultin</span>
         </div>
         {children}
@@ -127,7 +127,7 @@ export default function OnboardingPage() {
     return (
       <Shell>
         <div className="flex flex-col items-center py-8 gap-3 text-gray-400">
-          <Spinner size={28} className="animate-spin text-blue-500" />
+          <Spinner size={28} className="animate-spin text-[#0ea5b0]" />
           <span className="text-sm">Verificando acesso…</span>
         </div>
       </Shell>
@@ -155,7 +155,7 @@ export default function OnboardingPage() {
               onChange={e => setInviteName(e.target.value)}
               required
               placeholder="Dr. João Silva"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -168,7 +168,8 @@ export default function OnboardingPage() {
           {error && <ErrorBanner msg={error} />}
 
           <button type="submit" disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50">
+            className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             {loading ? 'Ativando…' : 'Ativar minha conta'}
           </button>
         </form>
@@ -195,7 +196,7 @@ export default function OnboardingPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo *</label>
             <input type="text" value={patientName} onChange={e => setPatientName(e.target.value)}
               required placeholder="Maria da Silva"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
           </div>
 
           <div>
@@ -205,7 +206,7 @@ export default function OnboardingPage() {
             ) : (
               <select value={patientClinicId} onChange={e => setPatientClinicId(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white">
                 <option value="">Selecione a clínica</option>
                 {clinics.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -218,7 +219,7 @@ export default function OnboardingPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
             <input type="tel" value={patientPhone} onChange={e => setPatientPhone(e.target.value)}
               placeholder="(11) 99999-9999"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
           </div>
 
           <div>
@@ -228,13 +229,14 @@ export default function OnboardingPage() {
               value={patientCpf}
               onAccept={(val: string) => setPatientCpf(val)}
               placeholder="000.000.000-00"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
           </div>
 
           {error && <ErrorBanner msg={error} />}
 
           <button type="submit" disabled={loading || !patientClinicId}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50">
+            className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             {loading ? 'Criando conta…' : 'Criar conta'}
           </button>
         </form>
@@ -265,7 +267,8 @@ export default function OnboardingPage() {
       </p>
 
       <button type="button" onClick={() => { setView('patient'); setError(null) }}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition mb-3">
+        className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] mb-3"
+        style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
         Sou paciente — criar conta
       </button>
 

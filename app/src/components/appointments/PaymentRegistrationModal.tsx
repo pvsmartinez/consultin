@@ -85,7 +85,7 @@ export default function PaymentRegistrationModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Valor recebido (R$)
               </label>
-              <div className="flex items-center gap-2 border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500">
+              <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#0ea5b0]">
                 <span className="text-gray-400 text-sm">R$</span>
                 <input
                   // eslint-disable-next-line jsx-a11y/no-autofocus
@@ -109,7 +109,7 @@ export default function PaymentRegistrationModal({
               <select
                 value={method}
                 onChange={e => setMethod(e.target.value as AppointmentPaymentMethod)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
               >
                 {(Object.entries(PAYMENT_METHOD_LABELS) as [AppointmentPaymentMethod, string][]).map(
                   ([val, label]) => <option key={val} value={val}>{label}</option>

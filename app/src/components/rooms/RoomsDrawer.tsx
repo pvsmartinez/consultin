@@ -65,7 +65,7 @@ function RoomRow({ room }: { room: ClinicRoom }) {
             onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { setEditing(false); setName(room.name); setColor(room.color) } }}
             autoFocus
-            className="flex-1 text-sm border border-gray-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 text-sm border border-gray-200 rounded-xl px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           />
         ) : (
           <span className="flex-1 text-sm font-medium text-gray-800 truncate">{room.name}</span>
@@ -96,7 +96,7 @@ function RoomRow({ room }: { room: ClinicRoom }) {
               <button
                 onClick={() => setExpanded(v => !v)}
                 title="Horários da sala"
-                className={`p-1 rounded transition-colors ${expanded ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}
+                className={`p-1 rounded transition-colors ${expanded ? 'bg-teal-50 text-[#006970]' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'}`}
               >
                 <Clock size={14} />
               </button>
@@ -210,7 +210,7 @@ export default function RoomsDrawer({ onClose }: Props) {
                 onKeyDown={e => { if (e.key === 'Enter') create(); if (e.key === 'Escape') setShowNewForm(false) }}
                 placeholder="Nome da sala (ex: Sala 1, Consultório A)"
                 autoFocus
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
               <div className="flex flex-wrap gap-1.5">
                 {ROOM_COLORS.map(c => (
@@ -230,7 +230,8 @@ export default function RoomsDrawer({ onClose }: Props) {
                 <button
                   onClick={create}
                   disabled={!newName.trim() || createRoom.isPending}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+                  style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
                 >
                   <Check size={12} /> Criar sala
                 </button>
@@ -245,7 +246,7 @@ export default function RoomsDrawer({ onClose }: Props) {
           ) : (
             <button
               onClick={() => setShowNewForm(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs text-blue-600 border border-dashed border-blue-300 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2 text-xs text-[#006970] border border-dashed border-teal-300 rounded-xl hover:border-[#0ea5b0] hover:bg-teal-50 transition-colors"
             >
               <Plus size={13} /> Nova sala
             </button>

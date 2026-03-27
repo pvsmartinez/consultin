@@ -150,7 +150,7 @@ export default function AvailabilityEditor({
           const active = !!cfg
           const preview = cfg?.weekParity ? parityPreview(day, cfg.weekParity) : ''
           return (
-            <div key={day} className={`border rounded-xl p-3 bg-white transition-colors ${active ? 'border-blue-200' : 'border-gray-200'}`}>
+            <div key={day} className={`border rounded-xl p-3 bg-white transition-colors ${active ? 'border-teal-200' : 'border-gray-200'}`}>
               {/* Toggle + day label */}
               <div className="flex items-center gap-3 mb-2">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -163,7 +163,7 @@ export default function AvailabilityEditor({
                   <span className="text-sm font-semibold text-gray-700 w-10">{WEEKDAY_LABELS[day]}</span>
                 </label>
                 {active && (
-                  <button type="button" onClick={() => addSlot(day)} className="text-xs text-blue-600 hover:underline ml-auto">
+                  <button type="button" onClick={() => addSlot(day)} className="text-xs text-[#006970] hover:underline ml-auto">
                     {addSlotLabel}
                   </button>
                 )}
@@ -196,7 +196,7 @@ export default function AvailabilityEditor({
                       <select
                         value={cfg.roomId ?? ''}
                         onChange={e => setDayRoom(day, e.target.value || null)}
-                        className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        className="w-full border border-gray-200 rounded-xl px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#0ea5b0]"
                       >
                         <option value="">Qualquer sala</option>
                         {activeRooms.map(r => (
@@ -210,14 +210,14 @@ export default function AvailabilityEditor({
                     <select
                       value={cfg.weekParity ?? ''}
                       onChange={e => setDayParity(day, (e.target.value || null) as WeekParity)}
-                      className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      className="w-full border border-gray-200 rounded-xl px-2 py-1 text-xs text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#0ea5b0]"
                     >
                       <option value="">Toda semana</option>
                       <option value="even">Quinzenal A (semanas pares)</option>
                       <option value="odd">Quinzenal B (semanas ímpares)</option>
                     </select>
                     {cfg.weekParity && preview && (
-                      <p className="text-[10px] text-blue-500 mt-0.5 flex items-center gap-1">
+                      <p className="text-[10px] text-[#0ea5b0] mt-0.5 flex items-center gap-1">
                         <CalendarDots size={10} />
                         Próx. {WEEKDAY_FULL[day].toLowerCase()}s: {preview}
                       </p>
@@ -236,7 +236,8 @@ export default function AvailabilityEditor({
         <button
           onClick={save}
           disabled={saving || !professionalId}
-          className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          className="px-5 py-2 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           {saving ? 'Salvando...' : 'Salvar disponibilidade'}
         </button>

@@ -63,7 +63,7 @@ export default function SalaDeEsperaPage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Armchair size={22} className="text-blue-600" />
+          <Armchair size={22} className="text-[#0ea5b0]" />
           <h1 className="text-2xl font-semibold text-gray-900">Sala de espera</h1>
         </div>
         <p className="text-sm text-gray-500">
@@ -92,8 +92,8 @@ export default function SalaDeEsperaPage() {
             return (
               <li key={appt.id} className="bg-white border border-gray-200 rounded-xl px-5 py-4 shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <UserCircle size={24} className="text-blue-400" />
+                  <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center flex-shrink-0">
+                    <UserCircle size={24} className="text-[#0ea5b0]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -113,7 +113,7 @@ export default function SalaDeEsperaPage() {
                           <a
                             href={`tel:+${patientPhone(appt.patient)}`}
                             title="Ligar"
-                            className="flex items-center gap-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            className="flex items-center gap-0.5 text-gray-400 hover:text-[#006970] transition-colors"
                             onClick={e => e.stopPropagation()}
                           >
                             <Phone size={13} />
@@ -147,7 +147,7 @@ export default function SalaDeEsperaPage() {
                       <button
                         onClick={() => markComplete(appt.id)}
                         disabled={updateStatus.isPending}
-                        className="flex items-center gap-1.5 text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 text-xs font-medium bg-teal-50 hover:bg-teal-100 text-[#006970] px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50"
                       >
                         <CheckCircle size={14} />
                         Atendido

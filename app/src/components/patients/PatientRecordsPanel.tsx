@@ -18,7 +18,7 @@ import type { PatientRecord } from '../../types'
 // ─── File icon helper ─────────────────────────────────────────────────────────
 function FileIcon({ mime }: { mime: string | null }) {
   if (!mime) return <File size={18} className="text-gray-400" />
-  if (mime.startsWith('image/')) return <FileImage size={18} className="text-blue-400" />
+  if (mime.startsWith('image/')) return <FileImage size={18} className="text-[#0ea5b0]" />
   if (mime === 'application/pdf') return <FilePdf size={18} className="text-red-400" />
   return <File size={18} className="text-gray-400" />
 }
@@ -56,7 +56,7 @@ function RecordCard({
       {/* Icon */}
       <div className="mt-0.5 flex-shrink-0">
         {record.type === 'note' ? (
-          <NotePencil size={18} className="text-blue-400" />
+          <NotePencil size={18} className="text-[#0ea5b0]" />
         ) : (
           <FileIcon mime={record.fileMime} />
         )}
@@ -69,7 +69,7 @@ function RecordCard({
         ) : (
           <button
             onClick={() => onDownload(record)}
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium truncate max-w-full"
+            className="flex items-center gap-1.5 text-sm text-[#006970] hover:text-[#004f55] font-medium truncate max-w-full"
           >
             <DownloadSimple size={14} />
             <span className="truncate">{record.fileName}</span>
@@ -186,7 +186,7 @@ export default function PatientRecordsPanel({ patientId, appointmentId }: Props)
       <div className="flex gap-2">
         <button
           onClick={() => { setShowNoteForm(v => !v); setNoteText('') }}
-          className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition ${showNoteForm ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition ${showNoteForm ? 'bg-teal-50 border-teal-300 text-[#006970]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
         >
           <NotePencil size={15} />
           Nova anotação
@@ -214,14 +214,14 @@ export default function PatientRecordsPanel({ patientId, appointmentId }: Props)
 
       {/* Inline note form */}
       {showNoteForm && (
-        <div className="border border-blue-200 bg-blue-50/40 rounded-xl p-4 space-y-3">
+        <div className="border border-teal-200 bg-teal-50/40 rounded-xl p-4 space-y-3">
           <textarea
             autoFocus
             value={noteText}
             onChange={e => setNoteText(e.target.value)}
             placeholder="Digite a anotação..."
             rows={4}
-            className="w-full border border-gray-300 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] resize-none"
           />
           <div className="flex gap-2 justify-end">
             <button
@@ -233,7 +233,8 @@ export default function PatientRecordsPanel({ patientId, appointmentId }: Props)
             <button
               onClick={handleSaveNote}
               disabled={savingNote || !noteText.trim()}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-sm text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               {savingNote ? <SpinnerGap size={14} className="animate-spin" /> : null}
               Salvar

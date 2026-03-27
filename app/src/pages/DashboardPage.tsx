@@ -148,7 +148,7 @@ function AppointmentPanel({
                 {patientPhone && (
                   <div className="flex items-center gap-3 mt-1.5">
                     <a href={`tel:+${patientPhone}`}
-                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors">
+                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#006970] transition-colors">
                       <Phone size={13} /> {patientPhone.replace('55', '').replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')}
                     </a>
                     <a href={`https://wa.me/${patientPhone}`} target="_blank" rel="noopener noreferrer"

@@ -88,7 +88,7 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
                 onChange={e => setName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') cancelEdit() }}
                 autoFocus
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
             <div>
@@ -112,7 +112,8 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
               <button
                 onClick={saveName}
                 disabled={updateRoom.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 <Check size={12} /> Salvar
               </button>

@@ -60,7 +60,7 @@ export default function MeuPerfilPage() {
               value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -71,7 +71,7 @@ export default function MeuPerfilPage() {
               value={form.cpf}
               onAccept={(val: string) => setForm(p => ({ ...p, cpf: val }))}
               placeholder="000.000.000-00"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -82,7 +82,7 @@ export default function MeuPerfilPage() {
               value={form.phone}
               onAccept={(val: string) => setForm(p => ({ ...p, phone: val }))}
               placeholder="(11) 99999-9999"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -92,14 +92,15 @@ export default function MeuPerfilPage() {
               type="email"
               value={form.email}
               onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
           <button
             type="submit"
             disabled={updating}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 text-sm font-medium transition disabled:opacity-50"
+            className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             {updating ? 'Salvando...' : 'Salvar alterações'}
           </button>

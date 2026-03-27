@@ -52,7 +52,7 @@ export default function MinhaDisponibilidadePage() {
                 onClick={() => setSelectedProfId(r.id)}
                 className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
                   r.id === activeProfId
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-[#0ea5b0] text-white border-transparent'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >

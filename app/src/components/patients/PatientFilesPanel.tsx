@@ -19,7 +19,7 @@ const ACCEPTED = [
 ].join(',')
 
 function FileIcon({ mimeType }: { mimeType: string | null }) {
-  if (mimeType?.startsWith('image/'))      return <Image     size={18} className="text-blue-400 shrink-0" />
+  if (mimeType?.startsWith('image/'))      return <Image     size={18} className="text-[#0ea5b0] shrink-0" />
   if (mimeType === 'application/pdf')       return <FilePdf   size={18} className="text-red-400  shrink-0" />
   return                                           <File      size={18} className="text-gray-400 shrink-0" />
 }
@@ -89,7 +89,8 @@ export default function PatientFilesPanel({ patientId, clinicId }: Props) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploadMut.isPending}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           <FilePlus size={15} />
           {uploadMut.isPending ? 'Enviando...' : 'Anexar arquivo'}
@@ -124,7 +125,7 @@ export default function PatientFilesPanel({ patientId, clinicId }: Props) {
               <button
                 onClick={() => handleDownload(f.storagePath, f.name)}
                 title="Baixar"
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition"
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-[#006970] transition"
               >
                 <DownloadSimple size={16} />
               </button>

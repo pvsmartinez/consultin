@@ -69,8 +69,8 @@ export default function CustomFieldInput({ field, value, onChange }: Props) {
           {options.map(opt => (
             <label key={opt} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition
               ${selected.includes(opt)
-                ? 'bg-blue-50 border-blue-400 text-blue-700'
-                : 'border-gray-300 text-gray-600 hover:border-blue-300'}`}>
+                ? 'bg-teal-50 border-[#0ea5b0] text-[#006970]'
+                : 'border-gray-300 text-gray-600 hover:border-[#0ea5b0]'}`}>
               <input
                 type="checkbox"
                 className="sr-only"

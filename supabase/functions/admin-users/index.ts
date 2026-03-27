@@ -21,7 +21,8 @@ const SUPABASE_SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN         = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
 const TELEGRAM_PEDRO_CHAT_ID     = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
 // URL canônica do frontend — configurar via `supabase secrets set SITE_URL=https://seu-app.vercel.app`
-const SITE_URL = Deno.env.get('SITE_URL') ?? ''
+const DEFAULT_SITE_URL = 'https://consultin.pmatz.com'
+const SITE_URL = Deno.env.get('SITE_URL')?.trim() || DEFAULT_SITE_URL
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

@@ -260,7 +260,8 @@ export default function AgendarConsultaPage() {
         <div className="flex flex-col gap-2">
           <Link
             to="/minhas-consultas"
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition"
+            className="flex items-center justify-center gap-2 text-white text-sm font-semibold py-2.5 rounded-xl transition-all active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             Ver minhas consultas <ArrowRight size={15} />
           </Link>
@@ -321,7 +322,7 @@ export default function AgendarConsultaPage() {
               <select
                 value={selectedServiceType}
                 onChange={e => setSelectedServiceType(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
               >
                 <option value="">Selecione um serviço</option>
                 {activeServiceTypes.map(s => (
@@ -351,7 +352,7 @@ export default function AgendarConsultaPage() {
                 required
                 value={selectedProf}
                 onChange={e => setSelectedProf(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
               >
                 <option value="">Selecione um profissional</option>
                 {professionals.map(p => (
@@ -374,7 +375,7 @@ export default function AgendarConsultaPage() {
             min={minDate}
             max={maxDate}
             onChange={e => setSelectedDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           />
           {selectedDate && (
             <p className="text-xs text-gray-400 mt-1 capitalize">
@@ -406,8 +407,8 @@ export default function AgendarConsultaPage() {
                     onClick={() => setSelectedTime(t)}
                     className={`py-1.5 rounded-lg text-xs font-medium border transition ${
                       selectedTime === t
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600'
+                        ? 'bg-[#0ea5b0] text-white border-transparent'
+                        : 'border-gray-200 text-gray-600 hover:border-teal-300 hover:text-[#006970]'
                     }`}
                   >
                     {t}
@@ -428,13 +429,13 @@ export default function AgendarConsultaPage() {
             onChange={e => setNotes(e.target.value)}
             rows={2}
             placeholder="Ex: retorno, dor de dente..."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] resize-none"
           />
         </div>
 
         {/* Summary */}
         {effectiveProf && selectedDate && selectedTime && (
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-blue-700 space-y-1">
+          <div className="bg-teal-50 border border-teal-100 rounded-xl p-3 text-sm text-[#006970] space-y-1">
             <p className="font-medium flex items-center gap-1.5">
               <CalendarCheck size={15} /> Resumo do agendamento
             </p>
