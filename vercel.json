@@ -115,6 +115,10 @@
     {
       "source": "/software-para-recepcao",
       "destination": "/software-para-recepcao.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
