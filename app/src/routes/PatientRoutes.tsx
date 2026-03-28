@@ -2,10 +2,10 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { PageLoader } from '../components/ui/PageLoader'
 
-const MyAppointmentsPage = lazy(() => import('../pages/MyAppointmentsPage'))
-const AgendarConsultaPage = lazy(() => import('../pages/AgendarConsultaPage'))
-const MeuPerfilPage      = lazy(() => import('../pages/MeuPerfilPage'))
-const AccessDeniedPage   = lazy(() => import('../pages/AccessDeniedPage'))
+const MyAppointmentsPage = lazy(() => import('../pages-v1/MyAppointmentsPage'))
+const AgendarConsultaPage = lazy(() => import('../pages-v1/AgendarConsultaPage'))
+const MeuPerfilPage      = lazy(() => import('../pages-v1/MeuPerfilPage'))
+const AccessDeniedPage   = lazy(() => import('../pages-v1/AccessDeniedPage'))
 
 export default function PatientRoutes() {
   return (

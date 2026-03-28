@@ -2,28 +2,42 @@ import { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   CalendarBlank,
+  CalendarCheck,
   Users,
+  SignOut,
   UsersFour,
-  Buildings,
   Gear,
   Shield,
+  CurrencyCircleDollar,
   WhatsappLogo,
+  Clock,
   Warning,
   SignIn,
-  SignOut,
   Plus,
   CreditCard,
+  Sun,
 } from '@phosphor-icons/react'
-import { AppShell, SideNav, NavItem, Avatar, Button, TopBar, BottomTabBar, TabItem } from '@pvsmartinez/shared/ui'
+import { AppShell, SideNav, NavItem, NavGroup, Avatar, Button, TopBar, BottomTabBar, TabItem } from '@pvsmartinez/shared/ui'
 import AppointmentModal from '../appointments/AppointmentModal'
-import ErrorBoundary from '../ErrorBoundary'
 import type { UserRole } from '../../types'
 import { USER_ROLE_LABELS } from '../../types'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
-import { useClinicModules } from '../../hooks/useClinicModules'
 import { useEnterClinic } from '../../hooks/useAdmin'
+import { useMyProfessionalRecords } from '../../hooks/useAppointmentsMutations'
 import { useClinicNotifications } from '../../hooks/useClinicNotifications'
+import ErrorBoundary from '../ErrorBoundary'
+
+const navItems = [
+  { to: '/hoje',                  icon: Sun,                 label: 'Hoje',            labelProfissional: 'Hoje',           permission: null },
+  { to: '/agenda',                icon: CalendarBlank,        label: 'Agenda',          labelProfissional: 'Minha Agenda',   permission: null },
+  { to: '/minha-disponibilidade', icon: Clock,                label: 'Meus Horários',   labelProfissional: 'Meus Horários',  permission: 'canManageOwnAvailability' as const },
+  { to: '/pacientes',             icon: Users,                label: 'Pacientes',       labelProfissional: 'Pacientes',      permission: 'canViewPatients' as const },
+  { to: '/equipe',                icon: UsersFour,            label: 'Equipe',          labelProfissional: 'Equipe',         permission: 'canManageProfessionals' as const },
+  { to: '/financeiro',            icon: CurrencyCircleDollar, label: 'Financeiro',      labelProfissional: 'Financeiro',     permission: 'canViewFinancial' as const },
+  { to: '/whatsapp',              icon: WhatsappLogo,         label: 'Mensagens',       labelProfissional: 'Mensagens',      permission: 'canViewWhatsApp' as const },
+  { to: '/configuracoes',         icon: Gear,                 label: 'Configurações',   labelProfissional: 'Configurações',  permission: 'canManageSettings' as const },
+]
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
   admin:        'text-teal-700 bg-teal-100',
@@ -39,51 +53,37 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const { signOut, hasPermission, profile, role, isSuperAdmin } = useAuthContext()
   const { data: clinic } = useClinic()
-  const { hasRooms, hasStaff, hasWhatsApp } = useClinicModules()
   const enterClinic = useEnterClinic()
+  const { data: myProfRecords = [] } = useMyProfessionalRecords()
+  const isProfessional = role === 'professional'
+  const hasLinkedProfessional = !isProfessional && myProfRecords.length > 0
+  const canSeeNotifications = role === 'admin' || role === 'receptionist'
   const navigate = useNavigate()
   const location = useLocation()
   const { unreadCount } = useClinicNotifications(navigate)
-
-  const isTestMode = isSuperAdmin && !!profile?.clinicId
-  const isProfessional = role === 'professional'
-  const canSchedule = role === 'admin' || role === 'receptionist'
-  const canSeeNotifications = role === 'admin' || role === 'receptionist'
   const notifBadge = canSeeNotifications ? unreadCount : 0
-
+  const isTestMode = isSuperAdmin && !!profile?.clinicId
   const [newApptOpen, setNewApptOpen] = useState(false)
+  const canSchedule = role === 'admin' || role === 'receptionist'
 
   function handleExitTestMode() {
     if (!profile) return
     enterClinic.mutate({ userId: profile.id, clinicId: null })
   }
 
-  // ── Build navigation ───────────────────────────────────────────────────────
-  // Base: Agenda + Pacientes always visible
-  // Conditional: Equipe, Salas, WhatsApp driven by active modules + permissions
-  // Settings always visible to admins
-  const navItems = [
-    { to: '/agenda',         icon: CalendarBlank, label: 'Agenda',       show: true },
-    { to: '/pacientes',      icon: Users,         label: 'Pacientes',    show: hasPermission('canViewPatients') },
-    { to: '/equipe',         icon: UsersFour,     label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
-    { to: '/salas',          icon: Buildings,     label: 'Salas',        show: hasRooms },
-    { to: '/whatsapp',       icon: WhatsappLogo,  label: 'Mensagens',    show: hasWhatsApp && hasPermission('canViewWhatsApp') },
-  ].filter(item => item.show)
+  const visibleNav = navItems.filter(item => {
+    if (isProfessional && item.labelProfissional === null) return false
+    if (item.to === '/whatsapp' && !clinic?.whatsappEnabled) return false
+    if (item.to === '/financeiro' && !clinic?.paymentsEnabled) return false
+    return item.permission == null || hasPermission(item.permission)
+  })
 
-  const settingsItem = { to: '/configuracoes', icon: Gear, label: 'Configurações', show: hasPermission('canManageSettings') }
-
-  // Top 4 visible items for bottom tab bar (mobile)
-  const bottomItems = [...navItems, ...(settingsItem.show ? [settingsItem] : [])].slice(0, 4)
-
-  // ── Sidebar header ─────────────────────────────────────────────────────────
   const sideNavHeader = (
     <div className="p-6 pb-4">
       <div className="flex flex-col gap-1 mb-5">
         <span className="text-2xl font-bold text-[#0EA5B0] tracking-tight">Consultin</span>
         {clinic?.name && (
-          <p className="text-xs text-gray-500 font-medium truncate" title={clinic.name}>
-            {clinic.name}
-          </p>
+          <p className="text-xs text-gray-500 font-medium truncate" title={clinic.name}>{clinic.name}</p>
         )}
       </div>
       {role && ROLE_BADGE_COLORS[role] && (
@@ -108,73 +108,58 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </div>
   )
 
-  // ── Sidebar footer ─────────────────────────────────────────────────────────
   const sideNavFooter = (
     <div className="p-4 space-y-1">
-      {/* Settings — always last in the nav, before footer actions */}
-      {settingsItem.show && (
-        <NavItem to={settingsItem.to} icon={settingsItem.icon} label={settingsItem.label} />
-      )}
-
-      <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
-        {isSuperAdmin && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                isActive ? 'bg-amber-100 text-amber-700 font-medium' : 'text-amber-600 hover:bg-amber-50'
-              }`
-            }
-          >
-            <Shield size={18} />
-            Admin
-          </NavLink>
-        )}
-
-        {profile && (
-          <NavLink
-            to="/minha-conta"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-white shadow-sm text-[#0ea5b0]'
-                  : 'text-gray-600 hover:bg-white/60 hover:text-[#0ea5b0]'
-              }`
-            }
-          >
-            <Avatar src={profile.avatarUrl} name={profile.name} size={28} />
-            <p className="text-sm font-medium truncate">{profile.name}</p>
-          </NavLink>
-        )}
-
-        {role === 'admin' && (
-          <NavLink
-            to="/assinatura"
-            className={({ isActive }) =>
-              `flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${
-                isActive ? 'text-[#0ea5b0] bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60 hover:text-[#0ea5b0]'
-              }`
-            }
-          >
-            <CreditCard size={15} />
-            Meu plano
-          </NavLink>
-        )}
-
-        <button
-          onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-400 hover:bg-white/60 hover:text-gray-700 transition-colors"
+      {isSuperAdmin && (
+        <NavLink to="/admin"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              isActive ? 'bg-amber-100 text-amber-700 font-medium' : 'text-amber-600 hover:bg-amber-50'
+            }`
+          }
         >
-          <SignOut size={18} />
-          Sair
-        </button>
-      </div>
+          <Shield size={18} />
+          Admin
+        </NavLink>
+      )}
+      {profile && (
+        <NavLink
+          to="/minha-conta"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              isActive ? 'bg-white shadow-sm text-[#0ea5b0]' : 'text-gray-600 hover:bg-white/60 hover:text-[#0ea5b0]'
+            }`
+          }
+        >
+          <Avatar src={profile.avatarUrl} name={profile.name} size={28} />
+          <p className="text-sm font-medium truncate">{profile.name}</p>
+        </NavLink>
+      )}
+      {role === 'admin' && (
+        <NavLink to="/assinatura"
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${
+              isActive ? 'text-[#0ea5b0] bg-white shadow-sm' : 'text-gray-500 hover:bg-white/60 hover:text-[#0ea5b0]'
+            }`
+          }
+        >
+          <CreditCard size={15} />
+          Meu plano
+        </NavLink>
+      )}
+      <button
+        onClick={signOut}
+        className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-400 hover:bg-white/60 hover:text-gray-700 transition-colors"
+      >
+        <SignOut size={18} />
+        Sair
+      </button>
     </div>
   )
 
   return (
     <AppShell variant="responsive" className="bg-[#f8fafb]">
-      {/* Mobile top bar */}
+      {/* Mobile only: top bar (hidden on desktop via responsive variant) */}
       <TopBar
         left={
           <div className="flex items-center gap-2">
@@ -202,20 +187,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
         }
       />
 
-      {/* Sidebar */}
       <SideNav header={sideNavHeader} footer={sideNavFooter}>
-        {navItems.map(({ to, icon, label }) => (
+        {visibleNav.map(({ to, icon, label, labelProfissional }) => (
           <NavItem
             key={to}
             to={to}
             icon={icon}
-            label={isProfessional && to === '/agenda' ? 'Minha Agenda' : label}
+            label={isProfessional ? labelProfissional : label}
             badge={to === '/whatsapp' ? notifBadge : undefined}
           />
         ))}
+        {hasLinkedProfessional && (
+          <>
+            <NavGroup />
+            <NavItem to="/minha-agenda" icon={CalendarCheck} label="Minha Agenda" />
+          </>
+        )}
       </SideNav>
 
-      {/* Main content area */}
+      {/* Content: banner (optional) + scrollable main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {isTestMode && (
           <div className="flex items-center justify-between px-6 py-2 bg-amber-50 border-b border-amber-200 flex-shrink-0">
@@ -242,13 +232,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </main>
       </div>
 
-      {/* Mobile bottom tab bar */}
+      {/* Mobile only: bottom tab bar (hidden on desktop via responsive variant) */}
       <BottomTabBar>
-        {bottomItems.map(({ to, icon, label }) => (
+        {visibleNav.slice(0, 4).map(({ to, icon, label, labelProfissional }) => (
           <TabItem
             key={to}
             icon={icon}
-            label={label}
+            label={isProfessional ? labelProfissional : label}
             isActive={location.pathname.startsWith(to)}
             onClick={() => navigate(to)}
           />
@@ -262,3 +252,4 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </AppShell>
   )
 }
+

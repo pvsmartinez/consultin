@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { PageLoader } from '../components/ui/PageLoader'
 
-const ClinicSetupWizardPage = lazy(() => import('../pages/ClinicSetupWizardPage'))
+const ClinicSetupWizardPage = lazy(() => import('../pages-v1/ClinicSetupWizardPage'))
 
 export default function OnboardingRoutes() {
   return (

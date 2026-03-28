@@ -31,6 +31,8 @@ export interface Clinic {
   // Onboarding
   onboardingCompleted: boolean
   createdAt: string
+  // v2 feature modules ('rooms' | 'staff' | 'whatsapp' | 'financial')
+  modulesEnabled: string[]
   // Asaas billing
   paymentsEnabled: boolean
   billingOverrideEnabled: boolean

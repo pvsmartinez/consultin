@@ -62,6 +62,8 @@ function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record
     ...(defined(input.cancellationHours)      && { cancellation_hours:         input.cancellationHours }),
     // Booking config
     ...(defined(input.allowProfessionalSelection) && { allow_professional_selection: input.allowProfessionalSelection }),
+    // v2 modules
+    ...(defined(input.modulesEnabled)             && { modules_enabled:              input.modulesEnabled }),
   }
 }
 

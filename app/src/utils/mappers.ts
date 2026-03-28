@@ -51,6 +51,7 @@ export function mapClinic(r: Record<string, unknown>): Clinic {
     anamnesisFields:          (r.anamnesis_fields as Clinic['anamnesisFields']) ?? [],
     onboardingCompleted:      (r.onboarding_completed as boolean) ?? false,
     createdAt:                r.created_at as string,
+    modulesEnabled:           (r.modules_enabled as string[]) ?? [],
     billingOverrideEnabled:   (r.billing_override_enabled as boolean) ?? false,
     paymentsEnabled:          ((r.payments_enabled as boolean) ?? false) || ((r.billing_override_enabled as boolean) ?? false),
     asaasCustomerId:          (r.asaas_customer_id as string) ?? null,

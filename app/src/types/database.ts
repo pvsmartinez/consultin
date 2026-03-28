@@ -421,6 +421,7 @@ export type Database = {
           custom_professional_fields: Json
           email: string | null
           id: string
+          modules_enabled: string[]
           name: string
           onboarding_completed: boolean
           patient_field_config: Json
@@ -466,6 +467,7 @@ export type Database = {
           custom_professional_fields?: Json
           email?: string | null
           id?: string
+          modules_enabled?: string[]
           name: string
           onboarding_completed?: boolean
           patient_field_config?: Json
@@ -511,6 +513,7 @@ export type Database = {
           custom_professional_fields?: Json
           email?: string | null
           id?: string
+          modules_enabled?: string[]
           name?: string
           onboarding_completed?: boolean
           patient_field_config?: Json
@@ -944,6 +947,33 @@ export type Database = {
           },
         ]
       }
+      public_site_events: {
+        Row: {
+          created_at: string
+          event_name: string
+          id: string
+          metadata: Json
+          page_path: string
+          referrer: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          id?: string
+          metadata?: Json
+          page_path: string
+          referrer?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          id?: string
+          metadata?: Json
+          page_path?: string
+          referrer?: string | null
+        }
+        Relationships: []
+      }
       room_availability_slots: {
         Row: {
           active: boolean
@@ -1341,6 +1371,10 @@ export type Database = {
       clinic_month_revenue: {
         Args: { p_month_end: string; p_month_start: string }
         Returns: number
+      }
+      current_user_can_manage_payments: {
+        Args: { target_clinic: string }
+        Returns: boolean
       }
       current_user_clinic_id: { Args: never; Returns: string }
       current_user_has_role: {

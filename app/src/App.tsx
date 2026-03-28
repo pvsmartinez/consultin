@@ -19,8 +19,8 @@ function DataPrefetcher() {
 
 // ─── Eager imports — rendered outside of route transitions ───────────────────
 // These must be sync: they cover auth states that appear before any route shell.
-import NovaSenhaPage    from './pages/NovaSenhaPage'    // recoveryMode intercept
-import OnboardingPage   from './pages/OnboardingPage'   // !profile gate
+import NovaSenhaPage    from './pages-v1/NovaSenhaPage'    // recoveryMode intercept
+import OnboardingPage   from './pages-v1/OnboardingPage'   // !profile gate
 import AppLayout        from './components/layout/AppLayout'
 import PatientPortalLayout from './components/layout/PatientPortalLayout'
 import ErrorBoundary    from './components/ErrorBoundary'
@@ -33,7 +33,7 @@ const OnboardingRoutes  = lazy(() => import('./routes/OnboardingRoutes'))
 const PatientRoutes     = lazy(() => import('./routes/PatientRoutes'))
 const StaffRoutes       = lazy(() => import('./routes/StaffRoutes'))
 // AdminPage is standalone (own full-screen layout) — isolated chunk
-const AdminPage         = lazy(() => import('./pages/AdminPage'))
+const AdminPage         = lazy(() => import('./pages-v1/AdminPage'))
 
 function App() {
   const { session, profile, role, isSuperAdmin, loading, recoveryMode } = useAuthContext()

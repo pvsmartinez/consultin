@@ -2,42 +2,47 @@ import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import RequireAuth from '../components/auth/RequireAuth'
 
-// ─── Lazy page imports ────────────────────────────────────────────────────────
-// Each lazy() call becomes a separate chunk. The browser fetches only the
-// chunk for the route the user actually visits.
+// ─── v2 pages ────────────────────────────────────────────────────────────────
+const AgendaPage          = lazy(() => import('../pages/AgendaPage'))
+const PacientesPage       = lazy(() => import('../pages/PacientesPage'))
+const SalasPage           = lazy(() => import('../pages/SalasPage'))
+const ConfiguracoesPage   = lazy(() => import('../pages/ConfiguracoesPage'))
 
-const DashboardPage          = lazy(() => import('../pages/DashboardPage'))
-const PatientsPage           = lazy(() => import('../pages/PatientsPage'))
-const PatientDetailPage      = lazy(() => import('../pages/PatientDetailPage'))
-const AppointmentsPage       = lazy(() => import('../pages/AppointmentsPage'))
-const EquipePage             = lazy(() => import('../pages/EquipePage'))
-const SettingsPage           = lazy(() => import('../pages/SettingsPage'))
-const FinanceiroPage         = lazy(() => import('../pages/FinanceiroPage'))
-const WhatsAppInboxPage      = lazy(() => import('../pages/WhatsAppInboxPage'))
-const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidadePage'))
-const PatientAnamnesisPage    = lazy(() => import('../pages/PatientAnamnesisPage'))
-const MinhaContaPage         = lazy(() => import('../pages/MinhaContaPage'))
-const AccessDeniedPage       = lazy(() => import('../pages/AccessDeniedPage'))
-const AssinaturaPage         = lazy(() => import('../pages/AssinaturaPage'))
+// ─── v1 pages reused as-is ───────────────────────────────────────────────────
+const PatientDetailPage       = lazy(() => import('../pages-v1/PatientDetailPage'))
+const PatientAnamnesisPage    = lazy(() => import('../pages-v1/PatientAnamnesisPage'))
+const EquipePage              = lazy(() => import('../pages-v1/EquipePage'))
+const FinanceiroPage          = lazy(() => import('../pages-v1/FinanceiroPage'))
+const WhatsAppInboxPage       = lazy(() => import('../pages-v1/WhatsAppInboxPage'))
+const MinhaDisponibilidadePage = lazy(() => import('../pages-v1/MinhaDisponibilidadePage'))
+const MinhaContaPage          = lazy(() => import('../pages-v1/MinhaContaPage'))
+const AccessDeniedPage        = lazy(() => import('../pages-v1/AccessDeniedPage'))
+const AssinaturaPage          = lazy(() => import('../pages-v1/AssinaturaPage'))
 
 // ─── Staff routes (rendered inside <AppLayout>) ───────────────────────────────
+// Suspense boundary lives in App.tsx so the sidebar stays visible during
+// per-page navigation transitions.
 // Suspense boundary lives in App.tsx so the sidebar stays visible during
 // per-page navigation transitions.
 export default function StaffRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/hoje" replace />} />
-      {/* /hoje is the primary landing page (daily overview) */}
-      <Route path="/hoje" element={<DashboardPage />} />
-      {/* keep old /dashboard URL working */}
-      <Route path="/dashboard" element={<Navigate to="/hoje" replace />} />
+      {/* v2: Agenda is the home */}
+      <Route path="/" element={<Navigate to="/agenda" replace />} />
+      <Route path="/hoje" element={<Navigate to="/agenda" replace />} />
+      <Route path="/dashboard" element={<Navigate to="/agenda" replace />} />
+
+      {/* Agenda */}
+      <Route path="/agenda" element={<AgendaPage />} />
+      <Route path="/minha-agenda" element={<AgendaPage myOnly />} />
+      <Route path="/minha-disponibilidade" element={<MinhaDisponibilidadePage />} />
 
       {/* Pacientes */}
       <Route path="/pacientes" element={
-        <RequireAuth permission="canViewPatients"><PatientsPage /></RequireAuth>
+        <RequireAuth permission="canViewPatients"><PacientesPage /></RequireAuth>
       } />
       <Route path="/pacientes/novo" element={
-        <RequireAuth permission="canManagePatients"><PatientsPage /></RequireAuth>
+        <RequireAuth permission="canManagePatients"><PacientesPage /></RequireAuth>
       } />
       <Route path="/pacientes/:id" element={
         <RequireAuth permission="canViewPatients"><PatientDetailPage /></RequireAuth>
@@ -49,36 +54,36 @@ export default function StaffRoutes() {
         <RequireAuth permission="canViewPatients"><PatientAnamnesisPage /></RequireAuth>
       } />
 
-      {/* Agenda */}
-      <Route path="/agenda"              element={<AppointmentsPage />} />
-      <Route path="/minha-agenda"        element={<AppointmentsPage myOnly />} />
-      <Route path="/minha-disponibilidade" element={<MinhaDisponibilidadePage />} />
+      {/* Salas (módulo rooms) */}
+      <Route path="/salas" element={<SalasPage />} />
 
-      {/* Financeiro */}
+      {/* Equipe (módulo staff) */}
+      <Route path="/equipe" element={
+        <RequireAuth permission="canManageProfessionals"><EquipePage /></RequireAuth>
+      } />
+      <Route path="/profissionais" element={<Navigate to="/equipe" replace />} />
+
+      {/* WhatsApp (módulo whatsapp) */}
+      <Route path="/whatsapp" element={
+        <RequireAuth permission="canViewWhatsApp"><WhatsAppInboxPage /></RequireAuth>
+      } />
+
+      {/* Financeiro (módulo financial) */}
       <Route path="/financeiro" element={
         <RequireAuth permission="canViewFinancial"><FinanceiroPage /></RequireAuth>
       } />
       <Route path="/relatorios" element={<Navigate to="/financeiro" replace />} />
 
-      {/* Equipe (Profissionais + Usuários) */}
-      <Route path="/equipe" element={
-        <RequireAuth permission="canManageProfessionals"><EquipePage /></RequireAuth>
-      } />
-      {/* keep old URL working */}
-      <Route path="/profissionais" element={<Navigate to="/equipe" replace />} />
-
-      {/* Config / WhatsApp / Assinatura */}
+      {/* Configurações */}
       <Route path="/configuracoes" element={
-        <RequireAuth permission="canManageSettings"><SettingsPage /></RequireAuth>
+        <RequireAuth permission="canManageSettings"><ConfiguracoesPage /></RequireAuth>
       } />
-      <Route path="/whatsapp" element={
-        <RequireAuth permission="canViewWhatsApp"><WhatsAppInboxPage /></RequireAuth>
-      } />
-      <Route path="/assinatura" element={<AssinaturaPage />} />
 
+      {/* Account */}
+      <Route path="/assinatura" element={<AssinaturaPage />} />
+      <Route path="/minha-conta" element={<MinhaContaPage />} />
       <Route path="/acesso-negado" element={<AccessDeniedPage />} />
-      <Route path="/minha-conta"   element={<MinhaContaPage />} />
-      <Route path="*" element={<Navigate to="/hoje" replace />} />
+      <Route path="*" element={<Navigate to="/agenda" replace />} />
     </Routes>
   )
 }
