@@ -51,6 +51,7 @@ export function usePatients(search = '', page = 0) {
       let q = supabase
         .from('patients')
         .select(PATIENT_LIST_COLS, { count: 'exact' })
+        .eq('clinic_id', profile!.clinicId!)
         .order('name')
         .range(from, to)
       if (search.trim()) {

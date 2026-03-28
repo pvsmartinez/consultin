@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import FullCalendar from '@fullcalendar/react'
 import interactionPlugin from '@fullcalendar/interaction'
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
@@ -12,7 +13,7 @@ import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
-import { useRooms } from '../hooks/useRooms'
+import { useRooms, useCreateRoom } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
@@ -177,11 +178,12 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [roomsDrawerOpen, setRoomsDrawerOpen]     = useState(false)
 
-  const { role, isSuperAdmin }             = useAuthContext()
+  const { role, isSuperAdmin, session, profile } = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
   const { hasRooms, hasStaff, hasWhatsApp, hasFinancial, enableModule, disableModule } = useClinicModules()
   const { data: rooms = [] }              = useRooms()
-  const { data: professionals = [] }      = useProfessionals()
+  const createRoom                        = useCreateRoom()
+  const { data: professionals = [], create: createProfessional } = useProfessionals()
   const { data: myProfRecords = [] }      = useMyProfessionalRecords()
   const { data: roomAvailSlots = [] }     = useRoomAvailabilitySlots()
   const { data: clinicAvailSlots = [] }   = useClinicAvailabilitySlots()
@@ -225,6 +227,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
   const [togglingModule, setTogglingModule] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const resources: { id: string; title: string; eventColor?: string; businessHours?: FCBusinessHour[] | false }[] = useMemo(() => {
     if (effectiveAgendaView === 'room') {
@@ -548,19 +551,39 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Extras disponíveis</p>
             <div className="grid grid-cols-2 gap-3">
               {([
-                { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff },
-                { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms },
-                { key: 'whatsapp'  as const, label: 'WhatsApp',   desc: 'Lembretes automáticos e caixa de mensagens',    icon: WhatsappLogo,   active: hasWhatsApp },
-                { key: 'financial' as const, label: 'Financeiro', desc: 'Cobranças, pagamentos e fluxo de caixa',         icon: CurrencyDollar, active: hasFinancial },
-              ]).map(({ key, label, desc, icon: Icon, active }) => (
+                { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff,    tab: 'usuarios' },
+                { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms,    tab: 'salas' },
+                { key: 'whatsapp'  as const, label: 'WhatsApp',   desc: 'Lembretes automáticos e caixa de mensagens',    icon: WhatsappLogo,   active: hasWhatsApp, tab: 'whatsapp' },
+                { key: 'financial' as const, label: 'Financeiro', desc: 'Cobranças, pagamentos e fluxo de caixa',         icon: CurrencyDollar, active: hasFinancial, tab: 'pagamento' },
+              ]).map(({ key, label, desc, icon: Icon, active, tab }) => (
                 <button
                   key={key}
                   disabled={togglingModule === key}
                   onClick={async () => {
                     setTogglingModule(key)
-                    if (active) await disableModule(key)
-                    else await enableModule(key)
-                    setTogglingModule(null)
+                    if (active) {
+                      await disableModule(key)
+                      setTogglingModule(null)
+                    } else {
+                      await enableModule(key)
+                      if (key === 'rooms' && rooms.length === 0) {
+                        await createRoom.mutateAsync({ name: 'Sala 1', color: '#6366f1' })
+                      }
+                      if (key === 'staff' && professionals.length === 0) {
+                        await createProfessional.mutateAsync({
+                          name: profile?.name ?? session?.user.email ?? 'Profissional',
+                          email: session?.user.email ?? null,
+                          userId: session?.user.id ?? null,
+                          specialty: null,
+                          councilId: null,
+                          phone: null,
+                          active: true,
+                          customFields: {},
+                        })
+                      }
+                      setTogglingModule(null)
+                      navigate('/configuracoes', { state: { tab } })
+                    }
                   }}
                   className={`text-left p-4 rounded-2xl border transition-all ${
                     active

@@ -49,7 +49,6 @@ export default function DisponibilidadeTab() {
 
       <AvailabilityEditor
         professionalId={activeProfId}
-        addSlotLabel="+ intervalo"
       />
     </div>
   )

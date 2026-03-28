@@ -3,6 +3,7 @@ import { startOfMonth, endOfMonth } from 'date-fns'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { mapAppointment } from '../utils/mappers'
+import { useAuthContext } from '../contexts/AuthContext'
 import type { Appointment } from '../types'
 
 export interface FinancialRow extends Appointment {
@@ -13,10 +14,13 @@ export interface FinancialRow extends Appointment {
 export function useFinancial(month: Date) {
   const monthStart = startOfMonth(month).toISOString()
   const monthEnd   = endOfMonth(month).toISOString()
+  const { profile } = useAuthContext()
+  const clinicId = profile?.clinicId
 
   return useQuery({
     queryKey: QK.financial.monthly(monthStart),
     staleTime: 60_000,
+    enabled: !!clinicId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')
@@ -25,6 +29,7 @@ export function useFinancial(month: Date) {
           patient:patients(id, name, phone, cpf),
           professional:professionals(id, name, specialty)
         `)
+        .eq('clinic_id', clinicId!)
         .gte('starts_at', monthStart)
         .lte('starts_at', monthEnd)
         .in('status', ['scheduled', 'confirmed', 'completed'])

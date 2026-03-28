@@ -39,6 +39,7 @@ export function useTodayAppointments() {
         `)
         .gte('starts_at', startOfDay(now).toISOString())
         .lte('starts_at', endOfDay(now).toISOString())
+        .eq('clinic_id', profile!.clinicId!)
         .neq('status', 'cancelled')
         .order('starts_at', { ascending: true })
       return (data ?? []) as TodayAppointment[]
@@ -68,13 +69,15 @@ export function useClinicKPIs() {
         supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
+          .eq('clinic_id', profile!.clinicId!)
           .gte('starts_at', todayStart)
           .lte('starts_at', todayEnd)
           .neq('status', 'cancelled'),
 
         supabase
           .from('patients')
-          .select('id', { count: 'exact', head: true }),
+          .select('id', { count: 'exact', head: true })
+          .eq('clinic_id', profile!.clinicId!),
 
         supabase.rpc('clinic_month_revenue', {
           p_month_start: monthStart,

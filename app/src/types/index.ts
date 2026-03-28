@@ -281,7 +281,7 @@ export interface AvailabilitySlot {
   endTime: string
   active: boolean
   roomId: string | null       // optional room assignment
-  weekParity: 'even' | 'odd' | null  // null=every week, even/odd ISO week parity
+  weekParity: string | null  // null=every week; 'even'/'odd'; 'every3:K'; 'every4:K'; 'monthly:N'
 }
 
 // ─── Room Availability Slot ───────────────────────────────────────────────────
@@ -295,7 +295,7 @@ export interface RoomAvailabilitySlot {
   startTime: string   // "HH:MM"
   endTime: string
   active: boolean
-  weekParity: 'even' | 'odd' | null  // null=every week
+  weekParity: string | null  // null=every week; 'even'/'odd'; 'every3:K'; 'every4:K'; 'monthly:N'
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────

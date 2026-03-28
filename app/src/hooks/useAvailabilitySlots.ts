@@ -15,7 +15,7 @@ function mapRow(r: Record<string, unknown>): AvailabilitySlot {
     endTime:        r.end_time as string,
     active:         r.active as boolean,
     roomId:         (r.room_id as string) ?? null,
-    weekParity:     (r.week_parity as 'even' | 'odd' | null) ?? null,
+    weekParity:     (r.week_parity as string | null) ?? null,
   }
 }
 

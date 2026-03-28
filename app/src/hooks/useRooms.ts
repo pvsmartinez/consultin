@@ -25,6 +25,7 @@ export function useRooms() {
       const { data, error } = await supabase
         .from('clinic_rooms')
         .select('*')
+        .eq('clinic_id', profile!.clinicId!)
         .order('name')
       if (error) throw error
       return (data ?? []).map(r => mapRow(r as Record<string, unknown>))

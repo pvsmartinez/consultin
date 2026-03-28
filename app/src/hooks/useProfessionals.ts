@@ -20,6 +20,7 @@ export function useProfessionals() {
       const { data, error } = await supabase
         .from('professionals')
         .select('*')
+        .eq('clinic_id', profile!.clinicId!)
         .order('name')
       if (error) throw error
       return (data ?? []).map(r => mapProfessional(r as Record<string, unknown>))
