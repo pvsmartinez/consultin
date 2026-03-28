@@ -6,11 +6,12 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, DoorOpen, UserCircle, X, Lock, Clock } from '@phosphor-icons/react'
+import { Plus, DoorOpen, UserCircle, X, Lock, Clock, CalendarBlank } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
+import { useClinicModules } from '../hooks/useClinicModules'
 import { useRooms } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
@@ -178,6 +179,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
 
   const { role, isSuperAdmin }             = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
+  const { hasRooms }                       = useClinicModules()
   const { data: rooms = [] }              = useRooms()
   const { data: professionals = [] }      = useProfessionals()
   const { data: myProfRecords = [] }      = useMyProfessionalRecords()
@@ -239,7 +241,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     const source = filterProfId
       ? active.filter(p => p.id === filterProfId)
       : active
-    if (!source.length) return [{ id: '__no_prof__', title: 'Sem profissional' }]
+    if (!source.length) return [{ id: '__solo__', title: '' }]
     return source.map(p => {
       const pSlots = clinicAvailSlots.filter(s => s.professional_id === p.id)
       const bh = slotsToResourceBusinessHours(
@@ -465,7 +467,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
               ))}
             </select>
           )}
-          {!isPersonalView && (role === 'admin' || isSuperAdmin) && (
+          {!isPersonalView && hasRooms && (role === 'admin' || isSuperAdmin) && (
             <button
               onClick={() => setRoomsDrawerOpen(true)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs border border-gray-200 bg-[#f8fafb] text-gray-600 rounded-xl hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0] transition-colors"
@@ -513,6 +515,27 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         </div>
       )}
 
+      {/* Empty state — shown when there are no appointments at all (new clinic) */}
+      {!isLoading && events.length === 0 && !isPersonalView ? (
+        <div className="bg-white rounded-2xl border border-gray-100 py-20 flex flex-col items-center gap-5 text-center px-8">
+          <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
+            <CalendarBlank size={32} className="text-[#0ea5b0]" />
+          </div>
+          <div className="max-w-sm">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Bem-vindo ao Consultin!</h2>
+            <p className="text-sm text-gray-500">
+              Sua agenda está vazia. Agende a primeira consulta clicando no botão abaixo — o cadastro do paciente pode ser feito na hora, sem sair do modal.
+            </p>
+          </div>
+          <button
+            onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
+            className="flex items-center gap-2 px-5 py-3 text-white text-sm font-medium rounded-xl transition-all active:scale-95 shadow-sm"
+            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+          >
+            <Plus size={16} /> Agendar primeira consulta
+          </button>
+        </div>
+      ) : (
       <div className={`bg-white rounded-xl border border-gray-100 p-4 relative ${isLoading ? 'opacity-60' : ''}`}>
         <FullCalendar
           key={effectiveAgendaView}
@@ -545,7 +568,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
           resourceLabelContent={(arg: { resource: { id: string; title: string } }) => {
             const rid = arg.resource.id
-            if (rid === '__no_room__' || isPersonalView || (role !== 'admin' && !isSuperAdmin)) {
+            if (rid === '__no_room__' || rid === '__solo__' || isPersonalView || (role !== 'admin' && !isSuperAdmin)) {
               return <span>{arg.resource.title}</span>
             }
             return (
@@ -563,6 +586,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           }}
         />
       </div>
+      )}{/* end empty-state conditional */}
 
       <AppointmentModal
         open={modalOpen}

@@ -93,8 +93,23 @@ export default function PacientesPage() {
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">Carregando...</div>
         ) : patients.length === 0 ? (
-          <div className="p-8 text-center text-gray-400 text-sm">
-            {search ? 'Nenhum paciente encontrado.' : 'Nenhum paciente cadastrado ainda.'}
+          <div className="py-16 flex flex-col items-center gap-3 text-center px-6">
+            {search ? (
+              <p className="text-sm text-gray-400">Nenhum paciente encontrado para <strong>"{search}"</strong>.</p>
+            ) : (
+              <>
+                <p className="text-4xl">🧑‍⚕️</p>
+                <p className="text-sm font-medium text-gray-600">Nenhum paciente cadastrado ainda</p>
+                <p className="text-xs text-gray-400 max-w-xs">Adicione o primeiro paciente ou use o botão + Nova consulta na Agenda — o cadastro rápido já cria o paciente na hora.</p>
+                <button
+                  onClick={() => setDrawerOpen(true)}
+                  className="mt-1 flex items-center gap-2 text-white text-xs font-medium px-4 py-2 rounded-lg transition-all active:scale-95"
+                  style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+                >
+                  <Plus size={14} /> Novo paciente
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <table className="w-full text-sm">
