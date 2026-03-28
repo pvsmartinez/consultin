@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar } from '@phosphor-icons/react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
@@ -17,6 +16,7 @@ import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
 import { usePatients, useCreatePatient } from '../../hooks/usePatients'
 import { useClinic } from '../../hooks/useClinic'
 import { useRooms } from '../../hooks/useRooms'
+import { useClinicModules } from '../../hooks/useClinicModules'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useServiceTypes } from '../../hooks/useServiceTypes'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -105,6 +105,7 @@ export default function AppointmentModal({
   const isEditing = !!appointment
   const { hasPermission } = useAuthContext()
   const { data: clinic } = useClinic()
+  const { hasStaff } = useClinicModules()
   const { data: professionals = [] } = useProfessionals()
   const { create, update, cancel } = useAppointmentMutations()
   const { data: payments = [] } = useAppointmentPayments(appointment?.id)
@@ -303,8 +304,6 @@ export default function AppointmentModal({
 
   const activeProfessionals = professionals.filter(p => p.active)
   const activeRooms         = rooms.filter(r => r.active)
-  const hasNoProfessionals  = !isEditing && activeProfessionals.length === 0
-  const hasNoPatients       = !isEditing && patients.length === 0 && !patientSearch.trim()
 
   return (
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
@@ -337,35 +336,7 @@ export default function AppointmentModal({
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
 
-          {/* Empty-state warnings — shown only when creating and clinic is fresh */}
-          {(hasNoProfessionals || hasNoPatients) && (
-            <div className="mb-4 space-y-2">
-              {hasNoProfessionals && (
-                <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                  <Warning size={16} className="shrink-0 mt-0.5" />
-                  <span>
-                    Nenhum profissional cadastrado.{' '}
-                    <Link to="/profissionais" onClick={onClose}
-                      className="font-semibold underline hover:text-amber-900">
-                      Cadastrar agora →
-                    </Link>
-                  </span>
-                </div>
-              )}
-              {hasNoPatients && (
-                <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                  <Warning size={16} className="shrink-0 mt-0.5" />
-                  <span>
-                    Nenhum paciente cadastrado.{' '}
-                    <Link to="/pacientes/novo" onClick={onClose}
-                      className="font-semibold underline hover:text-amber-900">
-                      Cadastrar agora →
-                    </Link>
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
@@ -470,8 +441,11 @@ export default function AppointmentModal({
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}
             </div>
 
-            {/* Professional — hidden + auto-filled when clinic has only one */}
-            {activeProfessionals.length === 1 ? (
+            {/* Professional — hidden when staff module is disabled (owner = sole professional),
+                static text when only one active, dropdown when multiple */}
+            {!hasStaff ? (
+              <input type="hidden" {...register('professionalId')} />
+            ) : activeProfessionals.length === 1 ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
                 <input type="hidden" {...register('professionalId')} />
