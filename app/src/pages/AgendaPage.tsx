@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, DoorOpen, UserCircle, X, Lock, Clock, CalendarBlank } from '@phosphor-icons/react'
+import { Plus, DoorOpen, UserCircle, X, Lock, Clock, CalendarBlank, Buildings, UsersFour, WhatsappLogo, CurrencyDollar, CheckCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -179,7 +179,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
 
   const { role, isSuperAdmin }             = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
-  const { hasRooms }                       = useClinicModules()
+  const { hasRooms, hasStaff, hasWhatsApp, hasFinancial, enableModule, disableModule } = useClinicModules()
   const { data: rooms = [] }              = useRooms()
   const { data: professionals = [] }      = useProfessionals()
   const { data: myProfRecords = [] }      = useMyProfessionalRecords()
@@ -224,6 +224,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [modalOpen, setModalOpen]     = useState(false)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
+  const [togglingModule, setTogglingModule] = useState<string | null>(null)
 
   const resources: { id: string; title: string; eventColor?: string; businessHours?: FCBusinessHour[] | false }[] = useMemo(() => {
     if (effectiveAgendaView === 'room') {
@@ -269,6 +270,11 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       extendedProps: { appointment: a },
     }
   })
+
+  // Once we've seen events, never show welcome screen again (even when navigating to empty week)
+  const hasSeenEvents = useRef(false)
+  if (events.length > 0) hasSeenEvents.current = true
+  const showWelcome = !isLoading && !hasSeenEvents.current && events.length === 0 && !isPersonalView
 
   function handleDateSelect(arg: { start: Date; end: Date; startStr: string; endStr: string; allDay: boolean; resource?: { id: string } }) {
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
@@ -516,15 +522,15 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       )}
 
       {/* Empty state — shown when there are no appointments at all (new clinic) */}
-      {!isLoading && events.length === 0 && !isPersonalView ? (
-        <div className="bg-white rounded-2xl border border-gray-100 py-20 flex flex-col items-center gap-5 text-center px-8">
+      {showWelcome ? (
+        <div className="bg-white rounded-2xl border border-gray-100 px-8 pt-16 pb-12 flex flex-col items-center gap-5 text-center">
           <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
             <CalendarBlank size={32} className="text-[#0ea5b0]" />
           </div>
           <div className="max-w-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-2">Bem-vindo ao Consultin!</h2>
             <p className="text-sm text-gray-500">
-              Sua agenda está vazia. Agende a primeira consulta clicando no botão abaixo — o cadastro do paciente pode ser feito na hora, sem sair do modal.
+              Sua agenda está vazia. Agende a primeira consulta clicando abaixo — o cadastro do paciente pode ser feito na hora.
             </p>
           </div>
           <button
@@ -534,6 +540,49 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           >
             <Plus size={16} /> Agendar primeira consulta
           </button>
+
+          {/* Module extras */}
+          <div className="mt-4 w-full max-w-lg">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Extras disponíveis</p>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff },
+                { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms },
+                { key: 'whatsapp'  as const, label: 'WhatsApp',   desc: 'Lembretes automáticos e caixa de mensagens',    icon: WhatsappLogo,   active: hasWhatsApp },
+                { key: 'financial' as const, label: 'Financeiro', desc: 'Cobranças, pagamentos e fluxo de caixa',         icon: CurrencyDollar, active: hasFinancial },
+              ]).map(({ key, label, desc, icon: Icon, active }) => (
+                <button
+                  key={key}
+                  disabled={togglingModule === key}
+                  onClick={async () => {
+                    setTogglingModule(key)
+                    if (active) await disableModule(key)
+                    else await enableModule(key)
+                    setTogglingModule(null)
+                  }}
+                  className={`text-left p-4 rounded-2xl border transition-all ${
+                    active
+                      ? 'border-teal-200 bg-teal-50/50'
+                      : 'border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/20'
+                  } disabled:opacity-60`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                      active ? 'bg-teal-100 text-[#006970]' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <Icon size={16} />
+                    </div>
+                    {active
+                      ? <CheckCircle size={16} weight="fill" className="text-[#0ea5b0]" />
+                      : <span className="text-[10px] font-medium text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">Ativar</span>
+                    }
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800">{label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
       <div className={`bg-white rounded-xl border border-gray-100 p-4 relative ${isLoading ? 'opacity-60' : ''}`}>
