@@ -430,6 +430,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
 
   return (
     <div className="space-y-4">
+      {!showWelcome && (
       <div className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-5">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
@@ -500,6 +501,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           )}
         </div>
       </div>
+      )}{/* end !showWelcome header */}
 
       {/* Multi-clinic legend */}
       {multiClinic && (
