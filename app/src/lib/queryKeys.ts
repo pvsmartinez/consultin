@@ -69,6 +69,7 @@ export const QK = {
     list:              (clinicId: string | null | undefined) => ['rooms', clinicId]                         as const,
     availability:      (clinicId: string | null | undefined) => ['room-availability-slots', clinicId]       as const,
     clinicAvailability:(clinicId: string | null | undefined) => ['clinic-availability-slots-all', clinicId] as const,
+    closures:          (roomId:   string | null | undefined) => ['room-closures', roomId]                   as const,
   },
 
   // ── Dashboard ─────────────────────────────────────────────────

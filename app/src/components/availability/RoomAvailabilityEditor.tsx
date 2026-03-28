@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getISOWeek } from 'date-fns'
 import { toast } from 'sonner'
-import { useRoomAvailabilitySlots } from '../../hooks/useRoomAvailability'
+import { useRoomAvailabilitySlots, useRoomClosures } from '../../hooks/useRoomAvailability'
 import type { RoomAvailabilitySlot } from '../../types'
 
 // Visual grid: 06:00–22:00 in 30-min increments = 32 slots
@@ -71,50 +71,64 @@ function nthWeekdayOfMonth(year: number, month: number, dayOfWeek: number, n: nu
   return dates[(n as number) - 1] ?? null
 }
 
-function recurrencePreview(dayOfWeek: number, rule: RecurrenceRule): string {
-  if (!rule) return ''
+/** Returns alternating on/off items for biweekly rules, or ON-only for others. */
+function recurrencePreviewItems(dayOfWeek: number, rule: RecurrenceRule): { date: string; active: boolean }[] {
+  if (!rule) return []
   const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  const dates: string[] = []
+  const items: { date: string; active: boolean }[] = []
   if (rule === 'even' || rule === 'odd') {
+    // Show next 6 occurrences (3 on + 3 off interleaved)
     let d = new Date(); let checked = 0
-    while (dates.length < 3 && checked < 60) {
+    while (items.length < 6 && checked < 50) {
       d = new Date(d.getTime() + 86_400_000); checked++
       if (d.getDay() !== dayOfWeek) continue
-      if ((getISOWeek(d) % 2 === 0 ? 'even' : 'odd') === rule) dates.push(fmt(d))
+      const isActive = (getISOWeek(d) % 2 === 0 ? 'even' : 'odd') === rule
+      items.push({ date: fmt(d), active: isActive })
     }
   } else if (rule.startsWith('every3:') || rule.startsWith('every4:')) {
     const n = rule.startsWith('every3:') ? 3 : 4
     const k = parseInt(rule.split(':')[1])
     let d = new Date(); let checked = 0
-    while (dates.length < 3 && checked < 90) {
+    while (items.length < 3 && checked < 90) {
       d = new Date(d.getTime() + 86_400_000); checked++
       if (d.getDay() !== dayOfWeek) continue
-      if (getISOWeek(d) % n === k) dates.push(fmt(d))
+      if (getISOWeek(d) % n === k) items.push({ date: fmt(d), active: true })
     }
   } else if (rule.startsWith('monthly:')) {
     const nStr = rule.split(':')[1]
     const n = nStr === 'last' ? 'last' as const : parseInt(nStr)
     const now = new Date()
-    for (let mo = 0; mo < 8 && dates.length < 3; mo++) {
+    for (let mo = 0; mo < 8 && items.length < 3; mo++) {
       const m = (now.getMonth() + mo) % 12
       const y = now.getFullYear() + Math.floor((now.getMonth() + mo) / 12)
       const found = nthWeekdayOfMonth(y, m, dayOfWeek, n)
-      if (found && found > now) dates.push(fmt(found))
+      if (found && found > now) items.push({ date: fmt(found), active: true })
     }
   }
-  return dates.join(', ')
+  return items
+}
+
+/** Format ISO date 'YYYY-MM-DD' as 'DD/MM/AA' without timezone conversion */
+const fmtDate = (iso: string) => {
+  const [y, m, d] = iso.split('-')
+  return `${d}/${m}/${y.slice(2)}`
 }
 
 interface Props { roomId: string }
 
 export default function RoomAvailabilityEditor({ roomId }: Props) {
   const { data: allSlots = [], isLoading, upsert } = useRoomAvailabilitySlots()
+  const { data: closures = [], add: addClosure, remove: removeClosure } = useRoomClosures(roomId)
   const slots = allSlots.filter(s => s.roomId === roomId)
 
   // cells[day] = Set of absolute slot indices marked as available
   const [cells, setCells] = useState<Partial<Record<number, Set<number>>>>({})
-const [parities, setParities] = useState<Partial<Record<number, RecurrenceRule>>>({})
+  const [parities, setParities] = useState<Partial<Record<number, RecurrenceRule>>>({})
   const [saving, setSaving] = useState(false)
+  const [addingClosure, setAddingClosure] = useState(false)
+  const [closureStart, setClosureStart]   = useState('')
+  const [closureEnd, setClosureEnd]       = useState('')
+  const [closureReason, setClosureReason] = useState('')
 
   // Drag state (ref avoids stale closures in setCells callbacks)
   const dragRef = useRef<{ day: number; startSlot: number; mode: 'add' | 'remove' } | null>(null)
@@ -330,8 +344,8 @@ const [parities, setParities] = useState<Partial<Record<number, RecurrenceRule>>
       <div className="flex items-start">
         <span className="w-10 flex-shrink-0 text-[9px] text-gray-400 text-right pr-1.5 pt-1">Rec.</span>
         {([0, 1, 2, 3, 4, 5, 6] as const).map(day => {
-          const rule    = parities[day] ?? null
-          const preview = cells[day]?.size ? recurrencePreview(day, rule) : ''
+          const rule         = parities[day] ?? null
+          const previewItems = cells[day]?.size ? recurrencePreviewItems(day, rule) : []
           return (
             <div key={day} className="flex-1 px-0.5">
               <select
@@ -345,14 +359,76 @@ const [parities, setParities] = useState<Partial<Record<number, RecurrenceRule>>
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
-              {preview && (
-                <p className="text-[7px] text-teal-600 leading-tight mt-0.5 truncate" title={preview}>
-                  {preview}
-                </p>
+              {previewItems.length > 0 && (
+                <div className="flex flex-wrap gap-x-0.5 mt-0.5"
+                  title={previewItems.map(i => (i.active ? '✓' : '✗') + i.date).join(' ')}>
+                  {previewItems.map((item, idx) => (
+                    <span key={idx} className={`text-[7px] leading-tight ${
+                      item.active ? 'text-teal-600' : 'text-gray-300 line-through'
+                    }`}>{item.date}</span>
+                  ))}
+                </div>
               )}
             </div>
           )
         })}
+      </div>
+
+      {/* Fechamentos temporários */}
+      <div className="border-t border-gray-100 pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Fechamentos temporários</p>
+          {!addingClosure && (
+            <button type="button"
+              onClick={() => { setAddingClosure(true); setClosureStart(''); setClosureEnd(''); setClosureReason('') }}
+              className="text-[10px] text-teal-600 hover:text-teal-700 font-medium">
+              + Adicionar
+            </button>
+          )}
+        </div>
+        {closures.length === 0 && !addingClosure && (
+          <p className="text-[10px] text-gray-400 italic">Nenhum fechamento temporário.</p>
+        )}
+        {closures.map(c => (
+          <div key={c.id} className="flex items-center justify-between py-0.5">
+            <span className="text-[10px] text-gray-700">
+              {fmtDate(c.startsAt)} → {fmtDate(c.endsAt)}
+              {c.reason && <span className="text-gray-400"> — {c.reason}</span>}
+            </span>
+            <button type="button" onClick={() => removeClosure.mutate(c.id)}
+              disabled={removeClosure.isPending}
+              className="text-[13px] text-red-400 hover:text-red-600 leading-none px-1 disabled:opacity-40">
+              ×
+            </button>
+          </div>
+        ))}
+        {addingClosure && (
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <input type="date" value={closureStart} onChange={e => setClosureStart(e.target.value)}
+              className="border border-gray-200 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" />
+            <span className="text-[10px] text-gray-400">→</span>
+            <input type="date" value={closureEnd} onChange={e => setClosureEnd(e.target.value)}
+              min={closureStart}
+              className="border border-gray-200 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400" />
+            <input type="text" value={closureReason} onChange={e => setClosureReason(e.target.value)}
+              placeholder="Motivo (opcional, ex: manutenção)"
+              className="border border-gray-200 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-teal-400 flex-1 min-w-[120px]" />
+            <button type="button"
+              disabled={!closureStart || !closureEnd || addClosure.isPending}
+              onClick={async () => {
+                if (!closureStart || !closureEnd) return
+                await addClosure.mutateAsync({ startsAt: closureStart, endsAt: closureEnd, reason: closureReason || undefined })
+                setAddingClosure(false)
+              }}
+              className="text-[10px] bg-teal-500 text-white px-2 py-0.5 rounded font-medium disabled:opacity-40 hover:bg-teal-600">
+              {addClosure.isPending ? '...' : 'Salvar'}
+            </button>
+            <button type="button" onClick={() => setAddingClosure(false)}
+              className="text-[10px] text-gray-400 hover:text-gray-600 px-1 py-0.5">
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Legend + Save */}

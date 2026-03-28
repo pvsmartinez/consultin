@@ -974,6 +974,51 @@ export type Database = {
         }
         Relationships: []
       }
+      room_closures: {
+        Row: {
+          id: string
+          clinic_id: string
+          room_id: string
+          starts_at: string
+          ends_at: string
+          reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          room_id: string
+          starts_at: string
+          ends_at: string
+          reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          room_id?: string
+          starts_at?: string
+          ends_at?: string
+          reason?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_closures_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "room_closures_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_availability_slots: {
         Row: {
           active: boolean

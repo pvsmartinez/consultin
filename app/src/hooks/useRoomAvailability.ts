@@ -69,6 +69,70 @@ export function useRoomAvailabilitySlots() {
   return { ...query, upsert }
 }
 
+// ── Room Closures ─────────────────────────────────────────────────────────────
+
+export interface RoomClosure {
+  id:        string
+  roomId:    string
+  clinicId:  string
+  startsAt:  string   // 'YYYY-MM-DD'
+  endsAt:    string   // 'YYYY-MM-DD'
+  reason:    string | null
+  createdAt: string
+}
+
+export function useRoomClosures(roomId: string) {
+  const qc = useQueryClient()
+  const { profile } = useAuthContext()
+
+  const query = useQuery({
+    queryKey: QK.rooms.closures(roomId),
+    enabled: !!roomId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<RoomClosure[]> => {
+      const { data, error } = await supabase
+        .from('room_closures')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('starts_at')
+      if (error) throw error
+      return (data ?? []).map((r) => ({
+        id:        r.id,
+        roomId:    r.room_id,
+        clinicId:  r.clinic_id,
+        startsAt:  r.starts_at,
+        endsAt:    r.ends_at,
+        reason:    r.reason ?? null,
+        createdAt: r.created_at,
+      }))
+    },
+  })
+
+  const add = useMutation({
+    mutationFn: async (input: { startsAt: string; endsAt: string; reason?: string }) => {
+      const { error } = await supabase.from('room_closures').insert({
+        room_id:   roomId,
+        clinic_id: profile!.clinicId!,
+        starts_at: input.startsAt,
+        ends_at:   input.endsAt,
+        reason:    input.reason ?? null,
+      })
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.closures(roomId) }),
+  })
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('room_closures').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.closures(roomId) }),
+  })
+
+  return { ...query, add, remove }
+}
+
 /**
  * Clinic-wide availability slots for ALL professionals.
  * Used by AppointmentsPage to build per-resource businessHours for the calendar.
