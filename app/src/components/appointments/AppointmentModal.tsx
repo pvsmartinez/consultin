@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
-import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar } from '@phosphor-icons/react'
+import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard } from '@phosphor-icons/react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
 import { fromZonedTime } from 'date-fns-tz'
@@ -20,6 +21,7 @@ import { useClinicModules } from '../../hooks/useClinicModules'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useServiceTypes } from '../../hooks/useServiceTypes'
 import { useAuthContext } from '../../contexts/AuthContext'
+import PatientDrawer from '../patients/PatientDrawer'
 import {
   APPOINTMENT_STATUS_LABELS,
   PAYMENT_STATUS_COLORS,
@@ -103,6 +105,7 @@ export default function AppointmentModal({
   initialPatientId, initialPatientName,
 }: Props) {
   const isEditing = !!appointment
+  const navigate = useNavigate()
   const { hasPermission } = useAuthContext()
   const { data: clinic } = useClinic()
   const { hasStaff } = useClinicModules()
@@ -121,6 +124,8 @@ export default function AppointmentModal({
   const [showQuickPatient, setShowQuickPatient] = useState(false)
   const [quickName, setQuickName] = useState('')
   const [quickCpf, setQuickCpf] = useState('')
+  const [patientDrawerOpen, setPatientDrawerOpen] = useState(false)
+  const [patientDrawerPatientId, setPatientDrawerPatientId] = useState<string | undefined>(undefined)
   const debouncedPatientSearch = useDebounce(patientSearch, 300)
   const { patients = [] } = usePatients(debouncedPatientSearch)
 
@@ -135,6 +140,7 @@ export default function AppointmentModal({
   const latestPayment = payments[0] ?? null
   const canManagePayments = isEditing && !!appointment && clinic?.paymentsEnabled && hasPermission('canViewFinancial')
   const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
+  const canManagePatients = hasPermission('canManagePatients')
 
   const activeServiceTypes = serviceTypes.filter(s => s.active)
 
@@ -291,6 +297,23 @@ export default function AppointmentModal({
     }
   }
 
+  function openFullPatientCreate() {
+    setPatientDrawerPatientId(undefined)
+    setPatientDrawerOpen(true)
+  }
+
+  function openPatientEdit(patientId: string) {
+    setPatientDrawerPatientId(patientId)
+    setPatientDrawerOpen(true)
+  }
+
+  function openPatientPage(path: 'detail' | 'anamnesis') {
+    const patientId = selectedPatient?.id
+    if (!patientId) return
+    onClose()
+    navigate(path === 'detail' ? `/pacientes/${patientId}` : `/pacientes/${patientId}/anamnese`)
+  }
+
   async function handleCancel() {
     if (!appointment) return
     try {
@@ -349,19 +372,52 @@ export default function AppointmentModal({
 
               {selectedPatient ? (
                 /* Selected state — show chip with clear button */
-                <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-xl px-3 py-2.5">
-                  <span className="text-sm font-medium text-[#006970]">{selectedPatient.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPatient(null)
-                      setValue('patientId', '')
-                      setPatientSearch('')
-                    }}
-                    className="ml-2 text-[#0ea5b0] hover:text-[#006970] shrink-0"
-                  >
-                    <X size={15} />
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-xl px-3 py-2.5">
+                    <span className="text-sm font-medium text-[#006970]">{selectedPatient.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPatient(null)
+                        setValue('patientId', '')
+                        setPatientSearch('')
+                      }}
+                      className="ml-2 text-[#0ea5b0] hover:text-[#006970] shrink-0"
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => openPatientPage('detail')}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-[#0ea5b0] hover:text-[#006970] transition"
+                    >
+                      <IdentificationCard size={13} />
+                      Abrir ficha
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openPatientPage('anamnesis')}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-[#0ea5b0] hover:text-[#006970] transition"
+                    >
+                      <ClipboardText size={13} />
+                      Anamnese
+                    </button>
+                    {canManagePatients && (
+                      <button
+                        type="button"
+                        onClick={() => openPatientEdit(selectedPatient.id)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-teal-200 text-[#006970] bg-teal-50 hover:bg-teal-100 transition"
+                      >
+                        <PencilSimple size={13} />
+                        Editar cadastro
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Campos extras do cadastro, anamnese e anexos do prontuário continuam vinculados a este paciente.
+                  </p>
                 </div>
               ) : (
                 /* Search state — text input + suggestion dropdown */
@@ -430,11 +486,21 @@ export default function AppointmentModal({
                       style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                       {createPatient.isPending ? 'Criando...' : 'Criar e selecionar'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={openFullPatientCreate}
+                      className="px-3 py-1.5 text-xs text-[#006970] border border-teal-200 rounded-xl hover:bg-white transition"
+                    >
+                      Cadastro completo
+                    </button>
                     <button type="button" onClick={() => setShowQuickPatient(false)}
                       className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">
                       Cancelar
                     </button>
                   </div>
+                  <p className="text-[11px] text-gray-500">
+                    Use o cadastro completo quando precisar preencher campos personalizados, endereço, vínculo com portal ou dados clínicos extras.
+                  </p>
                 </div>
               )}
 
@@ -746,6 +812,26 @@ export default function AppointmentModal({
           onClose={() => setPaymentModalOpen(false)}
         />
       )}
+      <PatientDrawer
+        open={patientDrawerOpen}
+        patientId={patientDrawerPatientId}
+        initialValues={{
+          name: quickName.trim() || patientSearch.trim() || '',
+          cpf: quickCpf.trim() || null,
+          customFields: {},
+        }}
+        stacked
+        onClose={() => setPatientDrawerOpen(false)}
+        onSaved={({ id, name }) => {
+          setPatientDrawerOpen(false)
+          setSelectedPatient({ id, name })
+          setValue('patientId', id)
+          setPatientSearch('')
+          setShowQuickPatient(false)
+          setQuickName('')
+          setQuickCpf('')
+        }}
+      />
     </Dialog.Root>
   )
 }

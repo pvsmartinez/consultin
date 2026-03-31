@@ -17,6 +17,22 @@ import {
   APPOINTMENT_STATUS_VARIANTS,
 } from '../types'
 
+function hasCustomFieldValue(value: unknown) {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  return true
+}
+
+function formatCustomFieldValue(type: string, value: unknown) {
+  if (Array.isArray(value)) return value.join(', ')
+  if (type === 'boolean') return value ? 'Sim' : 'Não'
+  if (type === 'date' && typeof value === 'string') return formatDate(`${value}T00:00:00`)
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return JSON.stringify(value)
+}
+
 function InfoRow({ label, value, copyable }: { label: string; value: string | null | undefined; copyable?: boolean }) {
   function copy() {
     if (!value) return
@@ -73,6 +89,9 @@ export default function PatientDetailPage() {
   const age = patient.birthDate
     ? Math.floor((Date.now() - new Date(patient.birthDate + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null
+  const visibleCustomFields = (clinic?.customPatientFields ?? []).filter(field =>
+    hasCustomFieldValue(patient.customFields?.[field.key])
+  )
 
   return (
     <div className="max-w-3xl">
@@ -185,6 +204,26 @@ export default function PatientDetailPage() {
       {patient.notes && (
         <Section title="Observações">
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{patient.notes}</p>
+        </Section>
+      )}
+
+      {/* Campos personalizados */}
+      {visibleCustomFields.length > 0 && (
+        <Section title="Campos Personalizados">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {visibleCustomFields.map(field => {
+              const rawValue = patient.customFields?.[field.key]
+              const formatted = formatCustomFieldValue(field.type, rawValue)
+              const isLongText = field.type === 'textarea' || (typeof formatted === 'string' && formatted.length > 120)
+
+              return (
+                <div key={field.key} className={isLongText ? 'sm:col-span-2' : ''}>
+                  <dt className="text-xs text-gray-400 mb-0.5">{field.label}</dt>
+                  <dd className={`text-sm text-gray-800 ${isLongText ? 'whitespace-pre-wrap' : ''}`}>{formatted}</dd>
+                </div>
+              )
+            })}
+          </dl>
         </Section>
       )}
 

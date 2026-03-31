@@ -1,6 +1,7 @@
 import type { CustomFieldDef } from '../../types'
 import Input from './Input'
 import Select from './Select'
+import TextArea from './TextArea'
 
 interface Props {
   field: CustomFieldDef
@@ -10,7 +11,7 @@ interface Props {
 
 /**
  * Renders the appropriate input for a clinic-defined custom field.
- * Supports: text, number, date, boolean, select, multiselect.
+ * Supports: text, textarea, number, date, boolean, select, multiselect.
  */
 export default function CustomFieldInput({ field, value, onChange }: Props) {
 
@@ -106,6 +107,19 @@ export default function CustomFieldInput({ field, value, onChange }: Props) {
         value={value != null ? String(value) : ''}
         onChange={e => onChange(field.key, e.target.value || null)}
       />
+    )
+  }
+
+  if (field.type === 'textarea') {
+    return (
+      <div className="sm:col-span-2">
+        <TextArea
+          label={field.label}
+          required={field.required}
+          value={value != null ? String(value) : ''}
+          onChange={e => onChange(field.key, e.target.value || null)}
+        />
+      </div>
     )
   }
 

@@ -11,7 +11,7 @@ import {
 import { formatDateTime } from '../../utils/date'
 
 const ACCEPTED = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -93,7 +93,7 @@ export default function PatientFilesPanel({ patientId, clinicId }: Props) {
           style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           <FilePlus size={15} />
-          {uploadMut.isPending ? 'Enviando...' : 'Anexar arquivo'}
+          {uploadMut.isPending ? 'Enviando...' : 'Anexar imagem ou documento'}
         </button>
         <input
           ref={fileRef}
@@ -103,6 +103,9 @@ export default function PatientFilesPanel({ patientId, clinicId }: Props) {
           className="hidden"
         />
       </div>
+      <p className="text-xs text-gray-400 text-right -mt-1">
+        Radiografias, fotos, PDFs e documentos ficam centralizados aqui no prontuário.
+      </p>
 
       {/* File list */}
       {isLoading ? (

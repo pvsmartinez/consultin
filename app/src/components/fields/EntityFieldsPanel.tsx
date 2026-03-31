@@ -18,6 +18,7 @@ import type { Clinic, CustomFieldDef, CustomFieldType, FieldConfig } from '../..
 
 const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
   { value: 'text',        label: 'Texto' },
+  { value: 'textarea',    label: 'Texto longo / observação' },
   { value: 'number',      label: 'Número' },
   { value: 'date',        label: 'Data' },
   { value: 'select',      label: 'Lista de opções (1 escolha)' },

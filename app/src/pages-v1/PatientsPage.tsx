@@ -182,7 +182,7 @@ export default function PatientsPage() {
       <PatientDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onSaved={(id) => { setDrawerOpen(false); navigate(`/pacientes/${id}`) }}
+        onSaved={({ id }) => { setDrawerOpen(false); navigate(`/pacientes/${id}`) }}
       />
     </div>
   )

@@ -72,6 +72,7 @@ describe('usePatients', () => {
     // Never resolves to keep it loading
     mockFrom.mockReturnValue({
       select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
@@ -86,6 +87,7 @@ describe('usePatients', () => {
   it('maps DB rows to camelCase Patient objects', async () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
@@ -118,6 +120,7 @@ describe('usePatients', () => {
   it('sets error on supabase error', async () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
@@ -139,6 +142,7 @@ describe('usePatients', () => {
   it('returns empty array when data is null', async () => {
     const chainable = {
       select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
       or: vi.fn().mockReturnThis(),
@@ -160,6 +164,7 @@ describe('usePatients', () => {
     const orMock = vi.fn().mockReturnThis()
     const chainable = {
       select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       range: vi.fn().mockReturnThis(),
       or: orMock,

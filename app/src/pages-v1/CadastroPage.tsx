@@ -34,6 +34,13 @@ const EMPTY_FORM: PatientInput = {
 import { BR_STATES as BR_STATES_LIST } from '../utils/constants'
 const BR_STATES = BR_STATES_LIST.map(s => ({ value: s, label: s }))
 
+function hasCustomFieldValue(value: unknown) {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  return true
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-8">
@@ -180,6 +187,13 @@ export default function CadastroPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim()) { setError('Nome é obrigatório.'); return }
+    const missingRequiredField = customPatientFields.find(field =>
+      field.required && !hasCustomFieldValue(form.customFields[field.key])
+    )
+    if (missingRequiredField) {
+      setError(`Preencha o campo obrigatório "${missingRequiredField.label}".`)
+      return
+    }
     setSaving(true)
     setError(null)
     try {

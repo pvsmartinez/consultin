@@ -39,9 +39,10 @@ function renderLogin() {
 }
 
 describe('LoginPage', () => {
-  it('renders the Entrar heading', () => {
+  it('renders the Consultin heading and subtitle', () => {
     renderLogin()
-    expect(screen.getByRole('heading', { name: /Entrar/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Consultin/i })).toBeInTheDocument()
+    expect(screen.getByText(/Acesse sua conta/i)).toBeInTheDocument()
   })
 
   it('renders email and password inputs', () => {
@@ -52,7 +53,7 @@ describe('LoginPage', () => {
 
   it('renders Google and Apple OAuth buttons', () => {
     renderLogin()
-    expect(screen.getByText(/Continuar com Google/i)).toBeInTheDocument()
-    expect(screen.getByText(/Continuar com Apple/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Entrar com Google/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Entrar com Apple/i })).toBeInTheDocument()
   })
 })

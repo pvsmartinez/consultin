@@ -22,6 +22,11 @@ export default function CamposTab({ clinic }: { clinic: Clinic }) {
           campos extras conforme a especialidade da clínica.
         </p>
         <p className="text-xs text-gray-400 mt-1.5">
+          Use campos personalizados para dados estruturados do prontuário, como convênio,
+          alergias, número do prontuário, observações clínicas curtas, datas e seleções.
+          Para radiografias, fotos, PDFs e outros documentos, use a área de arquivos do paciente.
+        </p>
+        <p className="text-xs text-gray-400 mt-1.5">
           Para configurar o formulário de anamnese dos pacientes, vá em{' '}
           <Link to="/configuracoes" className="text-[#006970] hover:underline font-medium">
             Configurações → Serviços

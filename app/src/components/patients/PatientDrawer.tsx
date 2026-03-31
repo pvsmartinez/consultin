@@ -20,6 +20,13 @@ import { BR_STATES as BR_STATES_LIST } from '../../utils/constants'
 
 const BR_STATES = BR_STATES_LIST.map(s => ({ value: s, label: s }))
 
+function hasCustomFieldValue(value: unknown) {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  return true
+}
+
 const EMPTY_FORM: PatientInput = {
   userId: null, name: '', cpf: null, rg: null, birthDate: null, sex: null,
   phone: null, email: null,
@@ -64,11 +71,13 @@ function MaskedInput({
 interface PatientDrawerProps {
   open:        boolean
   patientId?:  string          // undefined = new patient, defined = edit
+  initialValues?: Partial<PatientInput>
+  stacked?: boolean
   onClose:     () => void
-  onSaved:     (id: string) => void
+  onSaved:     (patient: { id: string; name: string }) => void
 }
 
-export default function PatientDrawer({ open, patientId, onClose, onSaved }: PatientDrawerProps) {
+export default function PatientDrawer({ open, patientId, initialValues, stacked = false, onClose, onSaved }: PatientDrawerProps) {
   const isEdit = Boolean(patientId)
   const { createPatient, updatePatient } = usePatients()
   const { patient, loading: loadingPatient } = usePatient(patientId ?? '')
@@ -90,8 +99,17 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
 
   // Reset form when opened for a new patient
   useEffect(() => {
-    if (open && !isEdit) { setForm(EMPTY_FORM); setError(null); setCpfSuggestion(null); setCpfLinked(false) }
-  }, [open, isEdit])
+    if (open && !isEdit) {
+      setForm({
+        ...EMPTY_FORM,
+        ...initialValues,
+        customFields: initialValues?.customFields ?? {},
+      })
+      setError(null)
+      setCpfSuggestion(null)
+      setCpfLinked(false)
+    }
+  }, [open, isEdit, initialValues])
 
   // Populate form when editing
   useEffect(() => {
@@ -147,14 +165,21 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) { setError('Nome é obrigatório.'); return }
+    const missingRequiredField = customPatientFields.find(field =>
+      field.required && !hasCustomFieldValue(form.customFields[field.key])
+    )
+    if (missingRequiredField) {
+      setError(`Preencha o campo obrigatório "${missingRequiredField.label}".`)
+      return
+    }
     setSaving(true); setError(null)
     try {
       if (isEdit && patientId) {
         await updatePatient(patientId, form)
-        onSaved(patientId)
+        onSaved({ id: patientId, name: form.name.trim() })
       } else {
         const p = await createPatient(form)
-        onSaved(p.id)
+        onSaved({ id: p.id, name: form.name.trim() || p.name })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar paciente.')
@@ -168,12 +193,12 @@ export default function PatientDrawer({ open, patientId, onClose, onSaved }: Pat
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] z-40 transition-opacity"
+        className={`fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] transition-opacity ${stacked ? 'z-[60]' : 'z-40'}`}
         onClick={onClose}
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-[#fcfdfd] shadow-2xl z-50 flex flex-col border-l border-white/60">
+      <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-[#fcfdfd] shadow-2xl flex flex-col border-l border-white/60 ${stacked ? 'z-[70]' : 'z-50'}`}>
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-200 flex-shrink-0 bg-white/80 backdrop-blur-sm">
           <div className="flex items-start justify-between gap-4">

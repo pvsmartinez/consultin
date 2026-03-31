@@ -59,7 +59,7 @@ export interface Clinic {
 }
 
 // ─── Custom fields (clinic-defined) ──────────────────────────────────────────
-export type CustomFieldType = 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'boolean'
+export type CustomFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'multiselect' | 'boolean'
 
 export interface CustomFieldDef {
   key: string

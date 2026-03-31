@@ -12,6 +12,13 @@ import { usePatient, useUpdateAnamnesis } from '../hooks/usePatients'
 import { useClinic } from '../hooks/useClinic'
 import CustomFieldInput from '../components/ui/CustomFieldInput'
 
+function hasCustomFieldValue(value: unknown) {
+  if (value == null) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) return value.length > 0
+  return true
+}
+
 export default function PatientAnamnesisPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -47,6 +54,11 @@ export default function PatientAnamnesisPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    const missingRequiredQuestion = questions.find(q => q.required && !hasCustomFieldValue(answers[q.key]))
+    if (missingRequiredQuestion) {
+      toast.error(`Preencha a pergunta obrigatória "${missingRequiredQuestion.label}".`)
+      return
+    }
     setSaving(true)
     try {
       await updateAnamnesis.mutateAsync({ patientId: id!, data: answers })
