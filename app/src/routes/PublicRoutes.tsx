@@ -6,6 +6,7 @@ import { PageLoader } from '../components/ui/PageLoader'
 const LandingPage         = lazy(() => import('../pages-v1/LandingPage'))
 const LoginPage           = lazy(() => import('../pages-v1/LoginPage'))
 const CadastroClinicaPage = lazy(() => import('../pages-v1/CadastroClinicaPage'))
+const BemVindoPage        = lazy(() => import('../pages-v1/BemVindoPage'))
 const PublicNotFoundPage  = lazy(() => import('../pages-v1/PublicNotFoundPage'))
 
 export default function PublicRoutes() {
@@ -16,6 +17,7 @@ export default function PublicRoutes() {
         <Route path="/"                  element={<LandingPage />} />
         <Route path="/login"             element={<LoginPage />} />
         <Route path="/cadastro-clinica"  element={<CadastroClinicaPage />} />
+        <Route path="/bem-vindo"         element={<BemVindoPage />} />
         <Route path="*"                  element={<PublicNotFoundPage />} />
       </Routes>
     </Suspense>

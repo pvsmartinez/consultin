@@ -57,6 +57,8 @@ export function mapClinic(r: Record<string, unknown>): Clinic {
     asaasCustomerId:          (r.asaas_customer_id as string) ?? null,
     asaasSubscriptionId:      (r.asaas_subscription_id as string) ?? null,
     subscriptionStatus:       (r.subscription_status as Clinic['subscriptionStatus']) ?? null,
+    subscriptionTier:         (r.subscription_tier as Clinic['subscriptionTier']) ?? 'trial',
+    trialEndsAt:              (r.trial_ends_at as string) ?? null,
     whatsappEnabled:          (r.whatsapp_enabled as boolean) ?? false,
     whatsappPhoneNumberId:    (r.whatsapp_phone_number_id as string) ?? null,
     whatsappPhoneDisplay:     (r.whatsapp_phone_display as string) ?? null,

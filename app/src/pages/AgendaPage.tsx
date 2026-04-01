@@ -18,6 +18,8 @@ import { useProfessionals } from '../hooks/useProfessionals'
 import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
 import RoomsDrawer from '../components/rooms/RoomsDrawer'
+import UpgradeModal from '../components/billing/UpgradeModal'
+import { useClinicQuota } from '../hooks/useClinicQuota'
 import type { Appointment } from '../types'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -223,11 +225,21 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   )
   const multiClinic = myProfRecords.length > 1
 
-  const [modalOpen, setModalOpen]     = useState(false)
-  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
-  const [initialSlot, setInitialSlot] = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
+  const [modalOpen, setModalOpen]           = useState(false)
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [editingAppt, setEditingAppt]       = useState<Appointment | null>(null)
+  const [initialSlot, setInitialSlot]       = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
   const [togglingModule, setTogglingModule] = useState<string | null>(null)
   const navigate = useNavigate()
+  const quota = useClinicQuota(clinic)
+
+  function openNewAppointmentModal() {
+    if (quota.subscriptionRequired || quota.exceeded) {
+      setUpgradeModalOpen(true)
+      return
+    }
+    setModalOpen(true)
+  }
 
   const resources: { id: string; title: string; eventColor?: string; businessHours?: FCBusinessHour[] | false }[] = useMemo(() => {
     if (effectiveAgendaView === 'room') {
@@ -295,7 +307,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     const profId = effectiveAgendaView === 'prof' ? (arg.resource?.id ?? '') : ''
     setEditingAppt(null)
     setInitialSlot({ date: format(arg.start, 'yyyy-MM-dd'), time: format(arg.start, 'HH:mm'), durationMin, professionalId: profId })
-    setModalOpen(true)
+    openNewAppointmentModal()
   }
 
   function handleClosedSlotScheduleOnce() {
@@ -304,7 +316,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     setClosedSlotPending(null)
     setEditingAppt(null)
     setInitialSlot({ date, time, durationMin })
-    setModalOpen(true)
+    openNewAppointmentModal()
   }
 
   async function handleClosedSlotOpenRecurring() {
@@ -337,7 +349,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     setClosedSlotPending(null)
     setEditingAppt(null)
     setInitialSlot({ date, time: t, durationMin: dur })
-    setModalOpen(true)
+    openNewAppointmentModal()
   }
 
   function handleEventClick(arg: EventClickArg) {
@@ -455,7 +467,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           </div>
           {!isPersonalView && (
             <button
-              onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
+              onClick={() => { setEditingAppt(null); setInitialSlot(null); openNewAppointmentModal() }}
               className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl transition-all active:scale-95 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
@@ -539,7 +551,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
             </p>
           </div>
           <button
-            onClick={() => { setEditingAppt(null); setInitialSlot(null); setModalOpen(true) }}
+            onClick={() => { setEditingAppt(null); setInitialSlot(null); openNewAppointmentModal() }}
             className="flex items-center gap-2 px-5 py-3 text-white text-sm font-medium rounded-xl transition-all active:scale-95 shadow-sm"
             style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
@@ -692,6 +704,13 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           onJustThis={handleClosedSlotScheduleOnce}
           onOpenRecurring={handleClosedSlotOpenRecurring}
           onCancel={() => setClosedSlotPending(null)}
+        />
+      )}
+
+      {upgradeModalOpen && (
+        <UpgradeModal
+          quota={quota}
+          onClose={() => setUpgradeModalOpen(false)}
         />
       )}
     </div>

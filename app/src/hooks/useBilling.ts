@@ -4,12 +4,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
-import { activateClinicSubscription, cancelAsaasSubscription } from '../services/asaas'
+import { activateClinicSubscription, cancelAsaasSubscription, upgradeClinicSubscription } from '../services/asaas'
 import type { AsaasBillingType } from '../types'
 
 export interface ActivateBillingInput {
   clinicId: string
   billingType: AsaasBillingType
+  tier: 'basic' | 'professional' | 'unlimited'
   responsible: {
     name: string
     cpfCnpj: string
@@ -49,6 +50,7 @@ export function useActivateClinicBilling() {
       const { customerId, subscriptionId } = await activateClinicSubscription({
         clinicId: input.clinicId,
         billingType: input.billingType,
+        tier: input.tier,
         responsible: input.responsible,
         clinic: input.clinic,
         creditCard: input.creditCard,
@@ -73,6 +75,20 @@ export function useCancelClinicBilling(clinicId: string) {
         .update({ subscription_status: 'INACTIVE', payments_enabled: false })
         .eq('id', clinicId)
       if (error) throw new Error(error.message)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
+  })
+}
+
+/** Muda o tier de uma assinatura ativa — atualiza preço no Asaas e subscription_tier no DB */
+export function useUpgradeClinicBilling(clinicId: string) {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ subscriptionId, tier }: { subscriptionId: string; tier: 'basic' | 'professional' | 'unlimited' }) => {
+      // subscriptionId is validated in the edge function via clinicId — pass clinicId as primary key
+      void subscriptionId // unused locally; edge fn resolves it from clinicId
+      return upgradeClinicSubscription(clinicId, tier)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
   })

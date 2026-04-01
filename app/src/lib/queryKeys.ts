@@ -108,6 +108,11 @@ export const QK = {
     slots: (profId: string, date: string) => ['booked-slots', profId, date] as const,
   },
 
+  // ── Clinic quota ──────────────────────────────────────────────
+  quota: {
+    monthly: (clinicId: string | null | undefined, month: string) => ['clinic-quota', clinicId, month] as const,
+  },
+
   // ── Super-admin ───────────────────────────────────────────────
   admin: {
     clinics:        () => ['admin', 'clinics']         as const,

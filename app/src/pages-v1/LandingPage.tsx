@@ -8,7 +8,7 @@ import {
   ChartLine, WhatsappLogo, Heartbeat, Syringe,
   Tooth, Brain, Leaf, ArrowRight, CheckCircle,
   Sparkle, ShieldCheck, Lightning, Star,
-  Buildings, UserCircle, Hospital,
+  Buildings, UserCircle, Hospital, Headset,
 } from '@phosphor-icons/react'
 
 function trackLandingClick(event: MouseEvent<HTMLElement>) {
@@ -119,6 +119,7 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-6 text-sm text-gray-600">
           <a href="#funcionalidades" className="hover:text-blue-600 transition">Funcionalidades</a>
           <a href="#como-funciona" className="hover:text-blue-600 transition">Como funciona</a>
+          <a href="#precos" className="hover:text-blue-600 transition">Preços</a>
           <a href="#especialidades" className="hover:text-blue-600 transition">Especialidades</a>
         </div>
 
@@ -157,6 +158,7 @@ function Navbar() {
         <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
           <a href="#funcionalidades" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Funcionalidades</a>
           <a href="#como-funciona" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Como funciona</a>
+          <a href="#precos" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Preços</a>
           <a href="#especialidades" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Especialidades</a>
           <div className="flex gap-2 pt-2">
             <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center border border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg">Entrar</Link>
@@ -477,6 +479,147 @@ function HowItWorks() {
   )
 }
 
+// ─── Pricing ─────────────────────────────────────────────────────────────────
+const plans = [
+  {
+    name: 'Básico',
+    price: 100,
+    limit: 'Até 40 consultas/mês',
+    color: 'border-gray-200',
+    highlight: false,
+    perks: [
+      'Agenda online',
+      'Cadastro de pacientes',
+      'Controle financeiro',
+      'Lembretes via WhatsApp',
+      'Suporte por e-mail',
+    ],
+  },
+  {
+    name: 'Profissional',
+    price: 200,
+    limit: 'Até 100 consultas/mês',
+    color: 'border-blue-500',
+    highlight: true,
+    perks: [
+      'Agenda online',
+      'Cadastro de pacientes',
+      'Controle financeiro',
+      'Lembretes via WhatsApp',
+      'Relatórios avançados',
+      'Múltiplos profissionais',
+      'Suporte prioritário',
+    ],
+  },
+  {
+    name: 'Ilimitado',
+    price: 300,
+    limit: 'Consultas ilimitadas',
+    color: 'border-gray-200',
+    highlight: false,
+    perks: [
+      'Agenda online',
+      'Cadastro de pacientes',
+      'Controle financeiro',
+      'Lembretes via WhatsApp',
+      'Relatórios avançados',
+      'Múltiplos profissionais',
+      'Suporte dedicado',
+    ],
+  },
+]
+
+function Pricing() {
+  return (
+    <section id="precos" className="py-20 bg-white">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+            <Sparkle size={13} weight="fill" />
+            7 dias grátis em todos os planos
+          </div>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+            Planos que crescem com{' '}
+            <span className="text-blue-600">a sua clínica</span>
+          </h2>
+          <p className="text-gray-500 max-w-md mx-auto">
+            Comece de graça por 7 dias. Sem cartão de crédito para testar.
+            Escolha o plano ideal para o volume de atendimentos da sua clínica.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 items-start">
+          {plans.map((plan) => (
+            <div
+              key={plan.name}
+              className={`relative rounded-2xl border-2 p-7 flex flex-col gap-6 ${
+                plan.highlight
+                  ? 'border-blue-500 shadow-xl shadow-blue-100'
+                  : 'border-gray-200'
+              }`}
+            >
+              {plan.highlight && (
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                  <span className="bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
+                    Mais popular
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <p className="text-sm font-semibold text-gray-500 mb-1">{plan.name}</p>
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-4xl font-extrabold text-gray-900">R$&nbsp;{plan.price}</span>
+                  <span className="text-gray-400 text-sm mb-1.5">/mês</span>
+                </div>
+                <p className="text-sm text-blue-600 font-medium">{plan.limit}</p>
+              </div>
+
+              <ul className="space-y-3 flex-1">
+                {plan.perks.map((perk) => (
+                  <li key={perk} className="flex items-center gap-2.5 text-sm text-gray-700">
+                    <CheckCircle
+                      size={17}
+                      weight="fill"
+                      className={plan.highlight ? 'text-blue-500' : 'text-emerald-500'}
+                    />
+                    {perk}
+                  </li>
+                ))}
+                <li className="flex items-center gap-2.5 text-sm text-gray-700">
+                  <Headset
+                    size={17}
+                    weight="fill"
+                    className={plan.highlight ? 'text-blue-500' : 'text-emerald-500'}
+                  />
+                  Acesso ao suporte
+                </li>
+              </ul>
+
+              <Link
+                to="/cadastro-clinica"
+                data-analytics-event="signup_cta_click"
+                data-analytics-placement={`pricing-${plan.name.toLowerCase()}`}
+                className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition ${
+                  plan.highlight
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                }`}
+              >
+                Começar 7 dias grátis
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Cobrança mensal · Cancele quando quiser · Sem taxa de cancelamento
+        </p>
+      </div>
+    </section>
+  )
+}
+
 // ─── Specialties ─────────────────────────────────────────────────────────────
 function Specialties() {
   const types = [
@@ -755,6 +898,7 @@ function Footer() {
               <ul className="space-y-2">
                 <li><a href="#funcionalidades" className="hover:text-white transition">Funcionalidades</a></li>
                 <li><a href="#como-funciona" className="hover:text-white transition">Como funciona</a></li>
+                <li><a href="#precos" className="hover:text-white transition">Preços</a></li>
                 <li><a href="#especialidades" className="hover:text-white transition">Especialidades</a></li>
               </ul>
             </div>
@@ -769,6 +913,8 @@ function Footer() {
               <p className="text-white font-medium mb-3">Suporte</p>
               <ul className="space-y-2">
                 <li><a href="mailto:suporte@consultin.com.br" className="hover:text-white transition">Contato</a></li>
+                <li><a href="/politica-de-privacidade" className="hover:text-white transition">Privacidade</a></li>
+                <li><a href="/termos-de-uso" className="hover:text-white transition">Termos de Uso</a></li>
               </ul>
             </div>
           </div>
@@ -806,6 +952,7 @@ export default function LandingPage() {
           <Hero />
           <Features />
           <HowItWorks />
+          <Pricing />
           <Specialties />
           <UseCaseSection />
           <SearchIntentSection />

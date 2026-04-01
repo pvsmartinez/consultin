@@ -17,6 +17,7 @@ import { BR_STATES } from '../../utils/constants'
 import AdminInput from './AdminInput'
 import { clinicSchema, createUserSchema } from './types'
 import type { ClinicForm, CreateUserForm } from './types'
+import { TIER_LABELS, TIER_LIMITS, TIER_PRICES } from '../../hooks/useClinicQuota'
 
 // ─── Clinics Tab ──────────────────────────────────────────────────────────────
 
@@ -182,6 +183,30 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
     }
   }
 
+  async function handleSetTier(tier: 'trial' | 'basic' | 'professional' | 'unlimited') {
+    if (!confirm(`Alterar plano de "${clinic.name}" para ${TIER_LABELS[tier]}?`)) return
+    try {
+      await updateClinic.mutateAsync({
+        id: clinic.id,
+        subscriptionTier: tier,
+        ...(tier !== 'trial' ? { subscriptionStatus: 'ACTIVE', paymentsEnabled: true } : {}),
+      })
+      toast.success(`Plano alterado para ${TIER_LABELS[tier]}.`)
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao alterar plano')
+    }
+  }
+
+  async function handleExtendTrial(days: number) {
+    const newDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+    try {
+      await updateClinic.mutateAsync({ id: clinic.id, trialEndsAt: newDate })
+      toast.success(`Trial de "${clinic.name}" estendido por ${days} dias.`)
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? 'Erro ao estender trial')
+    }
+  }
+
   // ── Add user form (pre-filled with this clinicId) ──────────────────────────
   const addUserForm = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
@@ -325,24 +350,73 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
             </div>
           )}
 
-          <div className="rounded-xl border border-indigo-800/60 bg-indigo-950/30 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-4">
+          <div className="rounded-xl border border-indigo-800/60 bg-indigo-950/30 p-4 space-y-4">
+            {/* Status line */}
+            <div className="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-xs font-medium text-indigo-300 uppercase tracking-wider">Assinatura e override</p>
-                <p className="text-sm text-gray-300 mt-1">
-                  Status Asaas: <span className="font-medium text-white">{clinic.subscriptionStatus ?? 'sem assinatura'}</span>
+                <p className="text-xs font-medium text-indigo-300 uppercase tracking-wider mb-1">Assinatura</p>
+                <p className="text-sm text-gray-300">
+                  Status: <span className="font-medium text-white">{clinic.subscriptionStatus ?? 'sem assinatura'}</span>
+                  {' · '}Tier: <span className="font-medium text-white">{TIER_LABELS[clinic.subscriptionTier] ?? 'trial'}</span>
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Módulo financeiro efetivo: {clinic.paymentsEnabled ? 'liberado' : 'bloqueado'}
-                  {clinic.billingOverrideEnabled ? ' via override manual' : ''}
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Financeiro: {clinic.paymentsEnabled ? 'liberado' : 'bloqueado'}
+                  {clinic.billingOverrideEnabled ? ' (override manual)' : ''}
+                  {clinic.trialEndsAt ? ` · trial até ${new Date(clinic.trialEndsAt).toLocaleDateString('pt-BR')}` : ''}
                 </p>
               </div>
-              <span className={`text-[10px] px-2 py-1 rounded-full border ${clinic.billingOverrideEnabled ? 'border-emerald-700/60 bg-emerald-900/40 text-emerald-300' : 'border-gray-700 bg-gray-800 text-gray-400'}`}>
+              <span className={`text-[10px] px-2 py-1 rounded-full border ${
+                clinic.billingOverrideEnabled
+                  ? 'border-emerald-700/60 bg-emerald-900/40 text-emerald-300'
+                  : 'border-gray-700 bg-gray-800 text-gray-400'
+              }`}>
                 {clinic.billingOverrideEnabled ? 'override ativo' : 'sem override'}
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            {/* Tier selector */}
+            <div>
+              <p className="text-xs text-gray-400 mb-2">Definir plano (sem Asaas):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(['trial', 'basic', 'professional', 'unlimited'] as const).map(tier => (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => handleSetTier(tier)}
+                    disabled={updateClinic.isPending || clinic.subscriptionTier === tier}
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition-colors disabled:opacity-40 ${
+                      clinic.subscriptionTier === tier
+                        ? 'border-indigo-500 bg-indigo-800/60 text-indigo-200 cursor-default'
+                        : 'border-gray-700 text-gray-400 hover:border-indigo-500 hover:text-indigo-300'
+                    }`}
+                  >
+                    {TIER_LABELS[tier]}{tier !== 'trial' ? ` R$${TIER_PRICES[tier]}` : ''}
+                    {tier !== 'trial' && TIER_LIMITS[tier] !== null ? ` /${TIER_LIMITS[tier]}` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Trial extension */}
+            <div>
+              <p className="text-xs text-gray-400 mb-2">Estender trial:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[7, 14, 30].map(days => (
+                  <button
+                    key={days}
+                    type="button"
+                    onClick={() => handleExtendTrial(days)}
+                    disabled={updateClinic.isPending}
+                    className="px-2.5 py-1 text-xs rounded-lg border border-gray-700 text-gray-400 hover:border-teal-500 hover:text-teal-300 transition-colors disabled:opacity-40"
+                  >
+                    +{days} dias
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Override toggle */}
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-indigo-800/40">
               {!clinic.billingOverrideEnabled ? (
                 <button
                   type="button"
@@ -350,7 +424,7 @@ function ClinicRow({ clinic }: { clinic: Clinic }) {
                   disabled={updateClinic.isPending}
                   className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40"
                 >
-                  Liberar financeiro manualmente
+                  Liberar financeiro (override)
                 </button>
               ) : (
                 <button

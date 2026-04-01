@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Stethoscope, CheckCircle } from '@phosphor-icons/react'
+import { Stethoscope } from '@phosphor-icons/react'
 import { z } from 'zod'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IMaskInput } from 'react-imask'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
 import { gtagEvent } from '../lib/gtag'
@@ -21,7 +21,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function CadastroClinicaPage() {
-  const [submitted, setSubmitted] = useState(false)
+  const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -47,43 +47,10 @@ export default function CadastroClinicaPage() {
 
       trackPublicEvent('clinic_signup_submit')
       gtagEvent('sign_up', { method: 'clinic_form' })
-      setSubmitted(true)
+      navigate('/bem-vindo')
     } catch (e: unknown) {
       setServerError((e as Error).message ?? 'Erro ao enviar solicitação. Tente novamente.')
     }
-  }
-
-  if (submitted) {
-    return (
-      <>
-        <Seo
-          title="Cadastro de clínica | Consultin"
-          description="Solicite o acesso da sua clínica ao Consultin e centralize agenda, pacientes, financeiro e WhatsApp em uma única operação."
-          canonicalPath="/cadastro-clinica"
-          keywords={[
-            'cadastro de clínica',
-            'software para clínicas',
-            'sistema para consultório',
-            'gestão de clínica',
-          ]}
-        />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm text-center space-y-4">
-            <CheckCircle size={48} className="text-green-500 mx-auto" />
-            <h1 className="text-lg font-semibold text-gray-800">Solicitação enviada!</h1>
-            <p className="text-sm text-gray-500">
-              Recebemos sua solicitação e ela entrará em revisão. Se for aprovada, você receberá por e-mail o convite de acesso e as instruções para definir sua senha.
-            </p>
-            <p className="text-xs text-gray-400">
-              Dúvidas? Entre em contato pelo e-mail <span className="font-medium">suporte@consultin.com.br</span>
-            </p>
-            <Link to="/" className="block text-sm text-blue-600 hover:underline mt-2">
-              Voltar para o início
-            </Link>
-          </div>
-        </div>
-      </>
-    )
   }
 
   return (

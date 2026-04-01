@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { WhatsappLogo, Copy, ArrowClockwise, Robot, BookOpen, Plus, Trash, PencilSimple, Check } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useClinic } from '../../hooks/useClinic'
-import { storeWhatsAppToken } from '../../services/whatsapp'
+import { storeWhatsAppToken, completeEmbeddedSignup } from '../../services/whatsapp'
+import { QK } from '../../lib/queryKeys'
 import { WA_AI_MODELS } from '../../types'
 import type { Clinic } from '../../types'
 import {
@@ -12,13 +14,36 @@ import {
   useDeleteWhatsappFaq,
 } from '../../hooks/useWhatsappFaqs'
 
-const WEBHOOK_STEPS = [
-  { n: 1, text: 'No Meta for Developers, crie um App do tipo "Business".' },
-  { n: 2, text: 'Adicione o produto "WhatsApp" ao seu app e configure um número de telefone.' },
-  { n: 3, text: 'Em Webhooks, use a URL abaixo e o Token de Verificação gerado aqui.' },
-  { n: 4, text: 'Copie o Token de Acesso Permanente e cole no campo abaixo.' },
-  { n: 5, text: 'Clique em Salvar. Pronto — seu WhatsApp está conectado! 🟢' },
-]
+// ─── Meta FB SDK helpers ────────────────────────────────────────────────────
+
+interface FBSDKType {
+  init: (cfg: { appId: string; cookie: boolean; version: string }) => void
+  login: (
+    cb: (resp: { authResponse?: { code?: string } }) => void,
+    opts: { config_id: string; response_type: string; override_default_response_type: boolean },
+  ) => void
+}
+
+function loadFbSdk(appId: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const w = window as unknown as { FB?: FBSDKType; fbAsyncInit?: () => void }
+    if (w.FB) { resolve(); return }
+    w.fbAsyncInit = () => {
+      w.FB!.init({ appId, cookie: true, version: 'v21.0' })
+      resolve()
+    }
+    if (!document.getElementById('facebook-jssdk')) {
+      const script   = document.createElement('script')
+      script.id      = 'facebook-jssdk'
+      script.src     = 'https://connect.facebook.net/en_US/sdk.js'
+      script.async   = true
+      script.onerror = () => reject(new Error('Falha ao carregar SDK da Meta'))
+      document.body.appendChild(script)
+    }
+  })
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
   const { update } = useClinic()
@@ -30,6 +55,10 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
   const [aiModel,      setAiModel]      = useState(clinic.waAiModel ?? 'google/gemini-2.0-flash-exp:free')
   const [customPrompt, setCustomPrompt] = useState(clinic.waAiCustomPrompt ?? '')
   const [saving,       setSaving]       = useState(false)
+  const [connecting,   setConnecting]   = useState(false)
+  const [showManual,   setShowManual]   = useState(false)
+  const capturedSignup = useRef<{ wabaId: string; phoneNumberId: string } | null>(null)
+  const queryClient    = useQueryClient()
 
   // FAQ hooks
   const { data: faqs = [] }   = useWhatsappFaqs()
@@ -100,6 +129,75 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
   async function handleDisconnect() {
     await update.mutateAsync({ whatsappEnabled: false })
     toast.success('WhatsApp desconectado')
+  }
+
+  async function handleEmbeddedSignup() {
+    setConnecting(true)
+    capturedSignup.current = null
+    try {
+      await loadFbSdk(import.meta.env.VITE_META_APP_ID as string)
+    } catch {
+      toast.error('Não foi possível carregar o SDK da Meta')
+      setConnecting(false)
+      return
+    }
+
+    const messageHandler = (event: MessageEvent) => {
+      if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return
+      try {
+        const raw  = typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
+        const data = JSON.parse(raw) as {
+          type?: string
+          event?: string
+          data?: { waba_id?: string; phone_number_id?: string }
+        }
+        if (
+          data.type === 'WA_EMBEDDED_SIGNUP' &&
+          data.event === 'FINISH' &&
+          data.data?.waba_id &&
+          data.data?.phone_number_id
+        ) {
+          capturedSignup.current = {
+            wabaId:        data.data.waba_id,
+            phoneNumberId: data.data.phone_number_id,
+          }
+        }
+      } catch { /* ignore malformed messages */ }
+    }
+
+    window.addEventListener('message', messageHandler)
+    ;(window as unknown as { FB: FBSDKType }).FB.login(async (response) => {
+      window.removeEventListener('message', messageHandler)
+
+      if (!response.authResponse?.code) {
+        toast.error('Autorização cancelada')
+        setConnecting(false)
+        return
+      }
+      if (!capturedSignup.current) {
+        toast.error('Dados do WhatsApp Business não recebidos — tente novamente')
+        setConnecting(false)
+        return
+      }
+
+      try {
+        await completeEmbeddedSignup({
+          clinicId:      clinic.id,
+          code:          response.authResponse.code,
+          wabaId:        capturedSignup.current.wabaId,
+          phoneNumberId: capturedSignup.current.phoneNumberId,
+        })
+        await queryClient.invalidateQueries({ queryKey: QK.clinic.detail(clinic.id) })
+        toast.success('WhatsApp conectado com sucesso! 🟢')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Falha ao conectar WhatsApp')
+        setConnecting(false)
+      }
+    }, {
+      config_id:                    import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID as string,
+      response_type:                'code',
+      override_default_response_type: true,
+    })
   }
 
   if (clinic.whatsappEnabled && step !== 'form') {
@@ -348,123 +446,157 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
           Conectar WhatsApp Business
         </h2>
         <p className="text-sm text-gray-400 mt-1">
-          Siga os passos abaixo para conectar o número de WhatsApp da sua clínica via Meta Cloud API (gratuito).
+          Autorize o Consultin a enviar e receber mensagens pelo número da sua clínica.
         </p>
       </div>
 
-      <div className="space-y-3">
-        {WEBHOOK_STEPS.map((s) => (
-          <div key={s.n} className="flex gap-3 items-start">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center">
-              {s.n}
-            </span>
-            <p className="text-sm text-gray-600 pt-0.5">{s.text}</p>
-          </div>
-        ))}
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">URL do Webhook</p>
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          <code className="text-xs text-gray-700 flex-1 break-all">{webhookUrl}</code>
-          <button onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('Copiado!') }}
-            className="text-gray-400 hover:text-gray-600 flex-shrink-0">
-            <Copy size={14} />
-          </button>
+      {/* ── Primary: Meta Embedded Signup ─────────────────────────────────── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-4 text-center">
+        <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
+          <WhatsappLogo size={28} weight="fill" className="text-green-500" />
         </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Token de Verificação</p>
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          <code className="text-xs text-gray-700 flex-1">{verifyToken}</code>
-          <button onClick={() => { navigator.clipboard.writeText(verifyToken); toast.success('Copiado!') }}
-            className="text-gray-400 hover:text-gray-600 flex-shrink-0">
-            <Copy size={14} />
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-4 pt-2">
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            Phone Number ID <span className="text-red-400">*</span>
-          </label>
-          <input
-            value={phoneId}
-            onChange={(e) => setPhoneId(e.target.value)}
-            placeholder="123456789012345"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
-          />
-          <p className="text-xs text-gray-400 mt-1">Encontrado em: Meta for Developers → Seu App → WhatsApp → Configuração</p>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            Número de telefone (exibição) <span className="text-red-400">*</span>
-          </label>
-          <input
-            value={phoneDisplay}
-            onChange={(e) => setPhoneDisplay(e.target.value)}
-            placeholder="+55 11 91234-5678"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            WhatsApp Business Account ID (WABA ID) <span className="text-red-400">*</span>
-          </label>
-          <input
-            value={wabaId}
-            onChange={(e) => setWabaId(e.target.value)}
-            placeholder="987654321098765"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            Token de Acesso Permanente <span className="text-red-400">*</span>
-          </label>
-          <input
-            type="password"
-            value={accessToken}
-            onChange={(e) => setAccessToken(e.target.value)}
-            placeholder="EAAxxxxxxxxxxxxxxx..."
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
-          />
-          <p className="text-xs text-gray-400 mt-1">
-            🔒 Armazenado com criptografia (Supabase Vault) — nunca exposto no frontend.
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-gray-800">Autorize com a Meta em 2 cliques</p>
+          <p className="text-xs text-gray-400 max-w-xs">
+            Faça login com o Facebook associado ao seu WhatsApp Business e selecione a conta.
+            O Consultin configura tudo automaticamente — sem copiar IDs ou tokens.
           </p>
         </div>
+        <button
+          onClick={handleEmbeddedSignup}
+          disabled={connecting || !import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID}
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors w-full"
+        >
+          {connecting
+            ? <><ArrowClockwise size={15} className="animate-spin" /> Conectando...</>
+            : <><WhatsappLogo size={15} weight="fill" /> Conectar com Meta</>
+          }
+        </button>
+        {!import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID && (
+          <p className="text-xs text-amber-600">
+            ⚠️ Configure{' '}
+            <code className="font-mono text-xs">VITE_META_APP_ID</code> e{' '}
+            <code className="font-mono text-xs">VITE_META_EMBEDDED_SIGNUP_CONFIG_ID</code>{' '}
+            nas variáveis de ambiente.
+          </p>
+        )}
+      </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Modelo de IA</label>
-          <select
-            value={aiModel}
-            onChange={(e) => setAiModel(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white">
-            {WA_AI_MODELS.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-        </div>
+      {/* ── Secondary: Manual config (collapsible) ────────────────────────── */}
+      <div className="rounded-xl border border-dashed border-gray-200">
+        <button
+          onClick={() => setShowManual(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <span>Configuração manual (modo avançado)</span>
+          <span className="text-xs">{showManual ? '▲' : '▼'}</span>
+        </button>
+        {showManual && (
+          <div className="px-4 pb-4 space-y-4 border-t border-dashed border-gray-200 pt-4">
 
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={handleSave}
-            disabled={saving || !phoneId || !phoneDisplay || !wabaId || !accessToken}
-            className="flex-1 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-40 transition-colors">
-            {saving ? 'Salvando...' : 'Conectar WhatsApp'}
-          </button>
-          {clinic.whatsappEnabled && (
-            <button onClick={() => setStep('guide')}
-              className="px-4 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50">
-              Cancelar
-            </button>
-          )}
-        </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">URL do Webhook</p>
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <code className="text-xs text-gray-700 flex-1 break-all">{webhookUrl}</code>
+                <button onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('Copiado!') }}
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Token de Verificação</p>
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                <code className="text-xs text-gray-700 flex-1">{verifyToken}</code>
+                <button onClick={() => { navigator.clipboard.writeText(verifyToken); toast.success('Copiado!') }}
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                Phone Number ID <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={phoneId}
+                onChange={(e) => setPhoneId(e.target.value)}
+                placeholder="123456789012345"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
+              />
+              <p className="text-xs text-gray-400 mt-1">Meta for Developers → Seu App → WhatsApp → Configuração</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                Número de telefone (exibição) <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={phoneDisplay}
+                onChange={(e) => setPhoneDisplay(e.target.value)}
+                placeholder="+55 11 91234-5678"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                WhatsApp Business Account ID (WABA ID) <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={wabaId}
+                onChange={(e) => setWabaId(e.target.value)}
+                placeholder="987654321098765"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+                Token de Acesso Permanente <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="password"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                placeholder="EAAxxxxxxxxxxxxxxx..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                🔒 Armazenado de forma segura — nunca exposto no frontend.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Modelo de IA</label>
+              <select
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white">
+                {WA_AI_MODELS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleSave}
+                disabled={saving || !phoneId || !phoneDisplay || !wabaId || !accessToken}
+                className="flex-1 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 disabled:opacity-40 transition-colors">
+                {saving ? 'Salvando...' : 'Conectar WhatsApp'}
+              </button>
+              {clinic.whatsappEnabled && (
+                <button onClick={() => setStep('guide')}
+                  className="px-4 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50">
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

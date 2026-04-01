@@ -220,6 +220,7 @@ export interface CreditCardInput {
 export interface ActivateClinicSubscriptionInput {
   clinicId: string
   billingType: AsaasBillingType
+  tier: 'basic' | 'professional' | 'unlimited'
   /** Dados do responsável (admin da clínica) */
   responsible: {
     name: string
@@ -246,8 +247,8 @@ export interface ActivateClinicSubscriptionInput {
 /**
  * Fluxo completo:
  * 1. Cria ou recupera customer no Asaas
- * 2. Cria assinatura mensal de R$100
- * 3. Salva asaas_customer_id + asaas_subscription_id + subscription_status na clínica
+ * 2. Cria assinatura mensal conforme tier (basic=R$100, professional=R$200, unlimited=R$300)
+ * 3. Salva asaas_customer_id + asaas_subscription_id + subscription_status + subscription_tier na clínica
  * Returns: { customerId, subscriptionId }
  */
 export async function activateClinicSubscription(
@@ -257,5 +258,17 @@ export async function activateClinicSubscription(
     '/activate-subscription',
     'POST',
     input,
+  )
+}
+
+/** Altera o tier de uma assinatura existente — atualiza valor no Asaas e subscription_tier no DB */
+export async function upgradeClinicSubscription(
+  clinicId: string,
+  tier: 'basic' | 'professional' | 'unlimited',
+): Promise<{ subscriptionId: string; tier: string; value: number }> {
+  return callEdge<{ subscriptionId: string; tier: string; value: number }>(
+    '/upgrade-subscription',
+    'POST',
+    { clinicId, tier },
   )
 }

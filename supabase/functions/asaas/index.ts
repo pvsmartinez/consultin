@@ -20,6 +20,7 @@
  *
  * Rota composta (lógica própria):
  *   POST   /activate-subscription  → cria customer + subscription + salva no DB
+ *   POST   /upgrade-subscription   → atualiza valor da assinatura existente (muda tier)
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -193,6 +194,7 @@ interface CreditCardInput {
 interface ActivateInput {
   clinicId: string
   billingType: 'PIX' | 'CREDIT_CARD' | 'BOLETO' | 'UNDEFINED'
+  tier?: 'basic' | 'professional' | 'unlimited'
   responsible: {
     name: string
     cpfCnpj: string
@@ -229,6 +231,10 @@ async function handleActivateSubscription(
   if (!clinicId || !billingType || !responsible?.name || !responsible?.cpfCnpj) {
     return err('Campos obrigatórios: clinicId, billingType, responsible.name, responsible.cpfCnpj')
   }
+
+  const tier = body.tier ?? 'basic'
+  const TIER_VALUES: Record<string, number> = { basic: 100.00, professional: 200.00, unlimited: 300.00 }
+  const subscriptionValue = TIER_VALUES[tier] ?? 100.00
   const access = await ensureClinicAccess(auth, clinicId)
   if (access) return access
   if (billingType === 'CREDIT_CARD' && !creditCard) {
@@ -288,10 +294,10 @@ async function handleActivateSubscription(
     const subBody: Record<string, unknown> = {
       customer: customerId,
       billingType,
-      value: 100.00,
+      value: subscriptionValue,
       nextDueDate,
       cycle: 'MONTHLY',
-      description: `Plano mensal Consultin — ${clinic.name}`,
+      description: `Plano ${tier} Consultin — ${clinic.name}`,
       externalReference: clinicId,
     }
 
@@ -339,6 +345,7 @@ async function handleActivateSubscription(
       asaas_customer_id: customerId,
       asaas_subscription_id: subscriptionId,
       subscription_status: 'ACTIVE',
+      subscription_tier: tier,
       payments_enabled: true,
     })
     .eq('id', clinicId)
@@ -348,6 +355,68 @@ async function handleActivateSubscription(
   }
 
   return json({ customerId, subscriptionId })
+}
+
+// ─── Rota composta: alterar tier da assinatura ───────────────────────────────
+
+async function handleUpgradeSubscription(
+  req: Request,
+  auth: { clinicId: string | null; isSuperAdmin: boolean },
+): Promise<Response> {
+  let body: { clinicId: string; tier: 'basic' | 'professional' | 'unlimited' }
+  try {
+    body = await req.json()
+  } catch {
+    return err('Body inválido')
+  }
+
+  const { clinicId, tier } = body
+  if (!clinicId || !tier) return err('Campos obrigatórios: clinicId, tier')
+
+  const access = await ensureClinicAccess(auth, clinicId)
+  if (access) return access
+
+  const TIER_VALUES: Record<string, number> = { basic: 100.00, professional: 200.00, unlimited: 300.00 }
+  const newValue = TIER_VALUES[tier]
+  if (!newValue) return err(`Tier inválido: ${tier}`)
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: clinicRow, error: clinicErr } = await (supabase as any)
+    .from('clinics')
+    .select('asaas_subscription_id')
+    .eq('id', clinicId)
+    .single()
+
+  if (clinicErr || !clinicRow?.asaas_subscription_id) {
+    return err('Assinatura Asaas não encontrada para esta clínica', 404)
+  }
+
+  const subId: string = clinicRow.asaas_subscription_id
+
+  // Atualiza valor no Asaas (POST parcial conforme API v3)
+  const asaasRes = await asaasFetch(`/subscriptions/${subId}`, 'POST', JSON.stringify({ value: newValue }))
+  if (!asaasRes.ok) {
+    const errText = await asaasRes.text()
+    let msg = `Erro ao atualizar assinatura Asaas (${asaasRes.status})`
+    try {
+      const parsed = JSON.parse(errText)
+      msg = parsed?.errors?.[0]?.description ?? msg
+    } catch { /* ok */ }
+    return err(msg, asaasRes.status)
+  }
+
+  // Atualiza tier no DB
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: dbErr } = await (supabase as any)
+    .from('clinics')
+    .update({ subscription_tier: tier })
+    .eq('id', clinicId)
+
+  if (dbErr) return err(`Tier atualizado no Asaas mas falhou no DB: ${dbErr.message}`, 500)
+
+  return json({ subscriptionId: subId, tier, value: newValue })
 }
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
@@ -370,9 +439,13 @@ serve(async (req: Request) => {
   const url = new URL(req.url)
   const path = url.pathname.replace(/^\/functions\/v1\/asaas/, '') || '/'
 
-  // Rota composta
+  // Rotas compostas
   if (path === '/activate-subscription' && req.method === 'POST') {
     return handleActivateSubscription(req, auth)
+  }
+
+  if (path === '/upgrade-subscription' && req.method === 'POST') {
+    return handleUpgradeSubscription(req, auth)
   }
 
   const subscriptionMatch = path.match(/^\/subscriptions\/([^/]+)$/)

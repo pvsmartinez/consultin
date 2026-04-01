@@ -39,6 +39,8 @@ export interface Clinic {
   asaasCustomerId: string | null
   asaasSubscriptionId: string | null
   subscriptionStatus: 'ACTIVE' | 'OVERDUE' | 'INACTIVE' | 'EXPIRED' | null
+  subscriptionTier: 'trial' | 'basic' | 'professional' | 'unlimited'
+  trialEndsAt: string | null
   // WhatsApp Business
   whatsappEnabled: boolean
   whatsappPhoneNumberId: string | null

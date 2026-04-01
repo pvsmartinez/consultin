@@ -179,14 +179,14 @@ export async function updateTemplate(
  * The actual DB write goes through an Edge Function that has service-role access.
  */
 export async function storeWhatsAppToken(clinicId: string, token: string): Promise<void> {
-  const projectUrl = supabaseUrl
-  const anonKey    = supabaseAnonKey
+  const { data: { session } } = await supabase.auth.getSession()
+  const authToken = session?.access_token ?? supabaseAnonKey
 
-  const res = await fetch(`${projectUrl}/functions/v1/whatsapp-store-token`, {
+  const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-store-token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization:  `Bearer ${anonKey}`,
+      Authorization:  `Bearer ${authToken}`,
     },
     body: JSON.stringify({ clinicId, token }),
   })
@@ -195,6 +195,32 @@ export async function storeWhatsAppToken(clinicId: string, token: string): Promi
     const err = await res.json().catch(() => ({ error: 'Unknown error' }))
     throw new Error(err.error ?? 'Failed to store token')
   }
+}
+
+export async function completeEmbeddedSignup(params: {
+  clinicId:      string
+  code:          string
+  wabaId:        string
+  phoneNumberId: string
+}): Promise<{ phoneDisplay: string | null }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Usuário não autenticado')
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-embedded-signup`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization:  `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(params),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Erro desconhecido' })) as { error?: string }
+    throw new Error(err.error ?? 'Falha ao conectar WhatsApp')
+  }
+
+  return res.json() as Promise<{ phoneDisplay: string | null }>
 }
 
 // ─── Realtime subscription ────────────────────────────────────────────────────

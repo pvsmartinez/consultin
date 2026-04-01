@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CheckCircle, Warning, Prohibit, CreditCard } from '@phosphor-icons/react'
+import { CheckCircle, Warning, Prohibit, CreditCard, Gauge, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Input from '../../components/ui/Input'
-import { useActivateClinicBilling, useCancelClinicBilling } from '../../hooks/useBilling'
+import { useActivateClinicBilling, useCancelClinicBilling, useUpgradeClinicBilling } from '../../hooks/useBilling'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { gtagEvent } from '../../lib/gtag'
 import { validateCpfCnpj, maskCpfCnpj, maskCEP, fetchAddressByCEP, formatPhone } from '../../utils/validators'
+import { useClinicQuota, TIER_LABELS, TIER_PRICES, TIER_LIMITS } from '../../hooks/useClinicQuota'
 import type { Clinic } from '../../types'
 
 const billingSchema = z.object({
@@ -42,8 +43,10 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
   const { profile } = useAuthContext()
   const activate    = useActivateClinicBilling()
   const cancel      = useCancelClinicBilling(clinic.id)
+  const quota       = useClinicQuota(clinic)
   const [showCancel, setShowCancel] = useState(false)
   const [cepLoading, setCepLoading] = useState(false)
+  const [selectedTier, setSelectedTier] = useState<'basic' | 'professional' | 'unlimited'>('basic')
 
   const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<BillingForm>({
     resolver: zodResolver(billingSchema),
@@ -76,6 +79,7 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
       await activate.mutateAsync({
         clinicId:    clinic.id,
         billingType: 'CREDIT_CARD',
+        tier:        selectedTier,
         responsible: {
           name:          values.responsibleName,
           cpfCnpj:       values.responsibleCpfCnpj.replace(/\D/g, ''),
@@ -102,8 +106,9 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
           ccv:         values.cardCcv,
         },
       })
-      toast.success('Assinatura ativada! Cobrança de R$\u00a0100/mês configurada no cartão.')
-      gtagEvent('purchase', { currency: 'BRL', value: 100, items: [{ item_id: 'consultin-pro', item_name: 'Consultin Pro', price: 100, quantity: 1 }] })
+      const price = TIER_PRICES[selectedTier]
+      toast.success(`Assinatura ${TIER_LABELS[selectedTier]} ativada! Cobrança de R$\u00a0${price}/mês configurada no cartão.`)
+      gtagEvent('purchase', { currency: 'BRL', value: price, items: [{ item_id: `consultin-${selectedTier}`, item_name: `Consultin ${TIER_LABELS[selectedTier]}`, price, quantity: 1 }] })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao ativar assinatura.')
     }
@@ -125,24 +130,70 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
       <div>
         <h2 className="text-base font-semibold text-gray-800">Assinatura Consultin</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Plano mensal R$\u00a0100/mês. Cobrança automática no cartão de crédito.
+          Planos a partir de R$&nbsp;100/mês. Cobrança automática no cartão de crédito.
         </p>
       </div>
 
+      {/* Trial banner */}
+      {quota.trialActive && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-teal-200 bg-teal-50">
+          <CheckCircle size={20} className="text-teal-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-teal-900">Período de teste ativo</p>
+            <p className="text-xs text-teal-700 mt-0.5">
+              {quota.trialDaysLeft} {quota.trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'} — aproveite para configurar sua clínica.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription status */}
       {clinic.paymentsEnabled && statusInfo && (
         <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
           clinic.subscriptionStatus === 'ACTIVE' ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'
         }`}>
           <statusInfo.icon size={20} className={statusInfo.color.split(' ')[0]} />
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-800">Assinatura {statusInfo.label}</p>
+            <p className="text-sm font-medium text-gray-800">
+              Assinatura {statusInfo.label} — Plano {TIER_LABELS[clinic.subscriptionTier]}
+            </p>
             {clinic.asaasSubscriptionId && (
               <p className="text-xs text-gray-400 mt-0.5">ID: {clinic.asaasSubscriptionId}</p>
             )}
           </div>
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusInfo.color}`}>
-            R$\u00a0100,00\u00a0/ mês
+            R$&nbsp;{TIER_PRICES[clinic.subscriptionTier as Exclude<typeof clinic.subscriptionTier, 'trial'>] ?? '—'},00&nbsp;/ mês
           </span>
+        </div>
+      )}
+
+      {/* Quota usage (only when subscribed) */}
+      {clinic.paymentsEnabled && clinic.subscriptionTier !== 'trial' && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+          <Gauge size={20} className="text-indigo-500 shrink-0" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-sm font-medium text-gray-700">Uso este mês</p>
+              <span className="text-xs text-gray-500">
+                {quota.used} / {quota.limit !== null ? quota.limit : '∞'}
+              </span>
+            </div>
+            {quota.limit !== null && (
+              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    quota.exceeded ? 'bg-red-500' : quota.used / quota.limit > 0.8 ? 'bg-yellow-500' : 'bg-teal-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (quota.used / quota.limit) * 100)}%` }}
+                />
+              </div>
+            )}
+            {quota.exceeded && (
+              <p className="text-xs text-red-600 mt-1.5 font-medium">
+                Limite atingido. Faça upgrade para continuar agendando.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -160,8 +211,45 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
 
       {!clinic.paymentsEnabled && (
         <form onSubmit={handleSubmit(onActivate)} className="space-y-6">
+          {/* Tier selector */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Escolha seu plano</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {(['basic', 'professional', 'unlimited'] as const).map(tier => {
+                const limit = TIER_LIMITS[tier]
+                return (
+                  <button
+                    key={tier}
+                    type="button"
+                    onClick={() => setSelectedTier(tier)}
+                    className={`relative p-4 rounded-xl border-2 text-left transition-all ${
+                      selectedTier === tier
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    {tier === 'professional' && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-semibold bg-indigo-600 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
+                        Popular
+                      </span>
+                    )}
+                    <p className={`text-sm font-semibold ${selectedTier === tier ? 'text-indigo-900' : 'text-gray-800'}`}>
+                      {TIER_LABELS[tier]}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${selectedTier === tier ? 'text-indigo-600' : 'text-gray-500'}`}>
+                      {limit !== null ? `Até ${limit} consultas/mês` : 'Consultas ilimitadas'}
+                    </p>
+                    <p className={`text-lg font-bold mt-2 ${selectedTier === tier ? 'text-indigo-700' : 'text-gray-800'}`}>
+                      R$&nbsp;{TIER_PRICES[tier]}<span className="text-xs font-normal text-gray-400">/mês</span>
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 text-sm text-[#006970]">
-            <strong>Cobrança automática:</strong> R$\u00a0100,00/mês debitado diretamente no cartão.
+            <strong>Cobrança automática:</strong> R$&nbsp;{TIER_PRICES[selectedTier]},00/mês debitado diretamente no cartão.
             Sem ação necessária após a ativação.
           </div>
 
@@ -265,9 +353,14 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
 
           <button type="submit" disabled={isSubmitting}
             className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
-            {isSubmitting ? 'Ativando assinatura...' : 'Ativar assinatura — R$\u00a0100/mês'}
+            {isSubmitting ? 'Ativando assinatura...' : `Ativar plano ${TIER_LABELS[selectedTier]} — R$\u00a0${TIER_PRICES[selectedTier]}/mês`}
           </button>
         </form>
+      )}
+
+      {/* ── Upgrade/downgrade plan (active subscription) ────────────────── */}
+      {clinic.paymentsEnabled && clinic.asaasSubscriptionId && clinic.subscriptionTier !== 'trial' && (
+        <UpgradePlanSection clinic={clinic} />
       )}
 
       {clinic.paymentsEnabled && clinic.asaasSubscriptionId && profile?.roles.includes('admin') && (
@@ -292,6 +385,88 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
                 className="text-sm text-gray-400 hover:text-gray-600">Voltar</button>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── UpgradePlanSection ───────────────────────────────────────────────────────
+
+function UpgradePlanSection({ clinic }: { clinic: Clinic }) {
+  const upgrade = useUpgradeClinicBilling(clinic.id)
+  const [selectedTier, setSelectedTier] = useState<'basic' | 'professional' | 'unlimited'>(
+    (clinic.subscriptionTier as 'basic' | 'professional' | 'unlimited') ?? 'basic'
+  )
+
+  const changed = selectedTier !== clinic.subscriptionTier
+
+  async function handleUpgrade() {
+    if (!changed) return
+    try {
+      await upgrade.mutateAsync({ subscriptionId: clinic.asaasSubscriptionId!, tier: selectedTier })
+      toast.success(`Plano alterado para ${TIER_LABELS[selectedTier]} — R$\u00a0${TIER_PRICES[selectedTier]}/mês a partir da próxima cobrança.`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao alterar plano.')
+    }
+  }
+
+  return (
+    <div className="border-t border-gray-200 pt-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <ArrowsClockwise size={16} className="text-indigo-500" />
+        <h3 className="text-sm font-semibold text-gray-700">Trocar plano</h3>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {(['basic', 'professional', 'unlimited'] as const).map(tier => {
+          const limit = TIER_LIMITS[tier]
+          const isCurrent = tier === clinic.subscriptionTier
+          return (
+            <button
+              key={tier}
+              type="button"
+              onClick={() => setSelectedTier(tier)}
+              className={`relative p-3 rounded-xl border-2 text-left transition-all ${
+                selectedTier === tier
+                  ? isCurrent
+                    ? 'border-gray-400 bg-gray-50'
+                    : 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              {isCurrent && (
+                <span className="absolute -top-2 left-3 text-[9px] font-semibold bg-gray-500 text-white px-2 py-0.5 rounded-full whitespace-nowrap">
+                  Plano atual
+                </span>
+              )}
+              <p className="text-sm font-semibold text-gray-800">{TIER_LABELS[tier]}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {limit !== null ? `Até ${limit} consultas/mês` : 'Ilimitadas'}
+              </p>
+              <p className="text-lg font-bold text-gray-800 mt-1.5">
+                R$&nbsp;{TIER_PRICES[tier]}<span className="text-xs font-normal text-gray-400">/mês</span>
+              </p>
+            </button>
+          )
+        })}
+      </div>
+      {changed && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleUpgrade}
+            disabled={upgrade.isPending}
+            className="px-5 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          >
+            {upgrade.isPending
+              ? 'Atualizando...'
+              : `Alterar para ${TIER_LABELS[selectedTier]} — R$\u00a0${TIER_PRICES[selectedTier]}/mês`}
+          </button>
+          <button
+            onClick={() => setSelectedTier((clinic.subscriptionTier as 'basic' | 'professional' | 'unlimited') ?? 'basic')}
+            className="text-sm text-gray-400 hover:text-gray-600"
+          >
+            Cancelar
+          </button>
         </div>
       )}
     </div>

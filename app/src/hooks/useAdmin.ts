@@ -364,6 +364,8 @@ export function useUpdateClinic() {
       paymentsEnabled?: boolean
       billingOverrideEnabled?: boolean
       subscriptionStatus?: 'ACTIVE' | 'OVERDUE' | 'INACTIVE' | 'EXPIRED' | null
+      subscriptionTier?: 'trial' | 'basic' | 'professional' | 'unlimited'
+      trialEndsAt?: string | null
     }) => {
       const payload: Record<string, unknown> = {
         ...(input.name !== undefined ? { name: input.name } : {}),
@@ -375,6 +377,8 @@ export function useUpdateClinic() {
         ...(input.paymentsEnabled !== undefined ? { payments_enabled: input.paymentsEnabled } : {}),
         ...(input.billingOverrideEnabled !== undefined ? { billing_override_enabled: input.billingOverrideEnabled } : {}),
         ...(input.subscriptionStatus !== undefined ? { subscription_status: input.subscriptionStatus } : {}),
+        ...(input.subscriptionTier !== undefined ? { subscription_tier: input.subscriptionTier } : {}),
+        ...(input.trialEndsAt !== undefined ? { trial_ends_at: input.trialEndsAt } : {}),
       }
 
       const { error } = await supabase
