@@ -7,13 +7,20 @@
  *
  * Routing logic:
  *   1. Identify clinic from the phone_number_id in the payload
- *   2. Find or create a whatsapp_session for this patient phone
- *   3. If status == 'human' → do nothing (attendant handles it)
- *   4. Otherwise → call whatsapp-ai-agent → execute the returned action
- *      - reply     → call whatsapp-send
- *      - confirm   → update appointment status + send confirmation
- *      - cancel    → update appointment status + send cancellation
- *      - escalate  → set session.status = 'human', notify attendant
+ *   2. Identify actor: patient, professional, or unknown (via phone lookup)
+ *   3. Find or create a whatsapp_session for this phone (with actor_type)
+ *   4. If msgType === 'audio': transcribe via Groq Whisper, use as text
+ *   5. If status == 'human' → do nothing (attendant handles it)
+ *   6. Otherwise → call whatsapp-ai-agent → execute the returned action:
+ *      - reply                    → call whatsapp-send
+ *      - confirm_appointment      → update appointment + send confirmation
+ *      - cancel_appointment       → update appointment + send cancellation
+ *      - book_appointment         → insert new appointment + send confirmation
+ *      - register_patient         → insert new patient + update session
+ *      - staff_mark_completed     → mark appointment as completed
+ *      - staff_mark_noshow        → mark appointment as no_show
+ *      - staff_cancel_appointment → cancel staff-specified appointment
+ *      - escalate                 → set session.status = 'human', notify staff
  *
  * Security: verifies X-Hub-Signature-256 from Meta.
  */
@@ -23,24 +30,25 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto }       from 'https://deno.land/std@0.168.0/crypto/mod.ts'
 import { encode }       from 'https://deno.land/std@0.168.0/encoding/hex.ts'
 
-const SUPABASE_URL  = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SRK  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-// Meta App Secret — set in Supabase project secrets
+const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SRK    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const META_APP_SECRET = Deno.env.get('META_APP_SECRET') ?? ''
+const GROQ_API_KEY    = Deno.env.get('GROQ_API_KEY') ?? ''
 const SELF_URL        = Deno.env.get('SUPABASE_URL')!
+
+const GRAPH_BASE = 'https://graph.facebook.com/v21.0'
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   // ── GET: Meta webhook verification ───────────────────────────────────────
   if (req.method === 'GET') {
-    const url    = new URL(req.url)
-    const mode   = url.searchParams.get('hub.mode')
-    const token  = url.searchParams.get('hub.verify_token')
+    const url       = new URL(req.url)
+    const mode      = url.searchParams.get('hub.mode')
+    const token     = url.searchParams.get('hub.verify_token')
     const challenge = url.searchParams.get('hub.challenge')
 
     if (mode === 'subscribe' && challenge) {
-      // Verify against the clinic's stored verify_token
       const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
       const { data: clinic } = await supabase
         .from('clinics')
@@ -49,21 +57,18 @@ serve(async (req) => {
         .eq('whatsapp_enabled', true)
         .maybeSingle()
 
-      if (clinic) {
-        return new Response(challenge, { status: 200 })
-      }
+      if (clinic) return new Response(challenge, { status: 200 })
     }
     return new Response('Forbidden', { status: 403 })
   }
 
-  // ── POST: Inbound message or status update ────────────────────────────────
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   const rawBody = await req.text()
 
   // ── Verify signature ──────────────────────────────────────────────────────
   if (META_APP_SECRET) {
-    const sig = req.headers.get('x-hub-signature-256')?.replace('sha256=', '') ?? ''
+    const sig   = req.headers.get('x-hub-signature-256')?.replace('sha256=', '') ?? ''
     const valid = await verifySignature(rawBody, META_APP_SECRET, sig)
     if (!valid) return new Response('Forbidden', { status: 403 })
   }
@@ -72,17 +77,14 @@ serve(async (req) => {
   try { payload = JSON.parse(rawBody) }
   catch { return new Response('Bad Request', { status: 400 }) }
 
-  // Meta always wraps in an array — process each entry
   for (const entry of payload.entry ?? []) {
     for (const change of entry.changes ?? []) {
       if (change.field !== 'messages') continue
 
-      const value = change.value
+      const value         = change.value
       const phoneNumberId = value.metadata?.phone_number_id
-
       if (!phoneNumberId) continue
 
-      // ── Find clinic by phone_number_id ────────────────────────────────────
       const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
       const { data: clinic } = await supabase
         .from('clinics')
@@ -93,7 +95,6 @@ serve(async (req) => {
 
       if (!clinic) continue
 
-      // ── Handle status updates (delivered/read) ────────────────────────────
       for (const status of value.statuses ?? []) {
         await supabase
           .from('whatsapp_messages')
@@ -102,7 +103,6 @@ serve(async (req) => {
           .eq('clinic_id', clinic.id)
       }
 
-      // ── Handle incoming messages ──────────────────────────────────────────
       for (const msg of value.messages ?? []) {
         await processInbound(supabase, clinic, msg, value.contacts ?? [])
       }
@@ -119,29 +119,73 @@ async function processInbound(
   supabase:  ReturnType<typeof createClient>,
   clinic:    { id: string; wa_attendant_inbox: boolean },
   msg:       MetaMessage,
-  contacts:  MetaContact[],
+  _contacts: MetaContact[],
 ) {
-  const fromPhone  = msg.from
-  const msgText    = msg.text?.body ?? msg.button?.text ?? null
-  const msgType    = msg.type as string
+  const fromPhone = msg.from
+  const msgType   = msg.type as string
 
-  if (!msgText && msgType !== 'audio') return  // ignore unsupported types for now
+  // Extract raw text (button clicks, interactive replies, or plain text)
+  let msgText: string | null =
+    msg.text?.body ??
+    msg.button?.text ??
+    msg.interactive?.button_reply?.title ??
+    null
 
-  // ── Find patient by phone ────────────────────────────────────────────────
-  const { data: patient } = await supabase
-    .from('patients')
-    .select('id, name')
-    .eq('clinic_id', clinic.id)
-    .ilike('phone', `%${fromPhone.slice(-9)}%`)   // fuzzy match last 9 digits
-    .maybeSingle()
+  // ── Audio: transcribe via Groq Whisper ────────────────────────────────────
+  if (msgType === 'audio' && msg.audio?.id) {
+    const transcribed = await transcribeAudio(supabase, clinic.id, msg.audio.id)
+    if (transcribed) {
+      msgText = `[Áudio transcrito]: ${transcribed}`
+    } else {
+      await quickReply(clinic.id, fromPhone,
+        'Não consegui ouvir seu áudio. Pode enviar sua mensagem por texto? 😊')
+      return
+    }
+  }
 
-  // ── Get or create session (upsert) ───────────────────────────────────────
-  // We use status='ai' as the "active" session key. Resolved sessions are left alone.
-  let session: { id: string; status: string; context_snapshot: { role: string; content: string }[] } | null = null
+  if (!msgText) return  // ignore stickers, images, documents, etc.
 
+  // ── Identify actor: patient, professional, or staff user (in parallel) ────
+  const last9 = fromPhone.slice(-9)
+  const [{ data: patient }, { data: professional }, { data: staffUser }] = await Promise.all([
+    supabase
+      .from('patients')
+      .select('id, name')
+      .eq('clinic_id', clinic.id)
+      .ilike('phone', `%${last9}%`)
+      .maybeSingle(),
+    supabase
+      .from('professionals')
+      .select('id, name')
+      .eq('clinic_id', clinic.id)
+      .ilike('phone', `%${last9}%`)
+      .eq('active', true)
+      .maybeSingle(),
+    supabase
+      .from('user_profiles')
+      .select('id, name, role')
+      .eq('clinic_id', clinic.id)
+      .ilike('phone', `%${last9}%`)
+      .maybeSingle(),
+  ])
+
+  // ── Determine actor type ──────────────────────────────────────────────────
+  // Priority: professional > receptionist/admin (user_profiles) > patient > unknown
+  let actorType: 'patient' | 'professional' | 'receptionist' | 'admin' | 'unknown' = 'unknown'
+  let staffUserId: string | null = null
+  if (professional) {
+    actorType = 'professional'
+  } else if (staffUser) {
+    actorType = (staffUser as { role: string }).role === 'admin' ? 'admin' : 'receptionist'
+    staffUserId = (staffUser as { id: string }).id
+  } else if (patient) {
+    actorType = 'patient'
+  }
+
+  // ── Get or create session ─────────────────────────────────────────────────
   const { data: existingSession } = await supabase
     .from('whatsapp_sessions')
-    .select('id, status, context_snapshot')
+    .select('id, status, context_snapshot, actor_type, professional_id, last_message_at')
     .eq('clinic_id', clinic.id)
     .eq('wa_phone', fromPhone)
     .not('status', 'eq', 'resolved')
@@ -149,33 +193,46 @@ async function processInbound(
     .limit(1)
     .maybeSingle()
 
-  if (existingSession) {
-    session = existingSession
-  } else {
+  let session: SessionRow | null = existingSession ?? null
+  const isNewSession = !session
+
+  if (!session) {
     const { data: newSession } = await supabase
       .from('whatsapp_sessions')
       .insert({
-        clinic_id:  clinic.id,
-        patient_id: patient?.id ?? null,
-        wa_phone:   fromPhone,
-        status:     'ai',
+        clinic_id:       clinic.id,
+        patient_id:      patient?.id ?? null,
+        wa_phone:        fromPhone,
+        status:          'ai',
+        actor_type:      actorType,
+        professional_id: professional?.id ?? null,
       })
-      .select('id, status, context_snapshot')
+      .select('id, status, context_snapshot, actor_type, professional_id')
       .single()
     session = newSession
+  } else if (session.actor_type === 'unknown' && actorType !== 'unknown') {
+    // Upgrade identification if we now recognise them
+    await supabase
+      .from('whatsapp_sessions')
+      .update({
+        actor_type:      actorType,
+        professional_id: professional?.id ?? null,
+        patient_id:      patient?.id ?? null,
+      })
+      .eq('id', session.id)
   }
 
   if (!session) return
 
   // ── Log inbound message ───────────────────────────────────────────────────
   await supabase.from('whatsapp_messages').insert({
-    session_id:     session.id,
-    clinic_id:      clinic.id,
-    direction:      'inbound',
-    wa_message_id:  msg.id,
-    body:           msgText,
-    message_type:   msgType,
-    sent_by:        'patient',
+    session_id:    session.id,
+    clinic_id:     clinic.id,
+    direction:     'inbound',
+    wa_message_id: msg.id,
+    body:          msgText,
+    message_type:  msgType,
+    sent_by:       'patient',
   })
 
   await supabase
@@ -183,22 +240,90 @@ async function processInbound(
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', session.id)
 
-  // ── If session is already with a human attendant, stop here ──────────────
-  if (session.status === 'human') return
+  // ── If session is with a human attendant, stop here ───────────────────────
+  if (session.status === 'human') {
+    // Auto-return to AI if last message was > 4 hours ago and clinic has no reply
+    const lastAt = new Date(session.last_message_at ?? 0)
+    const hoursSinceLast = (Date.now() - lastAt.getTime()) / 3600000
+    if (hoursSinceLast < 4) return
+    // Only auto-return if the LAST message was from the patient (not staff reply)
+    const { data: lastMsg } = await supabase
+      .from('whatsapp_messages')
+      .select('direction, sent_by')
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const lastWasPatient = lastMsg?.direction === 'inbound'
+    if (!lastWasPatient) return
+    // Resume AI
+    await supabase.from('whatsapp_sessions').update({ status: 'ai' }).eq('id', session.id)
+    session = { ...session, status: 'ai' }
+  }
+
+  // ── Resolve effective identifiers ─────────────────────────────────────────
+  const effectiveActorType = session.actor_type !== 'unknown' ? session.actor_type : actorType
+  const effectiveProfId    = session.professional_id ?? professional?.id ?? null
+  const effectivePatientId = patient?.id ?? null
+  const isStaffActor       = effectiveActorType === 'professional' || effectiveActorType === 'receptionist' || effectiveActorType === 'admin'
+
+  // ── Help / welcome message ─────────────────────────────────────────────────
+  const isHelpRequest = /^(ajuda|help|\?|oi|olá|ola|oii|menu|comandos|inicio|início)$/i.test(msgText.trim())
+
+  if (isNewSession || isHelpRequest) {
+    if (isStaffActor) {
+      const staffName = (professional as { name?: string } | null)?.name
+        ?? (staffUser as { name?: string } | null)?.name
+        ?? 'Equipe'
+      await sendReply(clinic.id, session.id, fromPhone, [
+        `Olá, *${staffName}*! 👋 Sou o assistente da *${clinic.name}*.`,
+        '',
+        '*O que posso fazer por você:*',
+        '📋 _"minha agenda"_ — agenda do dia',
+        '📅 _"agenda de amanhã"_ — agenda de outro dia',
+        '🚪 _"salas ocupadas"_ — status das salas agora',
+        '✅ _"concluir consulta do João"_ — marcar como concluída',
+        '❌ _"cancelar consulta das 14h"_ — cancelar',
+        '🔴 _"falta do paciente das 9h"_ — registrar no-show',
+        '🗓️ _"agendar João Silva amanhã às 10h com Dr. Ana"_ — novo agendamento',
+        '',
+        'Pode falar em linguagem natural ou por áudio! 😊',
+      ].join('\n'))
+      // On first message or pure help request: show menu and stop
+      if (isNewSession || isHelpRequest) return
+    } else {
+      const patientName = (patient as { name?: string } | null)?.name
+      await sendReply(clinic.id, session.id, fromPhone, [
+        `Olá${patientName ? `, *${patientName}*` : ''}! 👋 Sou o assistente virtual da *${clinic.name}*.`,
+        '',
+        '*Posso te ajudar com:*',
+        '📅 Suas consultas agendadas',
+        '✅ Confirmar ou cancelar consulta',
+        '🗓️ Marcar nova consulta',
+        '❓ Dúvidas e informações',
+        '',
+        'Como posso te ajudar hoje?',
+      ].join('\n'))
+      if (isNewSession || isHelpRequest) return
+    }
+  }
 
   // ── Call AI agent ─────────────────────────────────────────────────────────
   const agentRes = await fetch(`${SELF_URL}/functions/v1/whatsapp-ai-agent`, {
     method:  'POST',
     headers: {
-      'Content-Type':  'application/json',
-      Authorization:   `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+      Authorization:  `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
     },
     body: JSON.stringify({
-      clinicId:  clinic.id,
-      sessionId: session.id,
-      patientId: patient?.id ?? null,
-      message:   msgText,
-      history:   session.context_snapshot ?? [],
+      clinicId:       clinic.id,
+      sessionId:      session.id,
+      patientId:      effectivePatientId,
+      professionalId: effectiveProfId,
+      actorType:      effectiveActorType,
+      message:        msgText,
+      history:        session.context_snapshot ?? [],
+      staffUserId:    staffUserId,
     }),
   })
 
@@ -207,15 +332,12 @@ async function processInbound(
     return
   }
 
-  const action = await agentRes.json() as {
-    action: string
-    replyText?: string
-    appointmentId?: string
-  }
+  const action = await agentRes.json() as AgentAction
 
-  // ── Execute action ────────────────────────────────────────────────────────
+  // ── Execute action ─────────────────────────────────────────────────────────
   switch (action.action) {
-    case 'confirm_appointment':
+
+    case 'confirm_appointment': {
       if (action.appointmentId) {
         await supabase
           .from('appointments')
@@ -230,8 +352,9 @@ async function processInbound(
       }
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
       break
+    }
 
-    case 'cancel_appointment':
+    case 'cancel_appointment': {
       if (action.appointmentId) {
         await supabase
           .from('appointments')
@@ -246,8 +369,183 @@ async function processInbound(
       }
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
       break
+    }
 
-    case 'escalate':
+    case 'book_appointment': {
+      const booked = await executeBookAppointment(supabase, clinic.id, {
+        patientId:      effectivePatientId,
+        professionalId: action.professionalId,
+        startsAt:       action.startsAt,
+        endsAt:         action.endsAt,
+        serviceTypeId:  action.serviceTypeId,
+      })
+      if (booked.ok) {
+        if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_booked_via_whatsapp',
+          data: { patientName: patient?.name ?? null, startsAt: action.startsAt },
+        })
+      } else {
+        await sendReply(clinic.id, session.id, fromPhone,
+          booked.message ?? 'Não consegui agendar. Um atendente irá te ajudar em breve!')
+      }
+      break
+    }
+
+    case 'register_patient': {
+      if (action.patientName) {
+        const { data: newPatient } = await supabase
+          .from('patients')
+          .insert({ clinic_id: clinic.id, name: action.patientName, phone: fromPhone })
+          .select('id')
+          .single()
+        if (newPatient) {
+          await supabase
+            .from('whatsapp_sessions')
+            .update({ patient_id: newPatient.id, actor_type: 'patient' })
+            .eq('id', session.id)
+        }
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_mark_completed': {
+      if (action.appointmentId) {
+        await supabase
+          .from('appointments')
+          .update({ status: 'completed' })
+          .eq('id', action.appointmentId)
+          .eq('clinic_id', clinic.id)
+        // Send satisfaction survey to patient if we know their phone
+        await sendSatisfactionSurvey(supabase, clinic.id, action.appointmentId, session.id)
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_mark_noshow': {
+      if (action.appointmentId) {
+        await supabase
+          .from('appointments')
+          .update({ status: 'no_show' })
+          .eq('id', action.appointmentId)
+          .eq('clinic_id', clinic.id)
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_cancel_appointment': {
+      if (action.appointmentId) {
+        await supabase
+          .from('appointments')
+          .update({ status: 'cancelled' })
+          .eq('id', action.appointmentId)
+          .eq('clinic_id', clinic.id)
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_cancelled',
+          data: { cancelledByStaff: true, appointmentId: action.appointmentId },
+        })
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_book_for_patient': {
+      // Staff booking a new appointment on behalf of a patient
+      const booked = await executeBookAppointment(supabase, clinic.id, {
+        patientId:      action.targetPatientId ?? null,
+        professionalId: action.professionalId,
+        startsAt:       action.startsAt,
+        endsAt:         action.endsAt,
+        serviceTypeId:  action.serviceTypeId,
+      })
+      if (booked.ok) {
+        if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_booked_by_staff_whatsapp',
+          data: { staffActorType: effectiveActorType, startsAt: action.startsAt },
+        })
+      } else {
+        await sendReply(clinic.id, session.id, fromPhone,
+          booked.message ?? 'Não consegui agendar. Verifique os dados e tente novamente.')
+      }
+      break
+    }
+
+    case 'staff_find_patient': {
+      // Search patients by name and reply with the list so staff can pick one
+      const searchName = (action.patientName ?? '').trim()
+      if (!searchName) {
+        await sendReply(clinic.id, session.id, fromPhone, 'Qual é o nome do paciente?')
+        break
+      }
+      const { data: foundPatients } = await supabase
+        .from('patients')
+        .select('id, name, phone')
+        .eq('clinic_id', clinic.id)
+        .ilike('name', `%${searchName}%`)
+        .limit(5)
+      if (!foundPatients || foundPatients.length === 0) {
+        await sendReply(clinic.id, session.id, fromPhone,
+          `Nenhum paciente encontrado com o nome "${searchName}". Verifique o nome e tente novamente.`)
+        break
+      }
+      if (foundPatients.length === 1) {
+        const p = foundPatients[0] as { id: string; name: string; phone: string | null }
+        await sendReply(clinic.id, session.id, fromPhone,
+          `Paciente encontrado: *${p.name}*${p.phone ? ` (${p.phone})` : ''}\n[patientId:${p.id}]\n\nPara qual horário deseja agendar?`)
+      } else {
+        const lines = (foundPatients as { id: string; name: string; phone: string | null }[])
+          .map((p, i) => `${i + 1}. *${p.name}*${p.phone ? ` (${p.phone})` : ''} [id:${p.id}]`)
+        await sendReply(clinic.id, session.id, fromPhone,
+          `Encontrei ${foundPatients.length} pacientes:\n${lines.join('\n')}\n\nQual paciente e horário?`)
+      }
+      break
+    }
+
+    case 'patient_checkin': {
+      // Patient announced they've arrived — notify staff
+      const appointmentId = action.appointmentId
+      if (appointmentId) {
+        await supabase
+          .from('appointments')
+          .update({ status: 'checked_in' })
+          .eq('id', appointmentId)
+          .eq('clinic_id', clinic.id)
+      }
+      await supabase.from('clinic_notifications').insert({
+        clinic_id: clinic.id,
+        type: 'patient_checkin_whatsapp',
+        data: { patientName: patient?.name ?? null, appointmentId: appointmentId ?? null, phone: fromPhone },
+      })
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'reschedule_request': {
+      // Cancel current appointment and offer new slots
+      if (action.appointmentId) {
+        await supabase
+          .from('appointments')
+          .update({ status: 'cancelled' })
+          .eq('id', action.appointmentId)
+          .eq('clinic_id', clinic.id)
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_rescheduled_request',
+          data: { patientName: patient?.name ?? null, appointmentId: action.appointmentId },
+        })
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'escalate': {
       await supabase
         .from('whatsapp_sessions')
         .update({ status: 'human' })
@@ -259,17 +557,19 @@ async function processInbound(
       })
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText, 'ai')
       break
+    }
 
     case 'reply':
-    default:
+    default: {
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
       break
+    }
   }
 
-  // ── Update context snapshot (rolling window of last 10 turns) ────────────
+  // ── Update rolling context snapshot (last 10 turns) ──────────────────────
   const updatedContext = [
     ...(session.context_snapshot ?? []),
-    { role: 'user',      content: msgText ?? '' },
+    { role: 'user',      content: msgText },
     { role: 'assistant', content: action.replyText ?? '' },
   ].slice(-10)
 
@@ -277,6 +577,204 @@ async function processInbound(
     .from('whatsapp_sessions')
     .update({ context_snapshot: updatedContext })
     .eq('id', session.id)
+}
+
+// ─── Satisfaction survey helper ───────────────────────────────────────────────
+
+/**
+ * After a staff member marks a consultation as completed, send a satisfaction
+ * survey to the patient on WhatsApp (if we have their phone number).
+ * Survey is only sent if the appointment has a patient with a phone on record.
+ */
+async function sendSatisfactionSurvey(
+  supabase:      ReturnType<typeof createClient>,
+  clinicId:      string,
+  appointmentId: string,
+  staffSessionId: string,
+) {
+  try {
+    const { data: appt } = await supabase
+      .from('appointments')
+      .select('id, starts_at, professionals(name), patients(id, name, phone)')
+      .eq('id', appointmentId)
+      .eq('clinic_id', clinicId)
+      .maybeSingle()
+
+    if (!appt) return
+    const patient     = appt.patients as { id: string; name: string; phone: string | null } | null
+    const professional = appt.professionals as { name: string } | null
+    if (!patient?.phone) return
+
+    // Create or find an open session for the patient
+    const { data: existingSession } = await supabase
+      .from('whatsapp_sessions')
+      .select('id')
+      .eq('clinic_id', clinicId)
+      .eq('wa_phone', patient.phone)
+      .not('status', 'eq', 'resolved')
+      .order('last_message_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let surveySessionId = existingSession?.id
+    if (!surveySessionId) {
+      const { data: newSession } = await supabase
+        .from('whatsapp_sessions')
+        .insert({
+          clinic_id:  clinicId,
+          patient_id: patient.id,
+          wa_phone:   patient.phone,
+          status:     'ai',
+          actor_type: 'patient',
+        })
+        .select('id')
+        .single()
+      surveySessionId = newSession?.id
+    }
+    if (!surveySessionId) return
+
+    const profName = professional?.name ?? 'seu profissional'
+    const surveyText = [
+      `Olá, *${patient.name}*! 😊`,
+      ``,
+      `Sua consulta com *${profName}* foi concluída. Como foi o atendimento?`,
+      ``,
+      `Por favor, responda de *1 a 5* (1 = péssimo, 5 = excelente) ⭐`,
+    ].join('\n')
+
+    await sendReply(clinicId, surveySessionId, patient.phone, surveyText)
+
+    // Log that a survey was sent
+    await supabase.from('clinic_notifications').insert({
+      clinic_id: clinicId,
+      type: 'satisfaction_survey_sent',
+      data: { appointmentId, patientId: patient.id, patientName: patient.name },
+    })
+  } catch (err) {
+    console.error('[webhook] sendSatisfactionSurvey error:', err)
+  }
+}
+
+// ─── Book appointment helper ───────────────────────────────────────────────────
+
+async function executeBookAppointment(
+  supabase:  ReturnType<typeof createClient>,
+  clinicId:  string,
+  params: {
+    patientId:      string | null
+    professionalId: string | undefined
+    startsAt:       string | undefined
+    endsAt:         string | undefined
+    serviceTypeId:  string | undefined
+  },
+): Promise<{ ok: boolean; message?: string }> {
+  const { patientId, professionalId, startsAt, endsAt, serviceTypeId } = params
+
+  if (!patientId) {
+    return { ok: false, message: 'Para agendar preciso do seu cadastro. Me diga seu nome completo! 😊' }
+  }
+  if (!professionalId || !startsAt || !endsAt) {
+    return { ok: false, message: 'Não consegui identificar o horário. Por favor, confirme qual horário deseja.' }
+  }
+
+  const { data: prof } = await supabase
+    .from('professionals')
+    .select('id')
+    .eq('id', professionalId)
+    .eq('clinic_id', clinicId)
+    .eq('active', true)
+    .maybeSingle()
+
+  if (!prof) return { ok: false, message: 'Não encontrei esse profissional. Um atendente irá te ajudar!' }
+
+  if (new Date(startsAt) <= new Date()) {
+    return { ok: false, message: 'Esse horário já passou. Vou buscar outros horários disponíveis!' }
+  }
+
+  const { data: conflict } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('professional_id', professionalId)
+    .not('status', 'in', '("cancelled","no_show")')
+    .lt('starts_at', endsAt)
+    .gt('ends_at', startsAt)
+    .maybeSingle()
+
+  if (conflict) {
+    return { ok: false, message: 'Esse horário acabou de ser ocupado. Por favor, escolha outro horário.' }
+  }
+
+  const { error } = await supabase
+    .from('appointments')
+    .insert({
+      clinic_id:       clinicId,
+      patient_id:      patientId,
+      professional_id: professionalId,
+      starts_at:       startsAt,
+      ends_at:         endsAt,
+      service_type_id: serviceTypeId ?? null,
+      status:          'scheduled',
+    })
+
+  if (error) {
+    console.error('[webhook] book_appointment insert error:', error)
+    return { ok: false, message: 'Erro ao salvar o agendamento. Um atendente irá te ajudar!' }
+  }
+  return { ok: true }
+}
+
+// ─── Audio transcription via Groq Whisper ─────────────────────────────────────
+
+async function transcribeAudio(
+  supabase:  ReturnType<typeof createClient>,
+  clinicId:  string,
+  mediaId:   string,
+): Promise<string | null> {
+  if (!GROQ_API_KEY) return null
+
+  const { data: accessToken } = await supabase
+    .rpc('get_clinic_whatsapp_token', { p_clinic_id: clinicId })
+  if (!accessToken) return null
+
+  try {
+    // Resolve media download URL from Meta
+    const mediaRes = await fetch(
+      `${GRAPH_BASE}/${encodeURIComponent(mediaId)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+    if (!mediaRes.ok) return null
+    const mediaInfo = await mediaRes.json() as { url?: string }
+    if (!mediaInfo.url) return null
+
+    // Download audio bytes
+    const audioRes = await fetch(mediaInfo.url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!audioRes.ok) return null
+    const audioBytes = await audioRes.arrayBuffer()
+
+    // Send to Groq Whisper
+    const form = new FormData()
+    form.append('file', new Blob([audioBytes], { type: 'audio/ogg' }), 'audio.ogg')
+    form.append('model', 'whisper-large-v3-turbo')
+    form.append('language', 'pt')
+    form.append('response_format', 'text')
+
+    const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
+      body:    form,
+    })
+    if (!groqRes.ok) {
+      console.error('[webhook] Groq failed:', await groqRes.text())
+      return null
+    }
+
+    return (await groqRes.text()).trim() || null
+  } catch (err) {
+    console.error('[webhook] transcribeAudio error:', err)
+    return null
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -291,17 +789,21 @@ async function sendReply(
   await fetch(`${SELF_URL}/functions/v1/whatsapp-send`, {
     method:  'POST',
     headers: {
-      'Content-Type':  'application/json',
-      Authorization:   `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      'Content-Type': 'application/json',
+      Authorization:  `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
     },
-    body: JSON.stringify({
-      clinicId,
-      sessionId,
-      sentBy,
-      to,
-      type: 'text',
-      text: { body: text },
-    }),
+    body: JSON.stringify({ clinicId, sessionId, sentBy, to, type: 'text', text: { body: text } }),
+  })
+}
+
+async function quickReply(clinicId: string, to: string, text: string) {
+  await fetch(`${SELF_URL}/functions/v1/whatsapp-send`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization:  `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+    },
+    body: JSON.stringify({ clinicId, to, type: 'text', text: { body: text } }),
   })
 }
 
@@ -322,7 +824,32 @@ async function verifySignature(body: string, secret: string, signature: string):
   }
 }
 
-// ─── Meta webhook payload types ───────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface SessionRow {
+  id:               string
+  status:           string
+  context_snapshot: { role: string; content: string }[] | null
+  actor_type:       string
+  professional_id:  string | null
+  last_message_at:  string | null
+}
+
+interface AgentAction {
+  action:            string
+  replyText?:        string
+  appointmentId?:    string
+  // book_appointment / staff_book_for_patient
+  professionalId?:   string
+  startsAt?:         string
+  endsAt?:           string
+  serviceTypeId?:    string
+  targetPatientId?:  string  // staff_book_for_patient: resolved patient id
+  // register_patient
+  patientName?:      string
+  // staff_find_patient
+  // (patientName also used here)
+}
 
 interface MetaWebhookPayload {
   entry?: {
@@ -339,11 +866,14 @@ interface MetaWebhookPayload {
 }
 
 interface MetaMessage {
-  id:     string
-  from:   string
-  type:   string
-  text?:  { body: string }
-  button?: { text: string; payload: string }
+  id:           string
+  from:         string
+  type:         string
+  text?:        { body: string }
+  audio?:       { id: string }
+  image?:       { id: string; caption?: string }
+  document?:    { id: string; filename?: string }
+  button?:      { text: string; payload: string }
   interactive?: { button_reply?: { id: string; title: string } }
 }
 
@@ -351,3 +881,4 @@ interface MetaContact {
   profile: { name: string }
   wa_id:   string
 }
+
