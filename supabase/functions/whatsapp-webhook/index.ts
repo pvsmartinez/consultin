@@ -6,21 +6,24 @@
  *   POST — incoming messages, status updates
  *
  * Routing logic:
- *   1. Identify clinic from the phone_number_id in the payload
- *   2. Identify actor: patient, professional, or unknown (via phone lookup)
- *   3. Find or create a whatsapp_session for this phone (with actor_type)
- *   4. If msgType === 'audio': transcribe via Groq Whisper, use as text
- *   5. If status == 'human' → do nothing (attendant handles it)
- *   6. Otherwise → call whatsapp-ai-agent → execute the returned action:
- *      - reply                    → call whatsapp-send
- *      - confirm_appointment      → update appointment + send confirmation
- *      - cancel_appointment       → update appointment + send cancellation
- *      - book_appointment         → insert new appointment + send confirmation
- *      - register_patient         → insert new patient + update session
- *      - staff_mark_completed     → mark appointment as completed
- *      - staff_mark_noshow        → mark appointment as no_show
- *      - staff_cancel_appointment → cancel staff-specified appointment
- *      - escalate                 → set session.status = 'human', notify staff
+ *   1. Identify phone_number_id in the payload
+ *   2a. If it matches PLATFORM_PHONE_NUMBER_ID → route to whatsapp-platform-agent
+ *       (Consultin's own onboarding bot — create/join/manage clinics)
+ *   2b. Otherwise → find clinic by phone_number_id, continue per-clinic flow:
+ *       3. Identify actor: patient, professional, or unknown (via phone lookup)
+ *       4. Find or create a whatsapp_session for this phone (with actor_type)
+ *       5. If msgType === 'audio': transcribe via Groq Whisper, use as text
+ *       6. If status == 'human' → do nothing (attendant handles it)
+ *       7. Otherwise → call whatsapp-ai-agent → execute the returned action:
+ *          - reply                    → call whatsapp-send
+ *          - confirm_appointment      → update appointment + send confirmation
+ *          - cancel_appointment       → update appointment + send cancellation
+ *          - book_appointment         → insert new appointment + send confirmation
+ *          - register_patient         → insert new patient + update session
+ *          - staff_mark_completed     → mark appointment as completed
+ *          - staff_mark_noshow        → mark appointment as no_show
+ *          - staff_cancel_appointment → cancel staff-specified appointment
+ *          - escalate                 → set session.status = 'human', notify staff
  *
  * Security: verifies X-Hub-Signature-256 from Meta.
  */
@@ -93,7 +96,22 @@ serve(async (req) => {
         .eq('whatsapp_enabled', true)
         .maybeSingle()
 
-      if (!clinic) continue
+      if (!clinic) {
+        // Check if this is Consultin's own platform WhatsApp number
+        const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
+        if (platformPhoneId && phoneNumberId === platformPhoneId) {
+          for (const msg of value.messages ?? []) {
+            const msgText =
+              msg.text?.body ??
+              msg.button?.text ??
+              msg.interactive?.button_reply?.title ??
+              null
+            if (!msgText || !msg.from) continue
+            await callPlatformAgent(msg.from, msgText, msg.id)
+          }
+        }
+        continue
+      }
 
       for (const status of value.statuses ?? []) {
         await supabase
@@ -805,6 +823,31 @@ async function quickReply(clinicId: string, to: string, text: string) {
     },
     body: JSON.stringify({ clinicId, to, type: 'text', text: { body: text } }),
   })
+}
+
+// ─── Platform agent caller ────────────────────────────────────────────────────
+
+/**
+ * Routes an inbound message from Consultin's own WhatsApp number to the
+ * platform onboarding agent (whatsapp-platform-agent).
+ */
+async function callPlatformAgent(
+  fromPhone:    string,
+  messageText:  string,
+  waMessageId?: string,
+): Promise<void> {
+  try {
+    await fetch(`${SELF_URL}/functions/v1/whatsapp-platform-agent`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization:  `Bearer ${SUPABASE_SRK}`,
+      },
+      body: JSON.stringify({ fromPhone, messageText, waMessageId }),
+    })
+  } catch (e) {
+    console.error('[webhook] callPlatformAgent error:', e)
+  }
 }
 
 async function verifySignature(body: string, secret: string, signature: string): Promise<boolean> {
