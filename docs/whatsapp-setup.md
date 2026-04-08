@@ -302,13 +302,14 @@ As 5 regras do system prompt definem comportamento determinístico:
 
 ### 6.4 Modelos disponíveis (OpenRouter)
 
-| Modelo           | OpenRouter ID                           | Custo estimado    | Notas                               |
-| ---------------- | --------------------------------------- | ----------------- | ----------------------------------- |
-| GPT-4o Mini      | `openai/gpt-4o-mini`                    | ~$0.15/1M tokens  | **padrão** — melhor custo-benefício |
-| Gemini Flash 1.5 | `google/gemini-flash-1.5`               | ~$0.075/1M tokens | mais barato com boa qualidade       |
-| Llama 3.1 8B     | `meta-llama/llama-3.1-8b-instruct:free` | **grátis**        | bom para volume alto                |
-| Mistral 7B       | `mistralai/mistral-7b-instruct:free`    | **grátis**        | alternativa OSS                     |
-| Claude 3 Haiku   | `anthropic/claude-3-haiku`              | ~$0.25/1M tokens  | melhor qualidade, mais caro         |
+| Modelo           | OpenRouter ID                           | Custo estimado    | Notas                                                       |
+| ---------------- | --------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| Gemma 4 31B      | `google/gemma-4-31b-it`                 | $0.14/$0.40/1M    | **padrão** — multimodal, 262K ctx, thinking mode (abr/2026) |
+| GPT-4o Mini      | `openai/gpt-4o-mini`                    | $0.15/$0.60/1M    | alternativa OpenAI                                          |
+| Gemini Flash 1.5 | `google/gemini-flash-1.5`               | ~$0.075/1M tokens | mais barato, menos capaz                                    |
+| Llama 3.1 8B     | `meta-llama/llama-3.1-8b-instruct:free` | **grátis**        | bom para volume alto                                        |
+| Mistral 7B       | `mistralai/mistral-7b-instruct:free`    | **grátis**        | alternativa OSS                                             |
+| Claude 3 Haiku   | `anthropic/claude-3-haiku`              | ~$0.25/1M tokens  | melhor qualidade, mais caro                                 |
 
 O modelo é configurado **por clínica** na aba WhatsApp → seção "Modelo de IA". Fica salvo em `clinics.wa_ai_model`.
 

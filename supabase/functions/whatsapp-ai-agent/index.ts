@@ -416,7 +416,7 @@ async function callLLM(
   supabase:  ReturnType<typeof createClient>,
   patientId: string | null | undefined,
 ) {
-  const model           = clinic.wa_ai_model ?? 'google/gemini-2.0-flash-exp:free'
+  const model           = clinic.wa_ai_model ?? 'google/gemma-4-31b-it'
   const supportsJsonMode = (model as string).startsWith('openai/')
 
   const messages = [
