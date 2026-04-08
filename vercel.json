@@ -140,6 +140,10 @@
       "destination": "/termos-de-uso.html"
     },
     {
+      "source": "/exclusao-de-dados",
+      "destination": "/exclusao-de-dados.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
