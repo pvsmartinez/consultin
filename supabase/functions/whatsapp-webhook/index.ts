@@ -88,6 +88,23 @@ serve(async (req) => {
       const phoneNumberId = value.metadata?.phone_number_id
       if (!phoneNumberId) continue
 
+      // ── Platform number check FIRST — before clinic lookup ────────────────
+      // This ensures Consultin's own WA number always routes to the platform
+      // agent even if it's also registered as a test clinic's phone.
+      const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
+      if (platformPhoneId && phoneNumberId === platformPhoneId) {
+        for (const msg of value.messages ?? []) {
+          const msgText =
+            msg.text?.body ??
+            msg.button?.text ??
+            msg.interactive?.button_reply?.title ??
+            null
+          if (!msgText || !msg.from) continue
+          await callPlatformAgent(msg.from, msgText, msg.id)
+        }
+        continue
+      }
+
       const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
       const { data: clinic } = await supabase
         .from('clinics')
@@ -96,22 +113,7 @@ serve(async (req) => {
         .eq('whatsapp_enabled', true)
         .maybeSingle()
 
-      if (!clinic) {
-        // Check if this is Consultin's own platform WhatsApp number
-        const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
-        if (platformPhoneId && phoneNumberId === platformPhoneId) {
-          for (const msg of value.messages ?? []) {
-            const msgText =
-              msg.text?.body ??
-              msg.button?.text ??
-              msg.interactive?.button_reply?.title ??
-              null
-            if (!msgText || !msg.from) continue
-            await callPlatformAgent(msg.from, msgText, msg.id)
-          }
-        }
-        continue
-      }
+      if (!clinic) continue
 
       for (const status of value.statuses ?? []) {
         await supabase

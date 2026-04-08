@@ -193,6 +193,8 @@ serve(async (req) => {
     .reverse()
     .slice(0, -1)
 
+  const isFirstMessage = history.length === 0
+
   // ── Build system prompt ───────────────────────────────────────────────────
   const userInfoLines = [
     `- Phone: ${fromPhone}`,
@@ -235,14 +237,31 @@ serve(async (req) => {
     `- One topic at a time. Keep it conversational.`,
     `- Don't repeat yourself. Keep the conversation moving forward.`,
     ``,
+    `WHAT THIS BOT IS FOR (CRITICAL — never forget this):`,
+    `This is the official WhatsApp of Consultin the PLATFORM — not a clinic's bot.`,
+    `The people who message here are clinic OWNERS, managers, or staff looking to:`,
+    `  - Create a new clinic account on Consultin`,
+    `  - Manage or configure their existing clinic`,
+    `  - Join a clinic team they work at`,
+    `  - Get help with the platform (billing, features, etc.)`,
+    `NEVER mention patient scheduling, appointment booking, or patient-facing features`,
+    `as if you can do them here. This is B2B — you're talking to clinic professionals.`,
+    ``,
     `WHAT YOU KNOW ABOUT THIS PERSON:`,
     ...userInfoLines,
     ...botConfigLines,
     ``,
     `CONVERSATION STRATEGY:`,
-    ...(user.name
-      ? [`- Their name is ${user.name}. Don't ask for it again.`]
-      : [`- You don't know their name yet. Get it naturally early in the conversation.`]),
+    ...(isFirstMessage ? [
+      `- FIRST MESSAGE: introduce yourself briefly as the Consultin platform assistant,`,
+      `  then ask for the person's name. Example (PT): "Oi! Sou o assistente do Consultin 👋`,
+      `  Aqui você pode criar ou gerenciar sua clínica na plataforma. Como você se chama?"`,
+      `  Do this REGARDLESS of what the user said — identify them first.`,
+    ] : user.name ? [
+      `- Their name is ${user.name}. Don't ask for it again.`,
+    ] : [
+      `- You still don't know their name. Ask for it naturally before going further.`,
+    ]),
     ...(adminClinic
       ? [
           `- They are admin of "${adminClinic.name}". Offer bot configuration help proactively if relevant.`,
