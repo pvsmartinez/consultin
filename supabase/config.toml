@@ -3,6 +3,21 @@ project_id = "nxztzehgnkdmluogxehi"
 [functions.whatsapp-webhook]
 verify_jwt = false
 
+[functions.whatsapp-ai-agent]
+verify_jwt = false
+
+[functions.whatsapp-send]
+verify_jwt = false
+
+[functions.whatsapp-reminders]
+verify_jwt = false
+
+[functions.whatsapp-notify-staff]
+verify_jwt = false
+
+[functions.whatsapp-professional-agenda]
+verify_jwt = false
+
 [functions.whatsapp-embedded-signup]
 verify_jwt = false
 
