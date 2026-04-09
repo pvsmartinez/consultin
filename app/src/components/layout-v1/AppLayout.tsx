@@ -7,12 +7,9 @@ import {
   SignOut,
   UsersFour,
   Gear,
-  Shield,
   CurrencyCircleDollar,
   WhatsappLogo,
   Clock,
-  Warning,
-  SignIn,
   Plus,
   CreditCard,
   Sun,
@@ -23,7 +20,6 @@ import type { UserRole } from '../../types'
 import { USER_ROLE_LABELS } from '../../types'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
-import { useEnterClinic } from '../../hooks/useAdmin'
 import { useMyProfessionalRecords } from '../../hooks/useAppointmentsMutations'
 import { useClinicNotifications } from '../../hooks/useClinicNotifications'
 import ErrorBoundary from '../ErrorBoundary'
@@ -51,9 +47,8 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { signOut, hasPermission, profile, role, isSuperAdmin } = useAuthContext()
+  const { signOut, hasPermission, profile, role } = useAuthContext()
   const { data: clinic } = useClinic()
-  const enterClinic = useEnterClinic()
   const { data: myProfRecords = [] } = useMyProfessionalRecords()
   const isProfessional = role === 'professional'
   const hasLinkedProfessional = !isProfessional && myProfRecords.length > 0
@@ -62,14 +57,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation()
   const { unreadCount } = useClinicNotifications(navigate)
   const notifBadge = canSeeNotifications ? unreadCount : 0
-  const isTestMode = isSuperAdmin && !!profile?.clinicId
   const [newApptOpen, setNewApptOpen] = useState(false)
   const canSchedule = role === 'admin' || role === 'receptionist'
 
-  function handleExitTestMode() {
-    if (!profile) return
-    enterClinic.mutate({ userId: profile.id, clinicId: null })
-  }
 
   const visibleNav = navItems.filter(item => {
     if (isProfessional && item.labelProfissional === null) return false
@@ -110,18 +100,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const sideNavFooter = (
     <div className="p-4 space-y-1">
-      {isSuperAdmin && (
-        <NavLink to="/admin"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              isActive ? 'bg-amber-100 text-amber-700 font-medium' : 'text-amber-600 hover:bg-amber-50'
-            }`
-          }
-        >
-          <Shield size={18} />
-          Admin
-        </NavLink>
-      )}
       {profile && (
         <NavLink
           to="/minha-conta"
@@ -207,24 +185,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Content: banner (optional) + scrollable main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {isTestMode && (
-          <div className="flex items-center justify-between px-6 py-2 bg-amber-50 border-b border-amber-200 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Warning size={15} className="text-amber-500" />
-              <span className="text-xs text-amber-700 font-medium">
-                Modo teste — {clinic?.name ?? 'clínica'}
-              </span>
-            </div>
-            <button
-              onClick={handleExitTestMode}
-              disabled={enterClinic.isPending}
-              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-40"
-            >
-              <SignIn size={13} className="rotate-180" />
-              Sair da clínica
-            </button>
-          </div>
-        )}
         <main className="flex-1 overflow-auto p-6">
           <ErrorBoundary>
             {children}

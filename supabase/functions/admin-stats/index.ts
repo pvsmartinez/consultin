@@ -1,11 +1,12 @@
 /**
  * Edge Function: admin-stats (Consultin)
  *
- * Expõe estatísticas agregadas do produto para o admin.pmatz.com.
- * Não substitui nem altera o admin-users — é somente leitura de stats.
+ * Expõe estatísticas e gestão para o admin.pmatz.com.
  *
  * Rotas:
- *   GET /  → stats globais de clínicas e assinaturas
+ *   GET /                          → stats globais de clínicas e assinaturas
+ *   GET /clinics                   → lista todas as clínicas com tier/status
+ *   PATCH /clinics/:id             → atualiza subscription_tier de uma clínica
  *
  * Autenticação:
  *   Header: x-admin-secret: <ADMIN_SECRET>
@@ -23,8 +24,11 @@ const ADMIN_SECRET              = Deno.env.get('ADMIN_SECRET')!
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'x-admin-secret, content-type',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, PATCH, POST, OPTIONS',
 }
+
+const VALID_TIERS = ['trial', 'basic', 'professional', 'unlimited'] as const
+type SubscriptionTier = typeof VALID_TIERS[number]
 
 interface PublicSiteEventRow {
   created_at: string
@@ -128,11 +132,46 @@ Deno.serve(async (req: Request) => {
   const guard = assertAdmin(req)
   if (guard !== true) return guard
 
-  if (req.method !== 'GET') return err('Method not allowed', 405)
+  const url      = new URL(req.url)
+  const pathname = url.pathname.replace(/^\/admin-stats/, '') || '/'
 
   const client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  // ── GET /clinics ──────────────────────────────────────────────────────────
+  if (req.method === 'GET' && pathname === '/clinics') {
+    const { data, error } = await client
+      .from('clinics')
+      .select('id, name, subscription_tier, subscription_status, payments_enabled, trial_ends_at, created_at')
+      .order('created_at', { ascending: false })
+    if (error) return err(error.message, 500)
+    return json(data ?? [])
+  }
+
+  // ── PATCH /clinics/:id ────────────────────────────────────────────────────
+  const patchMatch = pathname.match(/^\/clinics\/([^/]+)$/)
+  if (req.method === 'PATCH' && patchMatch) {
+    const clinicId = patchMatch[1]
+    const body = await req.json().catch(() => null)
+    const tier = body?.tier as string | undefined
+    if (!tier || !(VALID_TIERS as readonly string[]).includes(tier)) {
+      return err(`tier must be one of: ${VALID_TIERS.join(', ')}`, 400)
+    }
+
+    const update: Record<string, unknown> = { subscription_tier: tier as SubscriptionTier }
+    if (tier !== 'trial') {
+      update.subscription_status = 'ACTIVE'
+      update.payments_enabled    = true
+    }
+
+    const { error } = await client.from('clinics').update(update).eq('id', clinicId)
+    if (error) return err(error.message, 500)
+    return json({ ok: true })
+  }
+
+  // ── GET / (stats) ─────────────────────────────────────────────────────────
+  if (req.method !== 'GET') return err('Method not allowed', 405)
 
   const [clinicsResult, usersResult, recentClinicsResult, publicAnalyticsResult] = await Promise.all([
     // Clínicas por status de assinatura

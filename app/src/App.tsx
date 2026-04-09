@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
 import { useClinic } from './hooks/useClinic'
 import { useProfessionals } from './hooks/useProfessionals'
@@ -32,8 +32,6 @@ const PublicRoutes      = lazy(() => import('./routes/PublicRoutes'))
 const OnboardingRoutes  = lazy(() => import('./routes/OnboardingRoutes'))
 const PatientRoutes     = lazy(() => import('./routes/PatientRoutes'))
 const StaffRoutes       = lazy(() => import('./routes/StaffRoutes'))
-// AdminPage is standalone (own full-screen layout) — isolated chunk
-const AdminPage         = lazy(() => import('./pages-v1/AdminPage'))
 
 function App() {
   const { session, profile, role, isSuperAdmin, loading, recoveryMode } = useAuthContext()
@@ -84,45 +82,25 @@ function App() {
     )
   }
 
-  // ── SuperAdmin sem clínica → apenas painel /admin ──────────────────────────
-  // Quando não há clinicId activo (fora do modo teste), o superadmin não tem
-  // nada de clínica para ver — redireciona tudo para /admin.
+  // ── SuperAdmin sem clínica → usa admin.pmatz.com ────────────────────────────
   if (isSuperAdmin && !profile.clinicId) {
-    return (
-      <ErrorBoundary>
-        <Suspense fallback={<FullScreenLoader />}>
-          <Routes>
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<Navigate to="/admin" replace />} />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
-    )
+    window.location.replace('https://admin.pmatz.com')
+    return <FullScreenLoader />
   }
 
   // ── Staff / admin (sidebar layout) ─────────────────────────────────────────
-  // AdminPage is outside AppLayout — it has its own full-screen dark shell.
-  // All other staff routes live inside AppLayout with the sidebar.
   return (
     <>
-      {/* Warm up the most-used lists as soon as the user is authenticated */}
-      {!isSuperAdmin && <DataPrefetcher />}
+      <DataPrefetcher />
       <Routes>
-      {isSuperAdmin && (
-        <Route path="/admin" element={
-          <Suspense fallback={<FullScreenLoader />}>
-            <AdminPage />
-          </Suspense>
+        <Route path="*" element={
+          <AppLayout>
+            <Suspense fallback={<PageLoader />}>
+              <StaffRoutes />
+            </Suspense>
+          </AppLayout>
         } />
-      )}
-      <Route path="*" element={
-        <AppLayout>
-          <Suspense fallback={<PageLoader />}>
-            <StaffRoutes />
-          </Suspense>
-        </AppLayout>
-      } />
-    </Routes>
+      </Routes>
     </>
   )
 }
