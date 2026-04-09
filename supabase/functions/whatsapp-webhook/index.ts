@@ -23,6 +23,9 @@
  *          - staff_mark_completed     → mark appointment as completed
  *          - staff_mark_noshow        → mark appointment as no_show
  *          - staff_cancel_appointment → cancel staff-specified appointment
+ *          - staff_confirm_appointment→ confirm a patient's appointment
+ *          - staff_reschedule_appointment → update appointment to new time slot
+ *          - staff_create_patient     → register new patient from staff
  *          - escalate                 → set session.status = 'human', notify staff
  *
  * Security: verifies X-Hub-Signature-256 from Meta.
@@ -428,6 +431,86 @@ async function processInbound(
         }
       }
       if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_confirm_appointment': {
+      if (action.appointmentId) {
+        await supabase
+          .from('appointments')
+          .update({ status: 'confirmed' })
+          .eq('id', action.appointmentId)
+          .eq('clinic_id', clinic.id)
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_reschedule_appointment': {
+      if (action.appointmentId && action.startsAt && action.endsAt) {
+        // Check for conflicts, excluding the appointment being rescheduled
+        const { data: conflict } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('professional_id', action.professionalId ?? '')
+          .neq('id', action.appointmentId)
+          .not('status', 'in', '("cancelled","no_show")')
+          .lt('starts_at', action.endsAt)
+          .gt('ends_at', action.startsAt)
+          .maybeSingle()
+
+        if (conflict) {
+          await sendReply(clinic.id, session.id, fromPhone,
+            'Esse horário já está ocupado. Escolha outro horário disponível.')
+          break
+        }
+
+        const updates: Record<string, unknown> = {
+          starts_at: action.startsAt,
+          ends_at:   action.endsAt,
+          status:    'scheduled',
+        }
+        if (action.professionalId) updates.professional_id = action.professionalId
+
+        await supabase
+          .from('appointments')
+          .update(updates)
+          .eq('id', action.appointmentId)
+          .eq('clinic_id', clinic.id)
+
+        await supabase.from('clinic_notifications').insert({
+          clinic_id: clinic.id,
+          type: 'appointment_rescheduled_by_staff',
+          data: { staffActorType: effectiveActorType, appointmentId: action.appointmentId, startsAt: action.startsAt },
+        })
+      }
+      if (action.replyText) await sendReply(clinic.id, session.id, fromPhone, action.replyText)
+      break
+    }
+
+    case 'staff_create_patient': {
+      if (!action.patientName?.trim()) {
+        await sendReply(clinic.id, session.id, fromPhone, 'Qual o nome completo do paciente?')
+        break
+      }
+      const newPatientData: Record<string, unknown> = {
+        clinic_id: clinic.id,
+        name:      action.patientName.trim(),
+      }
+      if (action.patientPhone?.trim()) newPatientData.phone = action.patientPhone.trim()
+      const { data: newPat, error: patErr } = await supabase
+        .from('patients')
+        .insert(newPatientData)
+        .select('id')
+        .single()
+      if (newPat && !patErr) {
+        await sendReply(clinic.id, session.id, fromPhone,
+          `✅ Paciente *${action.patientName.trim()}* cadastrado!\n[patientId:${(newPat as { id: string }).id}]\n\nPara qual horário deseja agendar?`)
+      } else {
+        console.error('[webhook] staff_create_patient error:', patErr)
+        await sendReply(clinic.id, session.id, fromPhone,
+          'Erro ao cadastrar paciente. Tente novamente ou chame um atendente.')
+      }
       break
     }
 
@@ -884,16 +967,15 @@ interface AgentAction {
   action:            string
   replyText?:        string
   appointmentId?:    string
-  // book_appointment / staff_book_for_patient
+  // book_appointment / staff_book_for_patient / staff_reschedule_appointment
   professionalId?:   string
   startsAt?:         string
   endsAt?:           string
   serviceTypeId?:    string
   targetPatientId?:  string  // staff_book_for_patient: resolved patient id
-  // register_patient
+  // register_patient / staff_find_patient / staff_create_patient
   patientName?:      string
-  // staff_find_patient
-  // (patientName also used here)
+  patientPhone?:     string  // staff_create_patient
 }
 
 interface MetaWebhookPayload {

@@ -3,6 +3,7 @@ import { Stethoscope, ArrowLeft } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { Seo } from '../components/seo/Seo'
+import WhatsAppOtpPanel from '../components/auth/WhatsAppOtpPanel'
 
 const ConsultinLogo = () => (
   <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
@@ -78,7 +79,8 @@ export default function LoginPage() {
         }}
         redirectTo={window.location.origin}
         footer={
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'center' }}>
+            <WhatsAppOtpPanel />
             <p style={{ fontSize: 12, color: 'var(--ui-text-muted)', margin: 0 }}>
               É uma clínica?{' '}
               <Link to="/cadastro-clinica" style={{ color: 'var(--ui-info-text)', fontWeight: 500, textDecoration: 'none' }}>

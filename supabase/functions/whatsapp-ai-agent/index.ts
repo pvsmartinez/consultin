@@ -367,23 +367,28 @@ async function handleStaffMessage(
   // ── Staff allowed actions ─────────────────────────────────────────────────
   const allowedActions = [
     `- { "action": "reply", "replyText": "..." } — responder com informações`,
+    `- { "action": "staff_confirm_appointment", "appointmentId": "...", "replyText": "..." } — confirmar presença do paciente`,
     `- { "action": "staff_mark_completed", "appointmentId": "...", "replyText": "..." } — marcar como concluída (dispara pesquisa de satisfação ao paciente)`,
     `- { "action": "staff_mark_noshow", "appointmentId": "...", "replyText": "..." } — registrar falta`,
     `- { "action": "staff_cancel_appointment", "appointmentId": "...", "replyText": "..." } — cancelar consulta`,
-    `- { "action": "staff_find_patient", "patientName": "...", "replyText": "..." } — buscar paciente por nome para obter o ID antes de agendar`,
-    `- { "action": "staff_book_for_patient", "targetPatientId": "...", "professionalId": "...", "startsAt": "ISO", "endsAt": "ISO", "replyText": "..." } — agendar para paciente (use o id retornado por staff_find_patient ou encontrado na agenda)`,
+    `- { "action": "staff_reschedule_appointment", "appointmentId": "...", "professionalId": "...", "startsAt": "ISO", "endsAt": "ISO", "replyText": "..." } — remarcar consulta para novo horário (use slots disponíveis acima)`,
+    `- { "action": "staff_find_patient", "patientName": "...", "replyText": "..." } — buscar paciente por nome`,
+    `- { "action": "staff_create_patient", "patientName": "...", "patientPhone": "...", "replyText": "..." } — cadastrar novo paciente quando não encontrado`,
+    `- { "action": "staff_book_for_patient", "targetPatientId": "...", "professionalId": "...", "startsAt": "ISO", "endsAt": "ISO", "replyText": "..." } — agendar para paciente`,
     `- { "action": "escalate", "replyText": "..." } — não consegui processar`,
   ].join('\n')
 
   const rules = [
     '1. Para consultas, use os IDs entre [ID:...] na agenda.',
-    '2. Para agendar: identifique o paciente PRIMEIRO. Se o paciente está na agenda, o id já está lá. Se não, use staff_find_patient com o nome para buscar.',
-    '3. Após receber o id do paciente, use staff_book_for_patient com os slots disponíveis acima. O targetPatientId deve ser o id real — nunca invente.',
-    '4. Se o slot pedido não estiver disponível, use reply para pedir outro horário.',
-    '5. "concluir", "finalizar", "completar" → staff_mark_completed. Isso envia pesquisa de satisfação ao paciente automaticamente.',
-    '6. "faltou", "no-show", "não compareceu" → staff_mark_noshow.',
-    '7. Nunca invente dados. Use apenas o que está no contexto.',
-    '8. Responda APENAS com JSON válido. Sem texto extra.',
+    '2. "confirmar", "confirmo", "va comparecer" → staff_confirm_appointment.',
+    '3. Para agendar: identifique o paciente PRIMEIRO. Se o paciente está na agenda, o id já está lá. Se não, use staff_find_patient.',
+    '4. Se staff_find_patient não achar ninguém, use staff_create_patient para cadastrar. Depois use staff_book_for_patient com o patientId retornado.',
+    '5. Para REMARCAR: use staff_reschedule_appointment com o appointmentId original e o novo startsAt/endsAt dos slots disponíveis.',
+    '6. Se o slot pedido não estiver disponível, use reply para pedir outro horário.',
+    '7. "concluir", "finalizar", "completar" → staff_mark_completed. Envia pesquisa de satisfação ao paciente.',
+    '8. "faltou", "no-show", "não compareceu" → staff_mark_noshow.',
+    '9. Nunca invente IDs ou dados. Use apenas o que está no contexto.',
+    '10. Responda APENAS com JSON válido. Sem texto extra.',
   ].join('\n')
 
   const systemPrompt = [
@@ -421,7 +426,7 @@ async function callLLM(
 
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...history.slice(-8),
+    ...history.slice(-12),
     { role: 'user', content: message },
   ]
 
@@ -437,7 +442,7 @@ async function callLLM(
       model,
       messages,
       temperature: 0.2,
-      max_tokens:  768,
+      max_tokens:  1024,
       ...(supportsJsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   })

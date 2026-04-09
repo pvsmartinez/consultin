@@ -2,20 +2,23 @@
  * Edge Function: whatsapp-platform-agent
  *
  * Conversational onboarding bot for Consultin's own WhatsApp number.
- * Helps prospective and existing clinic owners/staff to:
- *   - Create a new clinic on the platform
- *   - Learn about their existing clinic / account
- *   - Understand the product and get a signup link
- *   - Configure their clinic's WhatsApp AI bot (personality, features, model)
+ *
+ * Handles three flows:
+ *   A) CREATE CLINIC — search for similar names → confirm → create immediately (no review)
+ *                      → send email invite → notify Pedro on Telegram
+ *   B) JOIN CLINIC   — staff join via a 6-char join code shared by the clinic owner
+ *   C) CONFIGURE BOT — existing clinic admins configure their WA bot via chat
  *
  * Memory: wa_platform_users (per phone) + wa_platform_messages (rolling history).
+ * A mini tool-loop is used for search_clinics so the AI can search before acting.
  * Called by whatsapp-webhook when phone_number_id === PLATFORM_PHONE_NUMBER_ID.
  *
- * Required env vars:
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  — auto-injected by Supabase
- *   OPENROUTER_API_KEY                       — AI model
- *   PLATFORM_PHONE_NUMBER_ID                 — Meta phone_number_id of Consultin's WA
- *   PLATFORM_WA_TOKEN                        — Meta access token for that number
+ * Required env vars (auto-injected or via `supabase secrets set`):
+ *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ *   OPENROUTER_API_KEY
+ *   PLATFORM_PHONE_NUMBER_ID, PLATFORM_WA_TOKEN
+ *   TELEGRAM_BOT_TOKEN, TELEGRAM_PEDRO_CHAT_ID
+ *   SITE_URL  (e.g. https://consultin.pmatz.com)
  */
 
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -26,6 +29,22 @@ const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')!
 const PLATFORM_PHONE_ID  = Deno.env.get('PLATFORM_PHONE_NUMBER_ID') ?? ''
 const PLATFORM_WA_TOKEN  = Deno.env.get('PLATFORM_WA_TOKEN') ?? ''
+const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
+const TELEGRAM_CHAT_ID   = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
+const SITE_URL           = (Deno.env.get('SITE_URL') ?? 'https://consultin.pmatz.com').replace(/\/$/, '')
+
+// ─── Permission defaults (mirrors frontend ROLE_PERMISSIONS) ─────────────────
+const PERM_DEFAULTS: Record<string, Record<string, boolean>> = {
+  admin:        { canViewPatients: true,  canManagePatients: true,  canManageAgenda: true,  canManageProfessionals: true,  canViewFinancial: true,  canManageSettings: true,  canViewWhatsApp: true,  canManageOwnAvailability: false },
+  receptionist: { canViewPatients: true,  canManagePatients: true,  canManageAgenda: true,  canManageProfessionals: false, canViewFinancial: true,  canManageSettings: false, canViewWhatsApp: true,  canManageOwnAvailability: false },
+  professional: { canViewPatients: true,  canManagePatients: false, canManageAgenda: true,  canManageProfessionals: false, canViewFinancial: false, canManageSettings: false, canViewWhatsApp: false, canManageOwnAvailability: true  },
+}
+
+function computeUserPermissions(roles: string[], overrides: Record<string, boolean>): Record<string, boolean> {
+  const keys   = Object.keys(PERM_DEFAULTS.admin)
+  const merged = Object.fromEntries(keys.map(k => [k, roles.some(r => PERM_DEFAULTS[r]?.[k] === true)]))
+  return { ...merged, ...overrides }
+}
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
 const META_GRAPH_BASE = 'https://graph.facebook.com/v21.0'
@@ -48,9 +67,10 @@ interface PlatformUser {
 }
 
 interface ClinicInfo {
-  id:   string
-  name: string
-  role: string
+  id:       string
+  name:     string
+  role:     string
+  joinCode?: string
 }
 
 interface ClinicBotConfig {
@@ -62,23 +82,139 @@ interface ClinicBotConfig {
 }
 
 interface PlatformAction {
-  action:              string
-  replyText:           string
+  action:             string
+  replyText:          string
   // save_info
-  name?:               string
-  email?:              string
-  // submit_clinic_signup
-  clinicName?:         string
-  responsibleName?:    string
-  phone?:              string
-  // configure_bot — updates wa_ai_* on the user's clinic
-  clinicId?:           string   // which clinic to update (defaults to first linked)
-  customPrompt?:       string   // new personality instructions (null = clear)
-  clearCustomPrompt?:  boolean  // set to true to remove custom prompt
-  allowSchedule?:      boolean
-  allowConfirm?:       boolean
-  allowCancel?:        boolean
-  aiModel?:            string
+  name?:              string
+  email?:             string
+  // search_clinics (tool call)
+  clinicName?:        string
+  // create_clinic_now
+  responsibleName?:   string
+  phone?:             string
+  // verify_join_code / join_clinic
+  joinCode?:          string
+  role?:              string    // 'professional' | 'receptionist'
+  // configure_bot
+  clinicId?:          string
+  customPrompt?:      string
+  clearCustomPrompt?: boolean
+  allowSchedule?:     boolean
+  allowConfirm?:      boolean
+  allowCancel?:       boolean
+  aiModel?:           string
+  // request_clinic_membership / approve_staff_request / reject / invite_staff_directly
+  requestId?:         string
+  staffName?:         string
+  staffEmail?:        string
+  staffPhone?:        string
+  // ── Management: appointments ─────────────────────────────────────────────
+  appointmentId?:      string
+  newStatus?:          string   // confirmed | completed | cancelled | no_show
+  startsAt?:           string   // ISO 8601
+  endsAt?:             string
+  appointmentNotes?:   string
+  // ── Management: patients ─────────────────────────────────────────────────
+  patientQuery?:       string
+  patientId?:          string
+  patientName?:        string
+  patientPhone?:       string
+  patientBirthDate?:   string
+  // ── Management: scheduling ───────────────────────────────────────────────
+  professionalId?:     string
+  searchDate?:         string   // YYYY-MM-DD
+  durationMinutes?:    number
+  serviceTypeId?:      string
+  // ── Management: team / permissions ───────────────────────────────────────
+  memberId?:           string
+  permissionKey?:      string
+  permissionValue?:    boolean
+  // ── Management: own profile ──────────────────────────────────────────────
+  profileName?:        string
+  profilePhone?:       string
+  // ── Management: service types ────────────────────────────────────────────
+  serviceTypeName?:    string
+  serviceTypePriceCents?: number
+  serviceTypeDuration?:   number
+  serviceTypeColor?:   string
+  deleteServiceType?:  boolean
+  // ── Management: professionals ────────────────────────────────────────────
+  professionalName?:   string
+  specialty?:          string
+  councilId?:          string
+  professionalEmail?:  string
+  professionalPhone?:  string
+  activeProfessional?: boolean
+  // ── Management: rooms ────────────────────────────────────────────────────
+  roomId?:             string
+  roomName?:           string
+  roomColor?:          string
+  activeRoom?:         boolean
+  closeDate?:          string   // YYYY-MM-DD
+  // ── Management: availability ─────────────────────────────────────────────
+  availabilitySlots?:  { weekday: number; start_time: string; end_time: string; active: boolean; room_id?: string }[]
+}
+
+interface AgendaItem {
+  id:               string
+  startsAt:         string
+  endsAt:           string
+  status:           string
+  patientName:      string
+  patientPhone:     string | null
+  professionalName: string
+  serviceType:      string | null
+  chargeCents:      number | null
+}
+
+interface DailyFinancial {
+  scheduled:         number
+  confirmed:         number
+  completed:         number
+  cancelled:         number
+  totalChargedCents: number
+  totalPaidCents:    number
+}
+
+interface TeamMemberInfo {
+  userId: string
+  name:   string
+  roles:  string[]
+  phone:  string | null
+}
+
+interface ServiceTypeInfo {
+  id:              string
+  name:            string
+  durationMinutes: number
+  priceCents:      number | null
+}
+
+interface RoomInfo {
+  id:   string
+  name: string
+}
+
+interface ClinicSnapshot {
+  todayLabel:       string
+  tomorrowLabel:    string
+  todayAgenda:      AgendaItem[]
+  tomorrowAgenda:   AgendaItem[]
+  financial:        DailyFinancial | null
+  team:             TeamMemberInfo[]
+  serviceTypes:     ServiceTypeInfo[]
+  rooms:            RoomInfo[]
+  myProfessionalId: string | null
+}
+
+interface StaffRequest {
+  id:              string
+  clinic_id:       string
+  clinic_name:     string
+  requester_name:  string
+  requester_email: string
+  requester_phone: string
+  role:            string
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -125,15 +261,14 @@ serve(async (req) => {
     content:          messageText,
   })
 
-  // ── Cross-reference phone against user_profiles (all clinics) ────────────
+  // ── Cross-reference phone against user_profiles ───────────────────────────
   let linkedClinics: ClinicInfo[] = []
 
   if (!user.linked_user_id) {
-    // Try to identify this person by phone (last 9 digits to handle country code variants)
     const last9 = fromPhone.replace(/\D/g, '').slice(-9)
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('id, name, role, clinic_id, clinics(name)')
+      .select('id, name, role, clinic_id, clinics(name, join_code)')
       .ilike('phone', `%${last9}`)
       .maybeSingle()
 
@@ -141,33 +276,42 @@ serve(async (req) => {
       const pr = profile as {
         id: string; name: string; role: string
         clinic_id: string | null
-        clinics: { name: string } | null
+        clinics: { name: string; join_code: string } | null
       }
-      // Auto-link their account
       await supabase
         .from('wa_platform_users')
         .update({ linked_user_id: pr.id, name: user.name ?? pr.name })
         .eq('id', user.id)
       user = { ...user, linked_user_id: pr.id, name: user.name ?? pr.name }
       if (pr.clinic_id && pr.clinics?.name) {
-        linkedClinics = [{ id: pr.clinic_id, name: pr.clinics.name, role: pr.role }]
+        linkedClinics = [{
+          id:       pr.clinic_id,
+          name:     pr.clinics.name,
+          role:     pr.role,
+          joinCode: pr.clinics.join_code,
+        }]
       }
     }
   } else {
-    // Already linked — fetch their clinics
     const { data: profiles } = await supabase
       .from('user_profiles')
-      .select('role, clinic_id, clinics(name)')
+      .select('role, clinic_id, clinics(name, join_code)')
       .eq('id', user.linked_user_id)
 
     linkedClinics = ((profiles ?? []) as {
-      role: string; clinic_id: string | null; clinics: { name: string } | null
+      role: string; clinic_id: string | null
+      clinics: { name: string; join_code: string } | null
     }[])
       .filter(p => p.clinic_id && p.clinics?.name)
-      .map(p => ({ id: p.clinic_id!, name: p.clinics!.name, role: p.role }))
+      .map(p => ({
+        id:       p.clinic_id!,
+        name:     p.clinics!.name,
+        role:     p.role,
+        joinCode: p.clinics!.join_code,
+      }))
   }
 
-  // ── Load bot config for the first admin clinic (if any) ──────────────────
+  // ── Load bot config for the first admin clinic ────────────────────────────
   const adminClinic = linkedClinics.find(c => c.role === 'admin') ?? linkedClinics[0] ?? null
   let botConfig: ClinicBotConfig | null = null
 
@@ -180,7 +324,53 @@ serve(async (req) => {
     if (cfg) botConfig = cfg as ClinicBotConfig
   }
 
-  // ── Load recent conversation history (last 16 messages, excluding current) ─
+  // ── Fetch pending staff requests (shown to admins only) ────────────────────────
+  let pendingRequests: StaffRequest[] = []
+  const adminClinicIds = linkedClinics.filter(c => c.role === 'admin').map(c => c.id)
+  if (adminClinicIds.length > 0) {
+    const { data: reqRows } = await supabase
+      .from('clinic_staff_requests')
+      .select('id, clinic_id, requester_name, requester_email, requester_phone, role, clinics(name)')
+      .in('clinic_id', adminClinicIds)
+      .eq('status', 'pending')
+      .order('requested_at', { ascending: true })
+    pendingRequests = ((reqRows ?? []) as Record<string, unknown>[]).map(r => ({
+      id:              r.id              as string,
+      clinic_id:       r.clinic_id       as string,
+      clinic_name:     (r.clinics as { name: string } | null)?.name ?? '?',
+      requester_name:  r.requester_name  as string,
+      requester_email: r.requester_email as string,
+      requester_phone: r.requester_phone as string,
+      role:            r.role            as string,
+    }))
+  }
+
+  // ── Load user profile + permissions ──────────────────────────────────────
+  const primaryClinic = adminClinic ?? linkedClinics[0] ?? null
+  let userRoles: string[] = []
+  let userPermissions: Record<string, boolean> = computeUserPermissions([], {})
+
+  if (user.linked_user_id && primaryClinic) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('roles, permission_overrides')
+      .eq('id', user.linked_user_id)
+      .eq('clinic_id', primaryClinic.id)
+      .maybeSingle()
+    if (profile) {
+      const p = profile as { roles: string[]; permission_overrides: Record<string, boolean> }
+      userRoles       = Array.isArray(p.roles) ? p.roles : []
+      userPermissions = computeUserPermissions(userRoles, p.permission_overrides ?? {})
+    }
+  }
+
+  // ── Load clinic snapshot (agenda, financial, team) ────────────────────────
+  let snapshot: ClinicSnapshot | null = null
+  if (primaryClinic && user.linked_user_id) {
+    snapshot = await loadClinicSnapshot(supabase, primaryClinic.id, user.email, userRoles)
+  }
+
+  // ── Load rolling history (last 16, excluding the message we just inserted) ─
   const { data: msgRows } = await supabase
     .from('wa_platform_messages')
     .select('role, content')
@@ -188,134 +378,73 @@ serve(async (req) => {
     .order('created_at', { ascending: false })
     .limit(16)
 
-  // Reverse to chronological, drop the last item (the user message we just inserted)
   const history = ((msgRows ?? []) as { role: string; content: string }[])
     .reverse()
     .slice(0, -1)
 
   const isFirstMessage = history.length === 0
 
-  // ── Build system prompt ───────────────────────────────────────────────────
-  const userInfoLines = [
-    `- Phone: ${fromPhone}`,
-    user.name  ? `- Name: ${user.name}`  : `- Name: not known yet`,
-    user.email ? `- Email: ${user.email}` : `- Email: not known yet`,
-    user.linked_user_id
-      ? `- Platform account: found ✓`
-      : `- Platform account: not found`,
-    linkedClinics.length > 0
-      ? `- Clinics on Consultin: ${linkedClinics.map(c => `${c.name} (${c.role}, id:${c.id})`).join(', ')}`
-      : `- Clinics on Consultin: none`,
-  ]
+  // ── Run AI ────────────────────────────────────────────────────────────────
+  const action = await runAgent(
+    user, linkedClinics, adminClinic, botConfig,
+    history, messageText, isFirstMessage, supabase,
+    pendingRequests, userRoles, userPermissions, snapshot, primaryClinic,
+  )
 
-  // Bot config block — shown only when user has a clinic they can configure
-  const botConfigLines: string[] = []
-  if (adminClinic && botConfig) {
-    const modelLabel = botConfig.wa_ai_model ?? 'google/gemini-2.0-flash-001'
-    botConfigLines.push(
-      ``,
-      `CURRENT BOT CONFIG for clinic "${adminClinic.name}" (id:${adminClinic.id}):`,
-      `- AI model: ${modelLabel}`,
-      `- Custom personality: ${botConfig.wa_ai_custom_prompt ? `"${botConfig.wa_ai_custom_prompt}"` : '(none)'}`,
-      `- Can schedule new appointments: ${botConfig.wa_ai_allow_schedule ? 'yes' : 'no'}`,
-      `- Can confirm appointments: ${botConfig.wa_ai_allow_confirm ? 'yes' : 'no'}`,
-      `- Can cancel appointments: ${botConfig.wa_ai_allow_cancel ? 'yes' : 'no'}`,
-      ``,
-      `The user can ask to change any of these. Use configure_bot to apply changes.`,
-      `Available models: google/gemini-2.0-flash-001, openai/gpt-4o-mini, google/gemma-3-27b-it:free`,
-    )
+  // ── Save assistant reply ──────────────────────────────────────────────────
+  if (action.replyText) {
+    await supabase.from('wa_platform_messages').insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          action.replyText,
+    })
   }
 
-  const systemPrompt = [
-    `You are the WhatsApp assistant for Consultin — a clinic management SaaS for Brazil.`,
-    `You help people create a clinic account, manage their clinic, or join a clinic team.`,
-    `You also let clinic admins configure their WhatsApp AI bot directly through this chat.`,
-    ``,
-    `YOUR PERSONALITY:`,
-    `- Warm, natural, concise — like a helpful human on WhatsApp, not a form or a robot.`,
-    `- Respond in the SAME language the user writes in (Portuguese or English).`,
-    `- One topic at a time. Keep it conversational.`,
-    `- Don't repeat yourself. Keep the conversation moving forward.`,
-    ``,
-    `WHAT THIS BOT IS FOR (CRITICAL — never forget this):`,
-    `This is the official WhatsApp of Consultin the PLATFORM — not a clinic's bot.`,
-    `The people who message here are clinic OWNERS, managers, or staff looking to:`,
-    `  - Create a new clinic account on Consultin`,
-    `  - Manage or configure their existing clinic`,
-    `  - Join a clinic team they work at`,
-    `  - Get help with the platform (billing, features, etc.)`,
-    `NEVER mention patient scheduling, appointment booking, or patient-facing features`,
-    `as if you can do them here. This is B2B — you're talking to clinic professionals.`,
-    ``,
-    `WHAT YOU KNOW ABOUT THIS PERSON:`,
-    ...userInfoLines,
-    ...botConfigLines,
-    ``,
-    `CONVERSATION STRATEGY:`,
-    ...(isFirstMessage ? [
-      `- FIRST MESSAGE: introduce yourself briefly as the Consultin platform assistant,`,
-      `  then ask for the person's name. Example (PT): "Oi! Sou o assistente do Consultin 👋`,
-      `  Aqui você pode criar ou gerenciar sua clínica na plataforma. Como você se chama?"`,
-      `  Do this REGARDLESS of what the user said — identify them first.`,
-    ] : user.name ? [
-      `- Their name is ${user.name}. Don't ask for it again.`,
-    ] : [
-      `- You still don't know their name. Ask for it naturally before going further.`,
-    ]),
-    ...(adminClinic
-      ? [
-          `- They are admin of "${adminClinic.name}". Offer bot configuration help proactively if relevant.`,
-          `- When they ask about the bot, show the current config and offer to change things.`,
-        ]
-      : linkedClinics.length > 0
-        ? [`- They're on Consultin but not as admin. Help them understand features.`]
-        : [`- They're not linked to any clinic yet. Help them get started.`]),
-    ``,
-    `ABOUT CONSULTIN (use to answer product questions):`,
-    `Complete clinic management: scheduling, patient records, billing, WhatsApp integration.`,
-    `Made for Brazilian clinics (dental, medical, aesthetic, physio, etc.). Simple setup.`,
-    `14-day free trial. Plans from R$97/month. Website: consultin.app`,
-    ``,
-    `─── AVAILABLE ACTIONS ───────────────────────────────────────────────────────`,
-    `Return EXACTLY one of these JSON objects. No other text.`,
-    ``,
-    `{ "action": "reply", "replyText": "..." }`,
-    `  → General responses: greetings, questions, info, asking for data`,
-    ``,
-    `{ "action": "save_info", "name": "...", "email": "...", "replyText": "..." }`,
-    `  → When the user just told you their name or email. Only include the fields you just learned.`,
-    ``,
-    `{ "action": "submit_clinic_signup", "clinicName": "...", "responsibleName": "...", "email": "...", "phone": "...", "replyText": "..." }`,
-    `  → Use ONLY when you have ALL: clinic name, responsible person name, email.`,
-    `  → After this, tell the user they'll receive access details by email within 24h.`,
-    ``,
-    `{ "action": "configure_bot", "clinicId": "...", "replyText": "...", ...fields }`,
-    `  → Update the clinic's WhatsApp AI bot settings. Only include fields that changed.`,
-    `  → Allowed optional fields:`,
-    `     "customPrompt": "new text"   — sets personality instructions (write exactly what the user said)`,
-    `     "clearCustomPrompt": true    — removes custom personality (back to default)`,
-    `     "allowSchedule": true/false  — whether the bot can book new appointments`,
-    `     "allowConfirm":  true/false  — whether the bot can confirm appointments`,
-    `     "allowCancel":   true/false  — whether the bot can cancel appointments`,
-    `     "aiModel": "model-id"        — change the AI model`,
-    `  → IMPORTANT: only use this if the user is admin of a clinic (clinicId must be valid).`,
-    `  → Confirm what you changed in replyText.`,
-    ``,
-    `{ "action": "escalate", "replyText": "..." }`,
-    `  → When the question is beyond your scope or needs a human.`,
-    ``,
-    `─── RULES ───────────────────────────────────────────────────────────────────`,
-    `1. Know their name before asking for email or clinic details.`,
-    `2. Know their email before submitting clinic signup.`,
-    `3. Confirm the clinic info with the user before submitting (brief summary).`,
-    `4. For configure_bot: always echo back what changed so the user sees the update.`,
-    `5. Never invent data. Only use what the user tells you.`,
-    `6. Keep replies short — max 4 lines for WhatsApp.`,
-    `7. Respond ONLY with valid JSON. Nothing outside the JSON.`,
-  ].join('\n')
+  // ── Execute side effects ──────────────────────────────────────────────────
+  await executeSideEffect(action, user, adminClinic, linkedClinics, fromPhone, supabase, pendingRequests, userPermissions, primaryClinic)
 
-  // ── Call the AI ───────────────────────────────────────────────────────────
-  const model = 'google/gemini-2.0-flash-001'
+  // ── Send WhatsApp reply ───────────────────────────────────────────────────
+  if (action.replyText) {
+    await sendWA(fromPhone, action.replyText)
+  }
+
+  return new Response('OK', { status: 200 })
+})
+
+// ─── AI agent ────────────────────────────────────────────────────────────────
+
+async function runAgent(
+  user:            PlatformUser,
+  linkedClinics:   ClinicInfo[],
+  adminClinic:     ClinicInfo | null,
+  botConfig:       ClinicBotConfig | null,
+  history:         { role: string; content: string }[],
+  messageText:     string,
+  isFirstMessage:  boolean,
+  supabase:        ReturnType<typeof createClient>,
+  pendingRequests: StaffRequest[],
+  userRoles:       string[],
+  userPermissions: Record<string, boolean>,
+  snapshot:        ClinicSnapshot | null,
+  primaryClinic:   ClinicInfo | null,
+  toolResult?:     string,   // generic injected result from any tool call
+): Promise<PlatformAction> {
+
+  const systemPrompt = buildSystemPrompt(
+    user, linkedClinics, adminClinic, botConfig, isFirstMessage,
+    pendingRequests, userRoles, userPermissions, snapshot,
+  )
+
+  const extraContext = toolResult
+    ? [{ role: 'system' as const, content: `[TOOL RESULT]\n${toolResult}` }]
+    : []
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.slice(-12),
+    ...extraContext,
+    { role: 'user', content: messageText },
+  ]
 
   const orRes = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
     method: 'POST',
@@ -326,150 +455,1218 @@ serve(async (req) => {
       'X-Title':      'Consultin Platform Bot',
     },
     body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...history,
-        { role: 'user', content: messageText },
-      ],
+      model:       'google/gemini-2.0-flash-001',
+      messages,
       temperature: 0.3,
-      max_tokens:  512,
+      max_tokens:  800,
     }),
   })
 
-  // Default fallback
-  let action: PlatformAction = {
+  const fallback: PlatformAction = {
     action:    'reply',
     replyText: '😅 Tive um problema aqui. Pode tentar de novo em instantes?',
   }
 
-  if (orRes.ok) {
-    const orBody     = await orRes.json()
-    const rawContent = orBody?.choices?.[0]?.message?.content ?? ''
-    // Strip markdown fences in case the model wraps JSON in ```json...```
-    const cleaned = rawContent
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/, '')
-      .trim()
-    try {
-      action = JSON.parse(cleaned) as PlatformAction
-    } catch {
-      console.error('[platform-agent] Failed to parse AI JSON:', rawContent)
-    }
-  } else {
+  if (!orRes.ok) {
     console.error('[platform-agent] OpenRouter error:', await orRes.text())
+    return fallback
   }
 
-  // ── Save the assistant reply to history ───────────────────────────────────
-  if (action.replyText) {
-    await supabase.from('wa_platform_messages').insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          action.replyText,
+  const rawContent = (await orRes.json())?.choices?.[0]?.message?.content ?? ''
+  const cleaned = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+
+  let action: PlatformAction
+  try {
+    action = JSON.parse(cleaned) as PlatformAction
+  } catch {
+    console.error('[platform-agent] JSON parse error:', rawContent)
+    return fallback
+  }
+
+  // ── Tool loops (only on first pass) ──────────────────────────────────────
+  if (!toolResult) {
+    function reRun(result: string): Promise<PlatformAction> {
+      return runAgent(
+        user, linkedClinics, adminClinic, botConfig,
+        history, messageText, isFirstMessage, supabase,
+        pendingRequests, userRoles, userPermissions, snapshot, primaryClinic,
+        result,
+      )
+    }
+
+    // search_clinics
+    if (action.action === 'search_clinics' && action.clinicName) {
+      const results = await searchClinics(supabase, action.clinicName)
+      const text = results.length > 0
+        ? `Clinics similar to "${action.clinicName}":\n` +
+          results.map((c, i) => `  ${i + 1}. "${c.name}" (id:${c.id})`).join('\n') +
+          `\n\nAsk if one is theirs. YES → join code flow. NO → create new clinic.`
+        : `No clinics found similar to "${action.clinicName}". Tell user and offer to create a new clinic.`
+      return reRun(text)
+    }
+
+    // search_patients
+    if (action.action === 'search_patients' && action.patientQuery && primaryClinic) {
+      const results = await searchPatients(supabase, primaryClinic.id, action.patientQuery)
+      const text = results.length > 0
+        ? `PATIENTS FOUND for "${action.patientQuery}":\n` +
+          results.map((p, i) => `  ${i + 1}. ${p.name} | ${p.phone ?? '—'} | CPF:${p.cpf ?? '—'} | ID:${p.id}`).join('\n') +
+          `\nConfirm with user which patient to use. Then use the patientId for scheduling.`
+        : `No patients found for "${action.patientQuery}". Ask if they want to create a new patient (use create_patient action).`
+      return reRun(text)
+    }
+
+    // search_available_slots
+    if (action.action === 'search_available_slots' && action.professionalId && action.searchDate && primaryClinic) {
+      const dur   = action.durationMinutes ?? 30
+      const slots = await computeAvailableSlots(supabase, primaryClinic.id, action.professionalId, action.searchDate, dur)
+      const text  = slots.length > 0
+        ? `AVAILABLE SLOTS on ${action.searchDate} (${dur}min each):\n` +
+          slots.map((s, i) => `  ${i + 1}. ${s}`).join('\n') +
+          `\nPresent options to user, then schedule with startsAt/endsAt in ISO 8601 (BRT = UTC-3).`
+        : `No available slots for ${action.searchDate} (${dur}min). Suggest another date.`
+      return reRun(text)
+    }
+
+    // create_patient (tool loop so we get the ID back for scheduling)
+    if (action.action === 'create_patient' && action.patientName && primaryClinic) {
+      const newId = await doCreatePatient(supabase, primaryClinic.id, action)
+      const text  = newId
+        ? `Patient created. Name: "${action.patientName}", patientId: "${newId}". Now use this ID to schedule the appointment with schedule_appointment.`
+        : `Failed to create patient — may already exist. Search with search_patients.`
+      return reRun(text)
+    }
+  }
+
+  return action
+}
+
+// ─── System prompt ────────────────────────────────────────────────────────────
+
+function buildSystemPrompt(
+  user:            PlatformUser,
+  linkedClinics:   ClinicInfo[],
+  adminClinic:     ClinicInfo | null,
+  botConfig:       ClinicBotConfig | null,
+  isFirstMessage:  boolean,
+  pendingRequests: StaffRequest[],
+  userRoles:       string[],
+  userPermissions: Record<string, boolean>,
+  snapshot:        ClinicSnapshot | null,
+): string {
+  const hasClinic = linkedClinics.length > 0
+  const clinic    = adminClinic ?? linkedClinics[0] ?? null
+  const hasAdmin  = linkedClinics.some(c => c.role === 'admin')
+
+  // ── MANAGEMENT MODE ────────────────────────────────────────────────────────
+  if (hasClinic && snapshot) {
+    const roleLabel = userRoles.includes('admin') ? 'Admin'
+      : userRoles.includes('receptionist')        ? 'Recepcionista'
+      : userRoles.includes('professional')        ? 'Profissional'
+      : 'Membro'
+
+    const P = userPermissions
+    const ctx: string[] = [
+      `CLÍNICA: ${clinic!.name} | USUÁRIO: ${user.name ?? user.phone} (${roleLabel})`,
+      ``,
+    ]
+
+    ctx.push(formatAgendaForPrompt(snapshot.todayAgenda, `📅 HOJE (${snapshot.todayLabel})`))
+    ctx.push(``)
+    if (snapshot.tomorrowAgenda.length > 0) {
+      ctx.push(formatAgendaForPrompt(snapshot.tomorrowAgenda, `📅 AMANHÃ (${snapshot.tomorrowLabel})`))
+      ctx.push(``)
+    }
+
+    if (P.canViewFinancial && snapshot.financial) {
+      const f = snapshot.financial
+      ctx.push(
+        `💰 FINANCEIRO HOJE: Agendado:${f.scheduled} | Confirmado:${f.confirmed} | Concluído:${f.completed} | Cancelado:${f.cancelled}`,
+        `   Cobrado: ${formatCentsBRL(f.totalChargedCents)} | Recebido: ${formatCentsBRL(f.totalPaidCents)}`,
+        ``,
+      )
+    }
+
+    if (P.canManageProfessionals && snapshot.team.length > 0) {
+      ctx.push(`👥 EQUIPE:`)
+      for (const m of snapshot.team) {
+        ctx.push(`  [${m.userId}] ${m.name} | ${(m.roles ?? []).join('+')} | ${m.phone ?? '—'}`)
+      }
+      ctx.push(``)
+    }
+
+    if (snapshot.serviceTypes.length > 0) {
+      ctx.push(`🗂 SERVIÇOS: ` + snapshot.serviceTypes.map(s =>
+        `${s.name}(${s.durationMinutes}min${s.priceCents ? `|${formatCentsBRL(s.priceCents)}` : ''})[${s.id}]`
+      ).join(' | '))
+      ctx.push(``)
+    }
+
+    if (snapshot.rooms.length > 0) {
+      ctx.push(`🚪 SALAS: ` + snapshot.rooms.map(r => `${r.name}[${r.id}]`).join(' | '))
+      ctx.push(``)
+    }
+
+    if (pendingRequests.length > 0) {
+      ctx.push(`⏳ SOLICITAÇÕES PENDENTES (${pendingRequests.length}):`)
+      pendingRequests.forEach((r, i) => {
+        const rl = r.role === 'receptionist' ? 'recepcionista' : 'profissional'
+        ctx.push(`  [${i + 1}] ID:${r.id} | ${r.requester_name} | ${r.requester_email} | ${r.requester_phone} | ${rl} → ${r.clinic_name}`)
+      })
+      ctx.push(``)
+    }
+
+    if (hasAdmin && botConfig) {
+      ctx.push(`🤖 BOT: model:${botConfig.wa_ai_model ?? 'default'} | agendar:${botConfig.wa_ai_allow_schedule ? 'sim' : 'não'} | confirmar:${botConfig.wa_ai_allow_confirm ? 'sim' : 'não'} | cancelar:${botConfig.wa_ai_allow_cancel ? 'sim' : 'não'}`)
+      ctx.push(``)
+    }
+
+    // Actions reference
+    const acts = [
+      `{ "action": "reply", "replyText": "..." }`,
+    ]
+    if (P.canManageAgenda) acts.push(
+      `{ "action": "update_appointment_status", "appointmentId": "ID_FROM_CONTEXT", "newStatus": "confirmed|completed|cancelled|no_show", "replyText": "..." }`,
+      `{ "action": "reschedule_appointment", "appointmentId": "...", "startsAt": "ISO8601", "endsAt": "ISO8601", "replyText": "..." }`,
+      `{ "action": "schedule_appointment", "patientId": "...", "professionalId": "...", "startsAt": "ISO8601", "endsAt": "ISO8601", "serviceTypeId": "...", "appointmentNotes": "...", "replyText": "..." }`,
+      `{ "action": "search_available_slots", "professionalId": "...", "searchDate": "YYYY-MM-DD", "durationMinutes": 30, "replyText": "Verificando horários..." }  ← TOOL LOOP`,
+    )
+    if (P.canViewPatients) acts.push(
+      `{ "action": "search_patients", "patientQuery": "nome ou CPF", "replyText": "Buscando..." }  ← TOOL LOOP`,
+    )
+    if (P.canManagePatients) acts.push(
+      `{ "action": "create_patient", "patientName": "...", "patientPhone": "...", "patientBirthDate": "YYYY-MM-DD", "replyText": "..." }  ← TOOL LOOP`,
+    )
+    acts.push(`{ "action": "update_own_profile", "profileName": "...", "profilePhone": "...", "replyText": "..." }`)
+    if (hasAdmin) acts.push(
+      `{ "action": "update_member_permissions", "memberId": "USER_ID", "permissionKey": "canViewFinancial|canManageAgenda|canManagePatients|canManageProfessionals|canViewFinancial|canManageSettings", "permissionValue": true, "replyText": "..." }`,
+      `{ "action": "approve_staff_request", "requestId": "...", "replyText": "..." }`,
+      `{ "action": "reject_staff_request", "requestId": "...", "replyText": "..." }`,
+      `{ "action": "invite_staff_directly", "staffName": "...", "staffEmail": "...", "staffPhone": "...", "role": "professional|receptionist", "replyText": "..." }`,
+      `{ "action": "configure_bot", "clinicId": "...", "customPrompt": "...", "allowSchedule": true, "allowConfirm": true, "allowCancel": true, "aiModel": "...", "replyText": "..." }`,
+    )
+    if (P.canManageProfessionals) acts.push(
+      `{ "action": "manage_professional", "professionalName": "...", "specialty": "...", "councilId": "...", "professionalEmail": "...", "professionalPhone": "...", "replyText": "..." }`,
+      `{ "action": "manage_service_type", "serviceTypeName": "...", "serviceTypeDuration": 30, "serviceTypePriceCents": 15000, "serviceTypeColor": "#3b82f6", "replyText": "..." }`,
+      `{ "action": "manage_room", "roomName": "...", "roomColor": "#6366f1", "replyText": "..." }`,
+      `{ "action": "close_room", "roomId": "...", "closeDate": "YYYY-MM-DD", "replyText": "..." }`,
+    )
+    if (P.canManageOwnAvailability) acts.push(
+      `{ "action": "update_own_availability", "availabilitySlots": [{"weekday":1,"start_time":"09:00","end_time":"17:00","active":true},...], "replyText": "..." }`,
+      `  weekday: 1=Segunda...5=Sexta, 6=Sábado, 7=Domingo`,
+    )
+
+    return [
+      `You are the WhatsApp management assistant for Consultin (clinic management platform, Brazil).`,
+      `This number is for CLINIC STAFF AND OWNERS — never for patients.`,
+      ``,
+      ...ctx,
+      `PERSONALITY: Warm, concise, like a helpful colleague on WhatsApp. Short messages. Reply in PT-BR.`,
+      ``,
+      `WHAT YOU CAN HELP WITH:`,
+      P.canManageAgenda ? `• Agenda: confirmar [nome/nº], concluir, cancelar, remarcar, agendar nova consulta` : '',
+      P.canViewPatients ? `• Pacientes: buscar por nome/CPF` : '',
+      P.canManagePatients ? `• Pacientes: cadastrar novo paciente` : '',
+      P.canViewFinancial ? `• Financeiro: resumo do dia (já está no contexto acima)` : '',
+      hasAdmin ? `• Equipe: aprovar/reprovar solicitações (use IDs de SOLICITAÇÕES PENDENTES), convidar diretamente, ajustar permissões` : '',
+      hasAdmin ? `• Bot: configurar personalidade e permissões do bot da clínica` : '',
+      P.canManageProfessionals ? `• Profissionais: adicionar/editar profissionais, serviços, salas` : '',
+      P.canManageOwnAvailability ? `• Disponibilidade: definir/alterar minha grade de horários semanal` : '',
+      `• Perfil: atualizar meu nome ou telefone`,
+      ``,
+      `RULES:`,
+      `1. IDs de consulta ficam no contexto — NUNCA mostre IDs ao usuário; referencie por nome+horário.`,
+      `2. Para "confirmar João" → encontre o ID no contexto de HOJE e use update_appointment_status.`,
+      `3. Para agendar: use search_available_slots antes de schedule_appointment.`,
+      `4. Para paciente não encontrado em cache: use search_patients. Para criar: create_patient (tool loop).`,
+      `5. Horários em America/Sao_Paulo (BRT = UTC-3). ISO8601 com offset: "2026-04-08T09:00:00-03:00"`,
+      `6. Respond ONLY with valid JSON matching an action below.`,
+      ``,
+      `ACTIONS:`,
+      ...acts,
+    ].filter(Boolean).join('\n')
+  }
+
+  // ── ONBOARDING MODE (no clinic yet) ───────────────────────────────────────
+  const firstMsgBlock = isFirstMessage ? [
+    `FIRST MESSAGE RULE:`,
+    `Introduce yourself as the Consultin platform assistant and ask for the user's name.`,
+    `Keep it natural, 2–3 lines max. Then wait for their name before proceeding.`,
+    ``,
+  ] : []
+
+  const pendingReqLines: string[] = []
+  if (pendingRequests.length > 0) {
+    pendingReqLines.push(``, `PENDING STAFF REQUESTS (${pendingRequests.length}):`)
+    pendingRequests.forEach((r, i) => {
+      pendingReqLines.push(
+        `  [${i + 1}] ${r.requester_name} | ${r.requester_email} | ${r.requester_phone} | ${r.role} → ${r.clinic_name}  ID:${r.id}`,
+      )
     })
+    pendingReqLines.push(``, `User can say "APROVAR 1" or "REPROVAR João". Match to correct request ID.`)
   }
 
-  // ── Execute action side-effects ───────────────────────────────────────────
+  const joinCodeLine = adminClinic?.joinCode
+    ? `- Join code for staff: *${adminClinic.joinCode}*`
+    : ''
 
+  return [
+    `You are the WhatsApp assistant for Consultin — a clinic management platform for Brazil.`,
+    `This number belongs to Consultin the PLATFORM. People here are clinic owners or staff — NOT patients.`,
+    ``,
+    `KNOWN ABOUT THIS PERSON:`,
+    `- Phone: ${user.phone} | Name: ${user.name ?? 'unknown'} | Email: ${user.email ?? 'unknown'}`,
+    linkedClinics.length > 0 ? `- Clinics: ${linkedClinics.map(c => `${c.name} (${c.role})`).join(', ')}` : `- Clinics: none yet`,
+    joinCodeLine,
+    ...pendingReqLines,
+    ``,
+    `PERSONALITY: Natural, warm, concise. Reply in the same language (PT-BR or EN). One step at a time.`,
+    ``,
+    ...firstMsgBlock,
+    `FLOWS:`,
+    `FLOW A — New clinic: ask name → search_clinics → confirm no match → ask email → create_clinic_now`,
+    `FLOW B — Join via code: ask 6-char code → verify_join_code → ask email+role → join_clinic`,
+    `FLOW D — Request without code: search_clinics → confirm clinic → collect name+email+role → request_clinic_membership`,
+    ...(hasAdmin ? [
+      `FLOW E — Approve/reject requests: "APROVAR [name/nº]" → approve_staff_request | "REPROVAR" → reject_staff_request`,
+      `FLOW F — Invite directly: collect name+email+phone+role → invite_staff_directly`,
+    ] : []),
+    ``,
+    `ACTIONS (respond with EXACTLY ONE JSON object):`,
+    `{ "action": "reply", "replyText": "..." }`,
+    `{ "action": "save_info", "name": "...", "email": "...", "replyText": "..." }`,
+    `{ "action": "search_clinics", "clinicName": "...", "replyText": "Deixa eu verificar..." }  ← TOOL LOOP`,
+    `{ "action": "create_clinic_now", "clinicName": "...", "responsibleName": "...", "email": "...", "phone": "...", "replyText": "..." }`,
+    `{ "action": "verify_join_code", "joinCode": "ABC123", "replyText": "Verificando..." }`,
+    `{ "action": "join_clinic", "joinCode": "...", "email": "...", "role": "professional|receptionist", "replyText": "..." }`,
+    `{ "action": "request_clinic_membership", "clinicId": "...", "role": "professional|receptionist", "replyText": "..." }`,
+    ...(hasAdmin ? [
+      `{ "action": "approve_staff_request", "requestId": "...", "replyText": "..." }`,
+      `{ "action": "reject_staff_request", "requestId": "...", "replyText": "..." }`,
+      `{ "action": "invite_staff_directly", "staffName": "...", "staffEmail": "...", "staffPhone": "...", "role": "professional", "replyText": "..." }`,
+    ] : []),
+    ``,
+    `RULES: 1. Never create clinic without searching first. 2. Need email before create_clinic_now. 3. Never invent IDs. 4. JSON only.`,
+  ].filter(l => l !== '').join('\n')
+}
+
+// ─── Side effect executor ─────────────────────────────────────────────────────
+
+async function executeSideEffect(
+  action:          PlatformAction,
+  user:            PlatformUser,
+  adminClinic:     ClinicInfo | null,
+  linkedClinics:   ClinicInfo[],
+  fromPhone:       string,
+  supabase:        ReturnType<typeof createClient>,
+  pendingRequests: StaffRequest[],
+  userPermissions: Record<string, boolean>,
+  primaryClinic:   ClinicInfo | null,
+): Promise<void> {
+
+  // ── save_info ─────────────────────────────────────────────────────────────
   if (action.action === 'save_info') {
     const updates: Record<string, unknown> = {}
     if (action.name?.trim())  updates.name  = action.name.trim()
     if (action.email?.trim()) updates.email = action.email.trim().toLowerCase()
     if (Object.keys(updates).length > 0) {
-      await supabase
-        .from('wa_platform_users')
-        .update(updates)
-        .eq('id', user.id)
+      await supabase.from('wa_platform_users').update(updates).eq('id', user.id)
     }
+    return
   }
 
-  if (action.action === 'configure_bot') {
-    const targetClinicId = action.clinicId ?? adminClinic?.id ?? null
-    if (targetClinicId) {
-      // Security: ensure the linked user is actually admin of that clinic
-      const isAuthorised = linkedClinics.some(
-        c => c.id === targetClinicId && (c.role === 'admin'),
-      )
-      if (isAuthorised) {
-        const updates: Record<string, unknown> = {}
-        if (action.clearCustomPrompt === true) {
-          updates.wa_ai_custom_prompt = null
-        } else if (typeof action.customPrompt === 'string') {
-          updates.wa_ai_custom_prompt = action.customPrompt.trim() || null
-        }
-        if (typeof action.allowSchedule === 'boolean') updates.wa_ai_allow_schedule = action.allowSchedule
-        if (typeof action.allowConfirm  === 'boolean') updates.wa_ai_allow_confirm  = action.allowConfirm
-        if (typeof action.allowCancel   === 'boolean') updates.wa_ai_allow_cancel   = action.allowCancel
-        if (typeof action.aiModel === 'string' && action.aiModel.trim()) {
-          updates.wa_ai_model = action.aiModel.trim()
-        }
-        if (Object.keys(updates).length > 0) {
-          const { error } = await supabase
-            .from('clinics')
-            .update(updates)
-            .eq('id', targetClinicId)
-          if (error) {
-            console.error('[platform-agent] configure_bot update error:', error)
-          }
-        }
-      } else {
-        console.warn('[platform-agent] configure_bot: user not authorised for clinic', targetClinicId)
-      }
-    }
+  // ── search_clinics / verify_join_code — handled in tool loop, no DB side effect ──
+  if (action.action === 'search_clinics') return
+
+  if (action.action === 'verify_join_code' && action.joinCode) {
+    // Store verification result in notes so next turn has context
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('id, name')
+      .eq('join_code', action.joinCode.toUpperCase())
+      .maybeSingle()
+    const note = clinic
+      ? `verify_code:${action.joinCode.toUpperCase()}=found:${clinic.name}[${clinic.id}]`
+      : `verify_code:${action.joinCode.toUpperCase()}=not_found`
+    await supabase.from('wa_platform_users').update({ notes: note }).eq('id', user.id)
+    return
   }
 
-  if (action.action === 'submit_clinic_signup') {
+  // ── create_clinic_now ─────────────────────────────────────────────────────
+  if (action.action === 'create_clinic_now') {
     const clinicName      = action.clinicName?.trim() ?? ''
     const responsibleName = (action.responsibleName ?? user.name ?? '').trim()
     const email           = (action.email ?? user.email ?? '').trim().toLowerCase()
     const phone           = (action.phone ?? fromPhone).trim()
 
-    if (clinicName && responsibleName && email) {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-clinic-signup`, {
-          method:  'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization:  `Bearer ${SUPABASE_SRK}`,
-          },
-          body: JSON.stringify({
-            clinicName,
-            responsibleName,
-            email,
-            phone,
-            message: `Via WhatsApp. Telefone: ${fromPhone}`,
-          }),
-        })
-        if (!res.ok) {
-          console.error('[platform-agent] submit-clinic-signup failed:', await res.text())
-        }
-      } catch (e) {
-        console.error('[platform-agent] submit-clinic-signup exception:', e)
-      }
+    if (!clinicName || !email) {
+      console.warn('[platform-agent] create_clinic_now: missing clinicName or email', { clinicName, email })
+      return
+    }
+
+    // 1. Create clinic row (join_code auto-generated by DB default)
+    const { data: newClinic, error: clinicErr } = await supabase
+      .from('clinics')
+      .insert({ name: clinicName, phone })
+      .select('id, join_code')
+      .single()
+
+    if (clinicErr || !newClinic) {
+      console.error('[platform-agent] clinic insert error:', clinicErr)
+      return
+    }
+
+    // 2. Invite responsible person by email (Supabase Auth Admin invite)
+    const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey:          SUPABASE_SRK,
+        Authorization:   `Bearer ${SUPABASE_SRK}`,
+      },
+      body: JSON.stringify({
+        email,
+        data: { redirect_to: `${SITE_URL}/nova-senha` },
+      }),
+    })
+
+    let userId: string | null = null
+    if (inviteRes.ok) {
+      userId = (await inviteRes.json())?.id ?? null
     } else {
-      console.warn('[platform-agent] submit_clinic_signup missing required fields:', {
-        clinicName, responsibleName, email,
+      const errText = await inviteRes.text()
+      console.warn('[platform-agent] invite response (user may already exist):', errText)
+      // User already exists — look them up
+      const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+      const existing = (users ?? []).find((u: { email?: string }) => u.email === email)
+      if (existing) userId = existing.id
+    }
+
+    if (userId) {
+      // 3. Create user_profile as clinic admin
+      await supabase.from('user_profiles').upsert({
+        id:        userId,
+        name:      responsibleName || email,
+        roles:     ['admin'],
+        clinic_id: newClinic.id,
       })
+
+      // 4. Link platform user to the Supabase auth user
+      await supabase.from('wa_platform_users').update({
+        linked_user_id: userId,
+        name:           (user.name ?? responsibleName) || null,
+        email,
+      }).eq('id', user.id)
+    }
+
+    // 5. Notify Pedro on Telegram
+    await notifyTelegram([
+      `🏥 *Nova clínica criada via Bot WhatsApp*`,
+      ``,
+      `*Clínica:* ${clinicName}`,
+      `*Responsável:* ${responsibleName || '—'}`,
+      `*E-mail:* ${email}`,
+      `*Telefone:* ${phone}`,
+      `*Código de equipe:* \`${newClinic.join_code}\``,
+      `*ID:* \`${newClinic.id}\``,
+    ])
+    return
+  }
+
+  // ── join_clinic ───────────────────────────────────────────────────────────
+  if (action.action === 'join_clinic') {
+    const joinCode = action.joinCode?.trim().toUpperCase() ?? ''
+    const email    = (action.email ?? user.email ?? '').trim().toLowerCase()
+    const role     = action.role === 'receptionist' ? 'receptionist' : 'professional'
+
+    if (!joinCode || !email) {
+      console.warn('[platform-agent] join_clinic: missing joinCode or email', { joinCode, email })
+      return
+    }
+
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('id, name')
+      .eq('join_code', joinCode)
+      .maybeSingle()
+
+    if (!clinic) {
+      console.warn('[platform-agent] join_clinic: code not found', joinCode)
+      return
+    }
+
+    // Send email invite
+    const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey:          SUPABASE_SRK,
+        Authorization:   `Bearer ${SUPABASE_SRK}`,
+      },
+      body: JSON.stringify({ email }),
+    })
+
+    let userId: string | null = null
+    if (inviteRes.ok) {
+      userId = (await inviteRes.json())?.id ?? null
+    } else {
+      const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+      const existing = (users ?? []).find((u: { email?: string }) => u.email === email)
+      if (existing) userId = existing.id
+    }
+
+    if (userId) {
+      await supabase.from('user_profiles').upsert({
+        id:        userId,
+        name:      user.name ?? email,
+        roles:     [role],
+        clinic_id: clinic.id,
+      })
+      await supabase.from('wa_platform_users').update({
+        linked_user_id: userId,
+        email,
+      }).eq('id', user.id)
+    }
+
+    await notifyTelegram([
+      `👤 *Novo membro via Bot WhatsApp*`,
+      ``,
+      `*Clínica:* ${clinic.name}`,
+      `*E-mail:* ${email}`,
+      `*Função:* ${role}`,
+      `*Telefone:* ${user.phone}`,
+    ])
+    return
+  }
+
+  // ── request_clinic_membership ─────────────────────────────────────────────
+  if (action.action === 'request_clinic_membership') {
+    const clinicId = action.clinicId?.trim() ?? ''
+    const role     = action.role === 'receptionist' ? 'receptionist' : 'professional'
+    const reqName  = (action.staffName ?? user.name ?? '').trim()
+    const reqEmail = (action.staffEmail ?? user.email ?? '').trim().toLowerCase()
+
+    if (!clinicId || !reqEmail || !reqName) {
+      console.warn('[platform-agent] request_clinic_membership: missing fields', { clinicId, reqEmail, reqName })
+      return
+    }
+
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('id, name')
+      .eq('id', clinicId)
+      .maybeSingle()
+
+    if (!clinic) { console.warn('[platform-agent] request_clinic_membership: clinic not found', clinicId); return }
+    const cl = clinic as { id: string; name: string }
+
+    const { error: reqErr } = await supabase
+      .from('clinic_staff_requests')
+      .insert({ clinic_id: cl.id, requester_name: reqName, requester_email: reqEmail, requester_phone: fromPhone, role })
+
+    if (reqErr) { console.error('[platform-agent] request_clinic_membership: insert error:', reqErr); return }
+
+    // Notify clinic admins via platform WA
+    const adminPhones = await findAdminPhonesForClinic(supabase, cl.id)
+    const roleLabel   = role === 'receptionist' ? 'recepcionista' : 'profissional'
+    const notifyMsg   = [
+      `👤 *Nova solicitação de equipe* para *${cl.name}*`,
+      ``,
+      `*Nome:* ${reqName}`,
+      `*E-mail:* ${reqEmail}`,
+      `*WhatsApp:* ${fromPhone}`,
+      `*Função desejada:* ${roleLabel}`,
+      ``,
+      `Para aprovar, responda *APROVAR* aqui.`,
+      `Para recusar, responda *REPROVAR*.`,
+    ].join('\n')
+
+    for (const adminPhone of adminPhones) {
+      await sendWA(adminPhone, notifyMsg)
+    }
+    return
+  }
+
+  // ── approve_staff_request ─────────────────────────────────────────────────
+  if (action.action === 'approve_staff_request' && action.requestId) {
+    const { data: req } = await supabase
+      .from('clinic_staff_requests')
+      .select('id, clinic_id, requester_name, requester_email, requester_phone, role, clinics(name)')
+      .eq('id', action.requestId)
+      .eq('status', 'pending')
+      .maybeSingle()
+
+    if (!req) { console.warn('[platform-agent] approve_staff_request: not found or not pending:', action.requestId); return }
+
+    const r         = req as Record<string, unknown>
+    const clinicName = (r.clinics as { name: string } | null)?.name ?? '?'
+
+    await inviteStaffWithWA({
+      supabase,
+      staffEmail: r.requester_email as string,
+      staffPhone: r.requester_phone as string,
+      staffName:  r.requester_name  as string,
+      clinicId:   r.clinic_id       as string,
+      clinicName,
+      role:       r.role            as string,
+    })
+
+    await supabase
+      .from('clinic_staff_requests')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.linked_user_id })
+      .eq('id', action.requestId)
+    return
+  }
+
+  // ── reject_staff_request ──────────────────────────────────────────────────
+  if (action.action === 'reject_staff_request' && action.requestId) {
+    const { data: req } = await supabase
+      .from('clinic_staff_requests')
+      .select('id, requester_name, requester_phone, clinics(name)')
+      .eq('id', action.requestId)
+      .eq('status', 'pending')
+      .maybeSingle()
+
+    if (!req) { console.warn('[platform-agent] reject_staff_request: not found:', action.requestId); return }
+
+    const r         = req as Record<string, unknown>
+    const clinicName = (r.clinics as { name: string } | null)?.name ?? '?'
+    const firstName  = (r.requester_name as string)?.split(' ')[0] ?? ''
+
+    await supabase
+      .from('clinic_staff_requests')
+      .update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.linked_user_id })
+      .eq('id', action.requestId)
+
+    await sendWA(
+      r.requester_phone as string,
+      `Olá${firstName ? `, ${firstName}` : ''}. 👋\n\nSua solicitação para fazer parte da equipe da *${clinicName}* não foi aprovada desta vez.\n\nSe tiver dúvidas, fale diretamente com a clínica.`,
+    )
+    return
+  }
+
+  // ── invite_staff_directly ─────────────────────────────────────────────────
+  if (action.action === 'invite_staff_directly') {
+    const staffEmail = (action.staffEmail ?? '').trim().toLowerCase()
+    const staffPhone = (action.staffPhone ?? '').trim()
+    const staffName  = (action.staffName  ?? '').trim()
+    const role       = action.role === 'receptionist' ? 'receptionist' : 'professional'
+
+    if (!staffEmail || !staffPhone || !adminClinic) {
+      console.warn('[platform-agent] invite_staff_directly: missing fields or no admin clinic')
+      return
+    }
+
+    await inviteStaffWithWA({
+      supabase, staffEmail, staffPhone, staffName,
+      clinicId:   adminClinic.id,
+      clinicName: adminClinic.name,
+      role,
+    })
+
+    await notifyTelegram([
+      `👤 *Funcionário convidado via Bot WhatsApp*`,
+      ``,
+      `*Clínica:* ${adminClinic.name}`,
+      `*Nome:* ${staffName || '—'}`,
+      `*E-mail:* ${staffEmail}`,
+      `*Telefone:* ${staffPhone}`,
+      `*Função:* ${role}`,
+    ])
+    return
+  }
+
+  // ── update_appointment_status ─────────────────────────────────────────────
+  if (action.action === 'update_appointment_status') {
+    if (!userPermissions.canManageAgenda || !primaryClinic || !action.appointmentId || !action.newStatus) return
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: action.newStatus })
+      .eq('id', action.appointmentId)
+      .eq('clinic_id', primaryClinic.id)
+    if (error) console.error('[platform-agent] update_appointment_status:', error)
+    return
+  }
+
+  // ── reschedule_appointment ────────────────────────────────────────────────
+  if (action.action === 'reschedule_appointment') {
+    if (!userPermissions.canManageAgenda || !primaryClinic || !action.appointmentId) return
+    const updates: Record<string, unknown> = {}
+    if (action.startsAt) updates.starts_at = action.startsAt
+    if (action.endsAt)   updates.ends_at   = action.endsAt
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase
+        .from('appointments')
+        .update(updates)
+        .eq('id', action.appointmentId)
+        .eq('clinic_id', primaryClinic.id)
+      if (error) console.error('[platform-agent] reschedule_appointment:', error)
+    }
+    return
+  }
+
+  // ── schedule_appointment ──────────────────────────────────────────────────
+  if (action.action === 'schedule_appointment') {
+    if (!userPermissions.canManageAgenda || !primaryClinic || !action.patientId || !action.professionalId || !action.startsAt || !action.endsAt) return
+    const { error } = await supabase
+      .from('appointments')
+      .insert({
+        clinic_id:       primaryClinic.id,
+        patient_id:      action.patientId,
+        professional_id: action.professionalId,
+        starts_at:       action.startsAt,
+        ends_at:         action.endsAt,
+        service_type_id: action.serviceTypeId ?? null,
+        notes:           action.appointmentNotes ?? null,
+        status:          'scheduled',
+      })
+    if (error) console.error('[platform-agent] schedule_appointment:', error)
+    return
+  }
+
+  // ── update_own_profile ────────────────────────────────────────────────────
+  if (action.action === 'update_own_profile') {
+    const updates: Record<string, unknown> = {}
+    if (action.profileName?.trim())  updates.name  = action.profileName.trim()
+    if (action.profilePhone?.trim()) updates.phone = action.profilePhone.trim()
+    if (Object.keys(updates).length === 0) return
+    if (user.linked_user_id && primaryClinic) {
+      await supabase.from('user_profiles').update(updates).eq('id', user.linked_user_id).eq('clinic_id', primaryClinic.id)
+    }
+    if (action.profileName?.trim()) {
+      await supabase.from('wa_platform_users').update({ name: action.profileName.trim() }).eq('id', user.id)
+    }
+    return
+  }
+
+  // ── update_member_permissions ─────────────────────────────────────────────
+  if (action.action === 'update_member_permissions') {
+    if (!userPermissions.canManageSettings || !primaryClinic || !action.memberId || !action.permissionKey) return
+    const { data: existing } = await supabase
+      .from('user_profiles')
+      .select('permission_overrides')
+      .eq('id', action.memberId)
+      .eq('clinic_id', primaryClinic.id)
+      .maybeSingle()
+    const curr    = (existing as { permission_overrides?: Record<string, boolean> } | null)?.permission_overrides ?? {}
+    const updated = { ...curr, [action.permissionKey]: action.permissionValue ?? false }
+    await supabase
+      .from('user_profiles')
+      .update({ permission_overrides: updated })
+      .eq('id', action.memberId)
+      .eq('clinic_id', primaryClinic.id)
+    return
+  }
+
+  // ── manage_professional ───────────────────────────────────────────────────
+  if (action.action === 'manage_professional') {
+    if (!userPermissions.canManageProfessionals || !primaryClinic) return
+    const row: Record<string, unknown> = { clinic_id: primaryClinic.id }
+    if (action.professionalName?.trim())  row.name       = action.professionalName.trim()
+    if (action.specialty?.trim())         row.specialty  = action.specialty.trim()
+    if (action.councilId?.trim())         row.council_id = action.councilId.trim()
+    if (action.professionalEmail?.trim()) row.email      = action.professionalEmail.trim().toLowerCase()
+    if (action.professionalPhone?.trim()) row.phone      = action.professionalPhone.trim()
+    if (typeof action.activeProfessional === 'boolean') row.active = action.activeProfessional
+    if (action.professionalId) {
+      const { error } = await supabase.from('professionals').update(row).eq('id', action.professionalId).eq('clinic_id', primaryClinic.id)
+      if (error) console.error('[platform-agent] manage_professional update:', error)
+    } else {
+      const { error } = await supabase.from('professionals').insert(row)
+      if (error) console.error('[platform-agent] manage_professional insert:', error)
+    }
+    return
+  }
+
+  // ── manage_service_type ───────────────────────────────────────────────────
+  if (action.action === 'manage_service_type') {
+    if (!userPermissions.canManageProfessionals || !primaryClinic) return
+    const row: Record<string, unknown> = { clinic_id: primaryClinic.id }
+    if (action.serviceTypeName?.trim())              row.name             = action.serviceTypeName.trim()
+    if (action.serviceTypeDuration)                  row.duration_minutes = action.serviceTypeDuration
+    if (typeof action.serviceTypePriceCents === 'number') row.price_cents = action.serviceTypePriceCents
+    if (action.serviceTypeColor?.trim())             row.color            = action.serviceTypeColor.trim()
+    if (action.serviceTypeId) {
+      const { error } = await supabase.from('service_types').update(row).eq('id', action.serviceTypeId).eq('clinic_id', primaryClinic.id)
+      if (error) console.error('[platform-agent] manage_service_type update:', error)
+    } else {
+      const { error } = await supabase.from('service_types').insert(row)
+      if (error) console.error('[platform-agent] manage_service_type insert:', error)
+    }
+    return
+  }
+
+  // ── manage_room ───────────────────────────────────────────────────────────
+  if (action.action === 'manage_room') {
+    if (!userPermissions.canManageSettings || !primaryClinic) return
+    const row: Record<string, unknown> = { clinic_id: primaryClinic.id }
+    if (action.roomName?.trim())  row.name  = action.roomName.trim()
+    if (action.roomColor?.trim()) row.color = action.roomColor.trim()
+    if (typeof action.activeRoom === 'boolean') row.active = action.activeRoom
+    if (action.roomId) {
+      const { error } = await supabase.from('clinic_rooms').update(row).eq('id', action.roomId).eq('clinic_id', primaryClinic.id)
+      if (error) console.error('[platform-agent] manage_room update:', error)
+    } else {
+      const { error } = await supabase.from('clinic_rooms').insert(row)
+      if (error) console.error('[platform-agent] manage_room insert:', error)
+    }
+    return
+  }
+
+  // ── close_room ────────────────────────────────────────────────────────────
+  if (action.action === 'close_room') {
+    if (!userPermissions.canManageSettings || !primaryClinic || !action.roomId || !action.closeDate) return
+    const { error } = await supabase.from('room_closures').insert({
+      clinic_id: primaryClinic.id,
+      room_id:   action.roomId,
+      date:      action.closeDate,
+    })
+    if (error) console.error('[platform-agent] close_room:', error)
+    return
+  }
+
+  // ── update_own_availability ───────────────────────────────────────────────
+  if (action.action === 'update_own_availability') {
+    if (!userPermissions.canManageOwnAvailability || !primaryClinic || !action.availabilitySlots || !user.linked_user_id) return
+    const { data: profRow } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('clinic_id', primaryClinic.id)
+      .or(`email.ilike.${(user.email ?? '').toLowerCase()},phone.ilike.%${fromPhone.slice(-9)}`)
+      .limit(1)
+      .maybeSingle()
+    if (!profRow) { console.warn('[platform-agent] update_own_availability: no professional row found'); return }
+    const profId = (profRow as { id: string }).id
+    await supabase.from('availability_slots').delete().eq('professional_id', profId).eq('clinic_id', primaryClinic.id)
+    if (action.availabilitySlots.length > 0) {
+      const rows = action.availabilitySlots.map(s => ({
+        clinic_id:       primaryClinic.id,
+        professional_id: profId,
+        weekday:         s.weekday,
+        start_time:      s.start_time,
+        end_time:        s.end_time,
+        active:          s.active ?? true,
+        room_id:         s.room_id ?? null,
+      }))
+      const { error } = await supabase.from('availability_slots').insert(rows)
+      if (error) console.error('[platform-agent] update_own_availability insert:', error)
+    }
+    return
+  }
+
+  // ── configure_bot ─────────────────────────────────────────────────────────
+  if (action.action === 'configure_bot') {
+    const targetClinicId = action.clinicId ?? adminClinic?.id ?? null
+    if (!targetClinicId) return
+
+    const isAuthorised = linkedClinics.some(c => c.id === targetClinicId && c.role === 'admin')
+    if (!isAuthorised) {
+      console.warn('[platform-agent] configure_bot: user not authorised for', targetClinicId)
+      return
+    }
+
+    const updates: Record<string, unknown> = {}
+    if (action.clearCustomPrompt === true) {
+      updates.wa_ai_custom_prompt = null
+    } else if (typeof action.customPrompt === 'string') {
+      updates.wa_ai_custom_prompt = action.customPrompt.trim() || null
+    }
+    if (typeof action.allowSchedule === 'boolean') updates.wa_ai_allow_schedule = action.allowSchedule
+    if (typeof action.allowConfirm  === 'boolean') updates.wa_ai_allow_confirm  = action.allowConfirm
+    if (typeof action.allowCancel   === 'boolean') updates.wa_ai_allow_cancel   = action.allowCancel
+    if (typeof action.aiModel === 'string' && action.aiModel.trim()) {
+      updates.wa_ai_model = action.aiModel.trim()
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase.from('clinics').update(updates).eq('id', targetClinicId)
+      if (error) console.error('[platform-agent] configure_bot update error:', error)
+    }
+  }
+}
+
+// ─── DB helpers ───────────────────────────────────────────────────────────────
+
+// ─── loadClinicSnapshot ───────────────────────────────────────────────────────
+
+async function loadClinicSnapshot(
+  supabase:  ReturnType<typeof createClient>,
+  clinicId:  string,
+  userEmail: string | null,
+  userRoles: string[],
+): Promise<ClinicSnapshot> {
+  const now     = new Date()
+  const brtNow  = new Date(now.getTime() - 3 * 60 * 60 * 1000)
+  const todayStr = brtNow.toISOString().slice(0, 10)       // YYYY-MM-DD BRT
+  const tomorrowStr = new Date(brtNow.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+  const fmt = (d: Date) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+  const todayLabel    = fmt(brtNow)
+  const tomorrowLabel = fmt(new Date(brtNow.getTime() + 24 * 60 * 60 * 1000))
+
+  // Find my professional row (for professional role: filter agenda to own appointments)
+  let myProfessionalId: string | null = null
+  if (userRoles.includes('professional') && userEmail) {
+    const { data: profRow } = await supabase
+      .from('professionals')
+      .select('id')
+      .eq('clinic_id', clinicId)
+      .ilike('email', userEmail)
+      .limit(1)
+      .maybeSingle()
+    if (profRow) myProfessionalId = (profRow as { id: string }).id
+  }
+
+  // Load agenda (today + tomorrow)
+  const loadAgenda = async (dateStr: string): Promise<AgendaItem[]> => {
+    let q = supabase
+      .from('appointments')
+      .select('id, starts_at, ends_at, status, patients(name, phone), professionals(name), service_types(name), charge_cents')
+      .eq('clinic_id', clinicId)
+      .gte('starts_at', `${dateStr}T00:00:00Z`)
+      .lt('starts_at',  `${dateStr}T23:59:59Z`)
+      .order('starts_at', { ascending: true })
+      .limit(30)
+    if (myProfessionalId) q = q.eq('professional_id', myProfessionalId)
+    const { data } = await q
+    return ((data ?? []) as Record<string, unknown>[]).map(a => ({
+      id:               a.id               as string,
+      startsAt:         a.starts_at        as string,
+      endsAt:           a.ends_at          as string,
+      status:           a.status           as string,
+      patientName:      (a.patients as { name: string } | null)?.name ?? '—',
+      patientPhone:     (a.patients as { phone?: string } | null)?.phone ?? null,
+      professionalName: (a.professionals as { name: string } | null)?.name ?? '—',
+      serviceType:      (a.service_types as { name: string } | null)?.name ?? null,
+      chargeCents:      (a.charge_cents   as number | null),
+    }))
+  }
+
+  const [todayAgenda, tomorrowAgenda] = await Promise.all([
+    loadAgenda(todayStr),
+    loadAgenda(tomorrowStr),
+  ])
+
+  // Financial summary: today
+  let financial: DailyFinancial | null = null
+  const allToday = todayAgenda
+  if (allToday.length > 0) {
+    financial = {
+      scheduled:         allToday.filter(a => a.status === 'scheduled').length,
+      confirmed:         allToday.filter(a => a.status === 'confirmed').length,
+      completed:         allToday.filter(a => a.status === 'completed').length,
+      cancelled:         allToday.filter(a => ['cancelled', 'no_show'].includes(a.status)).length,
+      totalChargedCents: allToday.reduce((s, a) => s + (a.chargeCents ?? 0), 0),
+      totalPaidCents:    0, // TODO: integrate with payments table if available
     }
   }
 
-  // ── Send WhatsApp reply ───────────────────────────────────────────────────
-  if (action.replyText) {
-    await sendWA(fromPhone, action.replyText)
+  // Team (admins only)
+  let team: TeamMemberInfo[] = []
+  if (userRoles.includes('admin')) {
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('id, name, roles, phone')
+      .eq('clinic_id', clinicId)
+      .limit(20)
+    team = ((profiles ?? []) as { id: string; name: string; roles: string[]; phone: string | null }[]).map(p => ({
+      userId: p.id,
+      name:   p.name,
+      roles:  Array.isArray(p.roles) ? p.roles : [],
+      phone:  p.phone,
+    }))
   }
 
-  return new Response('OK', { status: 200 })
-})
+  // Service types
+  const { data: stRows } = await supabase
+    .from('service_types')
+    .select('id, name, duration_minutes, price_cents')
+    .eq('clinic_id', clinicId)
+    .eq('active', true)
+    .order('name')
+    .limit(20)
+  const serviceTypes: ServiceTypeInfo[] = ((stRows ?? []) as Record<string, unknown>[]).map(s => ({
+    id:              s.id              as string,
+    name:            s.name            as string,
+    durationMinutes: s.duration_minutes as number,
+    priceCents:      s.price_cents     as number | null,
+  }))
 
-// ─── WhatsApp send helper (uses platform phone credentials) ───────────────────
+  // Rooms
+  const { data: roomRows } = await supabase
+    .from('clinic_rooms')
+    .select('id, name')
+    .eq('clinic_id', clinicId)
+    .eq('active', true)
+    .limit(10)
+  const rooms: RoomInfo[] = ((roomRows ?? []) as { id: string; name: string }[]).map(r => ({
+    id:   r.id,
+    name: r.name,
+  }))
+
+  return { todayLabel, tomorrowLabel, todayAgenda, tomorrowAgenda, financial, team, serviceTypes, rooms, myProfessionalId }
+}
+
+// ─── computeAvailableSlots ────────────────────────────────────────────────────
+
+async function computeAvailableSlots(
+  supabase:        ReturnType<typeof createClient>,
+  clinicId:        string,
+  professionalId:  string,
+  dateStr:         string,  // YYYY-MM-DD (BRT local date)
+  durationMinutes: number,
+): Promise<string[]> {
+  // Convert dateStr to weekday (1=Mon...7=Sun)
+  const parts  = dateStr.split('-').map(Number)
+  const d      = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]))
+  const jsSun0 = d.getUTCDay()  // 0=Sun
+  const weekday = jsSun0 === 0 ? 7 : jsSun0  // 1=Mon ... 7=Sun
+
+  const { data: slots } = await supabase
+    .from('availability_slots')
+    .select('start_time, end_time')
+    .eq('clinic_id', clinicId)
+    .eq('professional_id', professionalId)
+    .eq('weekday', weekday)
+    .eq('active', true)
+
+  if (!slots || slots.length === 0) return []
+
+  // Load existing appointments for that date (UTC day covers entire BRT local day)
+  const utcDayStart = `${dateStr}T03:00:00Z`
+  const utcDayEnd   = new Date(d.getTime() + 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString()
+  const { data: appts } = await supabase
+    .from('appointments')
+    .select('starts_at, ends_at')
+    .eq('professional_id', professionalId)
+    .gte('starts_at', utcDayStart)
+    .lt('starts_at',  utcDayEnd)
+    .not('status', 'in', '(cancelled,no_show)')
+
+  // Convert appointments to BRT minutes-since-midnight
+  const busy = ((appts ?? []) as { starts_at: string; ends_at: string }[]).map(a => {
+    const s = new Date(a.starts_at)
+    const e = new Date(a.ends_at)
+    const sMin = ((s.getUTCHours() - 3 + 24) % 24) * 60 + s.getUTCMinutes()
+    const eMin = ((e.getUTCHours() - 3 + 24) % 24) * 60 + e.getUTCMinutes()
+    return { start: sMin, end: eMin }
+  })
+
+  const free: string[] = []
+  for (const slot of (slots as { start_time: string; end_time: string }[])) {
+    const [sh, sm] = slot.start_time.split(':').map(Number)
+    const [eh, em] = slot.end_time.split(':').map(Number)
+    const slotStart = sh * 60 + sm
+    const slotEnd   = eh * 60 + em
+    let cursor = slotStart
+    while (cursor + durationMinutes <= slotEnd) {
+      const blockEnd = cursor + durationMinutes
+      const isBusy   = busy.some(b => cursor < b.end && blockEnd > b.start)
+      if (!isBusy) {
+        free.push(`${String(Math.floor(cursor / 60)).padStart(2, '0')}:${String(cursor % 60).padStart(2, '0')}`)
+      }
+      cursor += durationMinutes
+    }
+  }
+  return free
+}
+
+// ─── searchPatients ───────────────────────────────────────────────────────────
+
+async function searchPatients(
+  supabase:  ReturnType<typeof createClient>,
+  clinicId:  string,
+  query:     string,
+): Promise<{ id: string; name: string; phone: string | null; cpf: string | null }[]> {
+  const term = query.trim().replace(/[%_]/g, '')
+  const { data } = await supabase
+    .from('patients')
+    .select('id, name, phone, cpf')
+    .eq('clinic_id', clinicId)
+    .or(`name.ilike.%${term}%,cpf.ilike.%${term}%,phone.ilike.%${term}%`)
+    .order('name')
+    .limit(8)
+  return (data ?? []) as { id: string; name: string; phone: string | null; cpf: string | null }[]
+}
+
+// ─── doCreatePatient ──────────────────────────────────────────────────────────
+
+async function doCreatePatient(
+  supabase:  ReturnType<typeof createClient>,
+  clinicId:  string,
+  action:    PlatformAction,
+): Promise<string | null> {
+  if (!action.patientName?.trim()) return null
+  const row: Record<string, unknown> = {
+    clinic_id: clinicId,
+    name:      action.patientName.trim(),
+  }
+  if (action.patientPhone?.trim())     row.phone      = action.patientPhone.trim()
+  if (action.patientBirthDate?.trim()) row.birth_date = action.patientBirthDate.trim()
+  const { data, error } = await supabase.from('patients').insert(row).select('id').single()
+  if (error) { console.error('[platform-agent] doCreatePatient:', error); return null }
+  return (data as { id: string }).id
+}
+
+// ─── formatAgendaForPrompt ────────────────────────────────────────────────────
+
+function formatAgendaForPrompt(items: AgendaItem[], label: string): string {
+  if (items.length === 0) return `${label}: nenhum agendamento`
+  const icons: Record<string, string> = { scheduled: '⚪', confirmed: '🔵', completed: '✅', cancelled: '❌', no_show: '🚫' }
+  return [
+    `${label} (${items.length} agendamentos):`,
+    ...items.map((a, i) => {
+      const brtStart = new Date(a.startsAt)
+      const hh = String((brtStart.getUTCHours() - 3 + 24) % 24).padStart(2, '0')
+      const mm = String(brtStart.getUTCMinutes()).padStart(2, '0')
+      const icon = icons[a.status] ?? '•'
+      const price = a.chargeCents ? ` | ${formatCentsBRL(a.chargeCents)}` : ''
+      return `  [${i + 1}] ID:${a.id} ${icon} ${hh}:${mm} | ${a.patientName} | ${a.professionalName}${a.serviceType ? ` | ${a.serviceType}` : ''}${price}`
+    }),
+  ].join('\n')
+}
+
+// ─── formatCentsBRL ───────────────────────────────────────────────────────────
+
+function formatCentsBRL(cents: number): string {
+  return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function searchClinics(
+  supabase: ReturnType<typeof createClient>,
+  name: string,
+): Promise<{ id: string; name: string }[]> {
+  // Use the first meaningful word as the search term
+  const words = name.trim().split(/\s+/).filter(w => w.length > 2)
+  const term  = words[0] ?? name.trim()
+
+  const { data } = await supabase
+    .from('clinics')
+    .select('id, name')
+    .ilike('name', `%${term}%`)
+    .limit(5)
+
+  return (data ?? []) as { id: string; name: string }[]
+}
+
+// ─── Find admin WhatsApp phones for a clinic ──────────────────────────────────
+
+async function findAdminPhonesForClinic(
+  supabase:  ReturnType<typeof createClient>,
+  clinicId:  string,
+): Promise<string[]> {
+  // 1. Find all admin user_ids for this clinic
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('clinic_id', clinicId)
+    .contains('roles', ['admin'])
+
+  const adminIds = ((profiles ?? []) as { id: string }[]).map(p => p.id)
+  if (adminIds.length === 0) return []
+
+  // 2. Cross-reference against wa_platform_users
+  const { data: waUsers } = await supabase
+    .from('wa_platform_users')
+    .select('phone')
+    .in('linked_user_id', adminIds)
+
+  return ((waUsers ?? []) as { phone: string }[]).map(u => u.phone)
+}
+
+// ─── Invite staff: email invite + WhatsApp welcome message ───────────────────
+
+async function inviteStaffWithWA(opts: {
+  supabase:   ReturnType<typeof createClient>
+  staffEmail: string
+  staffPhone: string
+  staffName:  string
+  clinicId:   string
+  clinicName: string
+  role:       string
+}): Promise<void> {
+  const { supabase, staffEmail, staffPhone, staffName, clinicId, clinicName, role } = opts
+  const firstName = staffName.split(' ')[0] || staffEmail
+
+  // 1. Send Auth invite email
+  const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey:          SUPABASE_SRK,
+      Authorization:   `Bearer ${SUPABASE_SRK}`,
+    },
+    body: JSON.stringify({
+      email: staffEmail,
+      data:  { redirect_to: `${SITE_URL}/nova-senha` },
+    }),
+  })
+
+  let userId: string | null = null
+  if (inviteRes.ok) {
+    userId = (await inviteRes.json())?.id ?? null
+  } else {
+    const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+    const existing = (users ?? []).find((u: { email?: string }) => u.email === staffEmail)
+    if (existing) userId = existing.id
+  }
+
+  if (userId) {
+    await supabase.from('user_profiles').upsert({
+      id:        userId,
+      name:      staffName || staffEmail,
+      roles:     [role],
+      clinic_id: clinicId,
+      phone:     staffPhone,
+    })
+  }
+
+  // 2. Send WhatsApp invite message
+  await sendWA(
+    staffPhone,
+    [
+      `Olá, ${firstName}! 👋`,
+      ``,
+      `Você foi convidado(a) para fazer parte da equipe da *${clinicName}* no *Consultin*.`,
+      ``,
+      `Verifique seu e-mail *${staffEmail}* para criar sua senha e acessar o painel em:`,
+      `👉 ${SITE_URL}`,
+      ``,
+      `Qualquer dúvida, é só responder aqui. 😊`,
+    ].join('\n'),
+  )
+}
+
+// ─── Telegram notification ────────────────────────────────────────────────────
+
+async function notifyTelegram(lines: string[]): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id:    TELEGRAM_CHAT_ID,
+        text:       lines.join('\n'),
+        parse_mode: 'Markdown',
+      }),
+    })
+  } catch (e) {
+    console.error('[platform-agent] Telegram error (non-fatal):', e)
+  }
+}
+
+// ─── WhatsApp send ────────────────────────────────────────────────────────────
 
 async function sendWA(toPhone: string, text: string): Promise<void> {
   if (!PLATFORM_PHONE_ID || !PLATFORM_WA_TOKEN) {
-    console.warn('[platform-agent] PLATFORM_PHONE_NUMBER_ID or PLATFORM_WA_TOKEN not set — skipping send')
+    console.warn('[platform-agent] WA credentials not set — skipping send')
     return
   }
   const res = await fetch(`${META_GRAPH_BASE}/${PLATFORM_PHONE_ID}/messages`, {
-    method: 'POST',
+    method:  'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization:  `Bearer ${PLATFORM_WA_TOKEN}`,
@@ -481,7 +1678,5 @@ async function sendWA(toPhone: string, text: string): Promise<void> {
       text:              { body: text, preview_url: false },
     }),
   })
-  if (!res.ok) {
-    console.error('[platform-agent] WA send error:', await res.text())
-  }
+  if (!res.ok) console.error('[platform-agent] WA send error:', await res.text())
 }
