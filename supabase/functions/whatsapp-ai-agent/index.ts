@@ -195,7 +195,21 @@ async function handlePatientMessage(
     `- { "action": "escalate", "replyText": "..." }`,
   ].filter(Boolean).join('\n')
 
+  const patientMenu = [
+    '1️⃣ Ver minhas consultas',
+    '2️⃣ Agendar nova consulta',
+    allowConfirm ? '3️⃣ Confirmar consulta' : null,
+    allowCancel  ? '4️⃣ Cancelar ou remarcar' : null,
+    '5️⃣ Falar com atendente',
+  ].filter(Boolean).join('\n')
+
   const rules = [
+    '0. ESTILO PROATIVO:',
+    '   - Quando o usuário mandar apenas uma saudação (oi, olá, bom dia, boa tarde, boa noite, ei, e aí, tudo bem, como vai, o que pode fazer, o que faz) → retorne action "reply" com o menu de opções numeradas abaixo.',
+    `   - Menu do paciente:\nComo posso te ajudar? 😊\n${patientMenu}\n\nDigite o número ou me diga o que precisa!`,
+    '   - Ao final de TODA resposta (exceto escalate), inclua 1-2 sugestões de próximo passo, ex: "Posso te ajudar com mais alguma coisa? Quer ver suas próximas consultas?".',
+    '   - Se o usuário responder com um número (1, 2, 3...), interprete como a opção do menu anterior.',
+    '   - Use emojis com moderação. Máx 3-4 linhas de texto + sugestão.',
     allowConfirm
       ? '1. Se o paciente confirmar uma consulta → use confirm_appointment com o appointmentId correto.'
       : '1. Se o paciente quiser confirmar → use escalate (atendente irá confirmar).',
@@ -385,7 +399,21 @@ async function handleStaffMessage(
     `- { "action": "escalate", "replyText": "..." } — não consegui processar`,
   ].join('\n')
 
+  const staffMenu = [
+    '1️⃣ Agenda de hoje',
+    '2️⃣ Buscar paciente pelo nome',
+    '3️⃣ Ver horários disponíveis',
+    '4️⃣ Agendar consulta para paciente',
+    '5️⃣ Salas (status agora)',
+  ].join('\n')
+
   const rules = [
+    '0. ESTILO PROATIVO:',
+    '   - Quando a mensagem for apenas uma saudação (oi, olá, bom dia, boa tarde, boa noite, ei, e aí, tudo bem, como vai, o que faz) → retorne action "reply" com o menu abaixo.',
+    `   - Menu da equipe:\nOlá! 😊 Como posso te ajudar?\n${staffMenu}\n\nDigite o número ou me diga o que precisa!`,
+    '   - Ao final de TODA resposta (exceto escalate), inclua uma sugestão direta de próximo passo. Ex: após concluir consulta → "Quer marcar o próximo ou ver a agenda?"; após buscar paciente → "Deseja agendar para ele(a)?".',
+    '   - Se o usuário responder com um número (1, 2, 3...), interprete como a opção do menu anterior.',
+    '   - Use emojis com moderação. Seja direto e objetivo.',
     '1. Para consultas, use os IDs entre [ID:...] na agenda.',
     '2. "confirmar", "confirmo", "va comparecer" → staff_confirm_appointment.',
     '3. Para agendar: identifique o paciente PRIMEIRO. Se o paciente está na agenda, o id já está lá. Se não, use staff_find_patient.',

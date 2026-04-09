@@ -50,6 +50,12 @@ serve(async (_req) => {
   const startUTC = fromZonedTime(new Date(y, m, d, 0, 0, 0, 0),     TZ).toISOString()
   const endUTC   = fromZonedTime(new Date(y, m, d, 23, 59, 59, 999), TZ).toISOString()
 
+  // ── On Mondays: also fetch the full week (Tue → Sun) for weekly preview ──
+  const isMonday = nowBrt.getDay() === 1
+  const weekEndUTC = isMonday
+    ? fromZonedTime(new Date(y, m, d + 6, 23, 59, 59, 999), TZ).toISOString()
+    : null
+
   // ── Clinics with feature enabled ──────────────────────────────────────────
   const { data: clinics, error: clinicErr } = await supabase
     .from('clinics')
@@ -76,12 +82,25 @@ serve(async (_req) => {
       .in('status', ['scheduled', 'confirmed'])
       .order('starts_at', { ascending: true })
 
-    if (!appts?.length) continue
+    // ── On Mondays: also fetch rest-of-week appointments ──────────────────
+    const weekAppts = isMonday && weekEndUTC
+      ? ((await supabase
+          .from('appointments')
+          .select('id, starts_at, professional:professionals(id, name, phone), patient:patients(name)')
+          .eq('clinic_id', clinic.id)
+          .gt('starts_at', endUTC)          // after today
+          .lte('starts_at', weekEndUTC)
+          .in('status', ['scheduled', 'confirmed'])
+          .order('starts_at', { ascending: true })
+        ).data ?? []) as Appointment[]
+      : []
 
-    // ── Group by professional ───────────────────────────────────────────────
+    if (!appts?.length && !weekAppts.length) continue
+
+    // ── Group today's appointments by professional ─────────────────────────
     const byProfessional = new Map<string, { professional: Professional; lines: string[] }>()
 
-    for (const appt of appts as Appointment[]) {
+    for (const appt of (appts ?? []) as Appointment[]) {
       const prof = appt.professional
       if (!prof?.id) continue
 
@@ -95,15 +114,70 @@ serve(async (_req) => {
       byProfessional.get(prof.id)!.lines.push(`${timeStr} — ${patient}`)
     }
 
-    // ── Send message to each professional with a phone ─────────────────────
-    for (const { professional, lines } of byProfessional.values()) {
-      if (!professional.phone) continue
+    // ── Build weekly preview section (Mondays only) ────────────────────────
+    const weekByProfDay = new Map<string, { professional: Professional; byDay: Map<string, string[]> }>()
 
-      const dateStr = format(nowBrt, 'dd/MM/yyyy')
-      const body =
-        `📅 Olá, ${professional.name}! Sua agenda de hoje (${dateStr}):\n\n` +
-        lines.join('\n') +
-        '\n\nBom trabalho! 🩺'
+    if (isMonday) {
+      for (const appt of weekAppts) {
+        const prof = appt.professional
+        if (!prof?.id) continue
+
+        if (!weekByProfDay.has(prof.id)) {
+          weekByProfDay.set(prof.id, { professional: prof as Professional, byDay: new Map() })
+        }
+
+        const apptBrt = toZonedTime(new Date(appt.starts_at), TZ)
+        const dayKey  = format(apptBrt, 'EEE dd/MM', { locale: undefined })
+        const timeStr = format(apptBrt, 'HH:mm')
+        const patient = appt.patient?.name ?? 'Paciente sem nome'
+
+        const entry = weekByProfDay.get(prof.id)!
+        if (!entry.byDay.has(dayKey)) entry.byDay.set(dayKey, [])
+        entry.byDay.get(dayKey)!.push(`  ${timeStr} — ${patient}`)
+      }
+    }
+
+    // ── Send message to each professional with a phone ─────────────────────
+    // Collect all professionals seen today OR in week preview
+    const allProfIds = new Set([
+      ...byProfessional.keys(),
+      ...(isMonday ? weekByProfDay.keys() : []),
+    ])
+
+    for (const profId of allProfIds) {
+      const todayEntry = byProfessional.get(profId)
+      const weekEntry  = weekByProfDay.get(profId)
+      const professional = (todayEntry?.professional ?? weekEntry?.professional) as Professional
+      if (!professional?.phone) continue
+
+      const dateStr   = format(nowBrt, 'dd/MM/yyyy')
+      const todayLines = todayEntry?.lines ?? []
+
+      let body: string
+
+      if (isMonday) {
+        // Monday: today + week preview
+        const todaySection = todayLines.length > 0
+          ? `📅 *Hoje (${dateStr}):*\n${todayLines.join('\n')}`
+          : `📅 *Hoje (${dateStr}):* nenhuma consulta agendada.`
+
+        const weekSections: string[] = []
+        for (const [dayLabel, lines] of (weekEntry?.byDay ?? new Map())) {
+          weekSections.push(`*${dayLabel}:*\n${lines.join('\n')}`)
+        }
+        const weekSection = weekSections.length > 0
+          ? `\n\n📆 *Restante da semana:*\n${weekSections.join('\n\n')}`
+          : '\n\n📆 *Restante da semana:* sem consultas agendadas.'
+
+        body = `🗓️ Olá, ${professional.name}! Aqui está a sua semana:\n\n${todaySection}${weekSection}\n\nBoa semana! 🩺`
+      } else {
+        // Other days: just today
+        if (!todayLines.length) continue
+        body =
+          `📅 Olá, ${professional.name}! Sua agenda de hoje (${dateStr}):\n\n` +
+          todayLines.join('\n') +
+          '\n\nBom trabalho! 🩺'
+      }
 
       const res = await fetch(`${SELF_URL}/functions/v1/whatsapp-send`, {
         method: 'POST',
