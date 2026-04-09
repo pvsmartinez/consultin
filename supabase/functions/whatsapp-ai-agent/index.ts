@@ -41,6 +41,7 @@ const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')!
 const OPENROUTER_BASE    = 'https://openrouter.ai/api/v1'
+const SITE_URL           = 'https://consultin.pmatz.com'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,10 @@ interface ClinicRow {
   wa_ai_allow_schedule:   boolean | null
   wa_ai_allow_confirm:    boolean | null
   wa_ai_allow_cancel:     boolean | null
+  subscription_tier:      string | null
+  subscription_status:    string | null
+  trial_ends_at:          string | null
+  billing_override_enabled: boolean | null
 }
 
 interface SlotOption {
@@ -96,7 +101,7 @@ serve(async (req) => {
   // ── Fetch clinic context ─────────────────────────────────────────────────
   const { data: clinic } = await supabase
     .from('clinics')
-    .select('name, phone, address, city, state, wa_ai_model, working_hours, slot_duration_minutes, wa_ai_custom_prompt, wa_ai_allow_schedule, wa_ai_allow_confirm, wa_ai_allow_cancel')
+    .select('name, phone, address, city, state, wa_ai_model, working_hours, slot_duration_minutes, wa_ai_custom_prompt, wa_ai_allow_schedule, wa_ai_allow_confirm, wa_ai_allow_cancel, subscription_tier, subscription_status, trial_ends_at, billing_override_enabled')
     .eq('id', clinicId)
     .single()
 
@@ -229,6 +234,8 @@ async function handlePatientMessage(
           `- ID:${a.id} | ${fmtDateTimeBR(a.starts_at)} com ${a.professional_name}`,
         ).join('\n')
       : '- Nenhuma consulta agendada.',
+    buildQuotaNotice(clinic),
+    buildPatientLinks(),
     `\nAções disponíveis (retorne APENAS um desses JSONs):`,
     allowedActions,
     `\nRegras:`,
@@ -401,6 +408,8 @@ async function handleStaffMessage(
     roomsText,
     slotsText,
     profsText,
+    buildQuotaNotice(clinic),
+    buildStaffLinks(),
     `\nAções disponíveis (retorne APENAS um desses JSONs):`,
     allowedActions,
     `\nRegras:`,
@@ -411,6 +420,57 @@ async function handleStaffMessage(
 }
 
 // ─── LLM call (shared) ────────────────────────────────────────────────────────
+
+/**
+ * Site shortcut links to inject into the staff system prompt.
+ * The AI will share these contextually when the user asks to view/manage something.
+ */
+function buildStaffLinks(): string {
+  return [
+    '\n=== ATALHOS DO SITE ===',
+    'Quando o usuário quiser ver ou gerenciar algo no site, envie o link direto (junto com a resposta):',
+    `- Agenda completa: ${SITE_URL}/agenda`,
+    `- Minha agenda: ${SITE_URL}/minha-agenda`,
+    `- Minha disponibilidade: ${SITE_URL}/minha-disponibilidade`,
+    `- Pacientes: ${SITE_URL}/pacientes`,
+    `- Equipe/funcionários: ${SITE_URL}/equipe`,
+    `- Financeiro: ${SITE_URL}/financeiro`,
+    `- Configurações: ${SITE_URL}/configuracoes`,
+    `- Assinatura/plano: ${SITE_URL}/assinatura`,
+  ].join('\n')
+}
+
+/**
+ * Site shortcut links to inject into the patient system prompt.
+ */
+function buildPatientLinks(): string {
+  return [
+    '\n=== ATALHOS DO SITE ===',
+    'Quando relevante, envie o link direto para o paciente acessar no site:',
+    `- Minhas consultas: ${SITE_URL}/minhas-consultas`,
+    `- Agendar consulta: ${SITE_URL}/agendar`,
+    `- Meu perfil: ${SITE_URL}/meu-perfil`,
+  ].join('\n')
+}
+
+/**
+ * Returns a notice string to inject into the system prompt when the clinic is
+ * near or over their monthly appointment quota. Empty string if not applicable.
+ */
+function buildQuotaNotice(clinic: ClinicRow): string {
+  const LIMITS: Record<string, number | null> = { trial: null, basic: 40, professional: 100, unlimited: null }
+  const tier  = clinic.subscription_tier ?? 'trial'
+  const limit = LIMITS[tier] ?? null
+  if (!limit) return ''
+
+  const hasActive = clinic.subscription_status === 'ACTIVE' || !!clinic.billing_override_enabled
+  if (!hasActive) return ''
+
+  // We don't have the real-time used count here (would require a DB query per message).
+  // Instead, include the limit so the AI can mention it if the user asks.
+  const tierLabels: Record<string, string> = { basic: 'Básico', professional: 'Profissional' }
+  return `\n=== PLANO ===\nPlano: ${tierLabels[tier] ?? tier} — até ${limit} consultas/mês.\nSe o limit for atingido, novos agendamentos são bloqueados. Quando relevante, informe ao usuário que o upgrade está em: https://consultin.pmatz.com/configuracoes`
+}
 
 async function callLLM(
   clinic:    ClinicRow,

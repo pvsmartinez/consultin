@@ -184,8 +184,136 @@ serve(async (req) => {
   }
 
   console.log(`[reminders/${type}] sent=${sent} skipped=${skipped} errors=${errors.length}`)
-  return json({ sent, skipped, errors })
+
+  // ── Quota warnings (only on d0 run, once per day) ─────────────────────────
+  let quotaWarnings = 0
+  if (type === 'd0') {
+    quotaWarnings = await checkAndNotifyQuota(supabase, SELF_URL, SUPABASE_SRK)
+  }
+
+  return json({ sent, skipped, errors, quotaWarnings })
 })
+
+// ─── Quota notification ───────────────────────────────────────────────────────
+
+const TIER_LIMITS: Record<string, number | null> = {
+  trial:        null,
+  basic:        40,
+  professional: 100,
+  unlimited:    null,
+}
+
+async function checkAndNotifyQuota(
+  supabase: ReturnType<typeof import('https://esm.sh/@supabase/supabase-js@2').createClient>,
+  selfUrl:  string,
+  srk:      string,
+): Promise<number> {
+  const now        = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).toISOString()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+
+  // Fetch clinics that have WhatsApp enabled and a limited tier
+  const { data: allClinics } = await supabase
+    .from('clinics')
+    .select('id, name, subscription_tier, subscription_status, trial_ends_at, billing_override_enabled, whatsapp_enabled, whatsapp_phone_number_id')
+    .eq('whatsapp_enabled', true)
+    .in('subscription_tier', ['basic', 'professional'])
+
+  if (!allClinics?.length) return 0
+
+  let warned = 0
+
+  for (const clinic of allClinics) {
+    const limit = TIER_LIMITS[clinic.subscription_tier as string]
+    if (!limit) continue
+
+    const hasActiveSubscription = clinic.subscription_status === 'ACTIVE' || clinic.billing_override_enabled
+    if (!hasActiveSubscription) continue  // trial/expired — UpgradeModal handles it in-app
+
+    // Count this month's non-cancelled appointments
+    const { count: used } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('clinic_id', clinic.id)
+      .gte('starts_at', monthStart)
+      .lte('starts_at', monthEnd)
+      .neq('status', 'cancelled')
+
+    if (!used) continue
+
+    const pct = used / limit
+    const notifType: string | null =
+      used >= limit      ? 'quota_limit'      :
+      pct  >= 0.8        ? 'quota_warning_80'  :
+      null
+
+    if (!notifType) continue
+
+    // Dedup: only once per day per threshold
+    const { data: alreadySent } = await supabase
+      .from('notification_log')
+      .select('id')
+      .eq('clinic_id', clinic.id)
+      .eq('type', notifType)
+      .eq('channel', 'whatsapp')
+      .gte('sent_at', todayStart)
+      .not('status', 'eq', 'failed')
+      .limit(1)
+      .maybeSingle()
+
+    if (alreadySent) continue
+
+    // Find admin users with notification_phone
+    const { data: admins } = await supabase
+      .from('user_profiles')
+      .select('id, notification_phone')
+      .eq('clinic_id', clinic.id)
+      .contains('roles', ['admin'])
+      .not('notification_phone', 'is', null)
+
+    if (!admins?.length) continue
+
+    const tierLabel: Record<string, string> = { basic: 'Básico', professional: 'Profissional' }
+    const msgText = used >= limit
+      ? `🚫 *Limit atingido — ${clinic.name}*\n\nVocê usou todas as *${limit} consultas* do plano ${tierLabel[clinic.subscription_tier as string] ?? clinic.subscription_tier} este mês. Novos agendamentos estão bloqueados.\n\n👉 Faça upgrade em: https://consultin.pmatz.com/configuracoes`
+      : `⚠️ *Aviso de cota — ${clinic.name}*\n\nVocê usou *${used} de ${limit}* consultas este mês (${Math.round(pct * 100)}%). Considere fazer upgrade para não ter interrupções.\n\n👉 https://consultin.pmatz.com/configuracoes`
+
+    for (const admin of admins as { id: string; notification_phone: string }[]) {
+      const phone = normalizePhone(admin.notification_phone)
+      if (!phone) continue
+
+      try {
+        const res = await fetch(`${selfUrl}/functions/v1/whatsapp-send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${srk}` },
+          body: JSON.stringify({
+            clinicId:  clinic.id,
+            sessionId: null,
+            sentBy:    'system',
+            to:        phone,
+            type:      'text',
+            text:      { body: msgText },
+          }),
+        })
+
+        await supabase.from('notification_log').insert({
+          clinic_id:     clinic.id,
+          channel:       'whatsapp',
+          type:          notifType,
+          status:        res.ok ? 'sent' : 'failed',
+          error_message: res.ok ? null : `HTTP ${res.status}`,
+        })
+
+        if (res.ok) warned++
+      } catch (e) {
+        console.error(`[quota] failed sending to admin ${admin.id}:`, e)
+      }
+    }
+  }
+
+  return warned
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
