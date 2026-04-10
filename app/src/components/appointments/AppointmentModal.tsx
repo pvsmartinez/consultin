@@ -15,7 +15,6 @@ import { useProfessionals } from '../../hooks/useProfessionals'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
 import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
 import { usePatients, useCreatePatient } from '../../hooks/usePatients'
-import { useClinic } from '../../hooks/useClinic'
 import { useRooms } from '../../hooks/useRooms'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -107,8 +106,7 @@ export default function AppointmentModal({
   const isEditing = !!appointment
   const navigate = useNavigate()
   const { hasPermission } = useAuthContext()
-  const { data: clinic } = useClinic()
-  const { hasStaff } = useClinicModules()
+  const { hasStaff, hasFinancial } = useClinicModules()
   const { data: professionals = [] } = useProfessionals()
   const { create, update, cancel } = useAppointmentMutations()
   const { data: payments = [] } = useAppointmentPayments(appointment?.id)
@@ -138,7 +136,7 @@ export default function AppointmentModal({
   const recurrenceCount = watch('recurrenceCount')
   const durationMinVal  = watch('durationMin')
   const latestPayment = payments[0] ?? null
-  const canManagePayments = isEditing && !!appointment && clinic?.paymentsEnabled && hasPermission('canViewFinancial')
+  const canManagePayments = isEditing && !!appointment && hasFinancial && hasPermission('canViewFinancial')
   const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
   const canManagePatients = hasPermission('canManagePatients')
 

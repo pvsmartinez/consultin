@@ -8,14 +8,16 @@ const PacientesPage       = lazy(() => import('../pages/PacientesPage'))
 const SalasPage           = lazy(() => import('../pages/SalasPage'))
 const ConfiguracoesPage   = lazy(() => import('../pages/ConfiguracoesPage'))
 
-// ─── v1 pages reused as-is ───────────────────────────────────────────────────
-const PatientDetailPage       = lazy(() => import('../pages-v1/PatientDetailPage'))
+// ─── v2 pages (migrated from v1) ─────────────────────────────────────────────
+const PatientDetailPage        = lazy(() => import('../pages/PatientDetailPage'))
+const EquipePage               = lazy(() => import('../pages/EquipePage'))
+const FinanceiroPage           = lazy(() => import('../pages/FinanceiroPage'))
+const WhatsAppInboxPage        = lazy(() => import('../pages/WhatsAppInboxPage'))
+const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidadePage'))
+const MinhaContaPage           = lazy(() => import('../pages/MinhaContaPage'))
+
+// ─── v1 pages still in use ───────────────────────────────────────────────────
 const PatientAnamnesisPage    = lazy(() => import('../pages-v1/PatientAnamnesisPage'))
-const EquipePage              = lazy(() => import('../pages-v1/EquipePage'))
-const FinanceiroPage          = lazy(() => import('../pages-v1/FinanceiroPage'))
-const WhatsAppInboxPage       = lazy(() => import('../pages-v1/WhatsAppInboxPage'))
-const MinhaDisponibilidadePage = lazy(() => import('../pages-v1/MinhaDisponibilidadePage'))
-const MinhaContaPage          = lazy(() => import('../pages-v1/MinhaContaPage'))
 const AccessDeniedPage        = lazy(() => import('../pages-v1/AccessDeniedPage'))
 const AssinaturaPage          = lazy(() => import('../pages-v1/AssinaturaPage'))
 

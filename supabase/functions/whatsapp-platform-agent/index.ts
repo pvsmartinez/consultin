@@ -663,6 +663,11 @@ function buildSystemPrompt(
       ...ctx,
       `PERSONALITY: Warm, concise, like a helpful colleague on WhatsApp. Short messages. Reply in PT-BR.`,
       ``,
+      ...(isFirstMessage ? [
+        `FIRST MESSAGE RULE: Send a warm greeting (2–3 lines max). Show a concise menu of what you can do`,
+        `based on the WHAT YOU CAN HELP WITH list below. End with "O que posso fazer por você hoje?".`,
+        ``,
+      ] : []),
       `WHAT YOU CAN HELP WITH:`,
       P.canManageAgenda ? `• Agenda: confirmar [nome/nº], concluir, cancelar, remarcar, agendar nova consulta` : '',
       P.canViewPatients ? `• Pacientes: buscar por nome/CPF` : '',
@@ -849,6 +854,7 @@ async function executeSideEffect(
         name:      responsibleName || email,
         roles:     ['admin'],
         clinic_id: newClinic.id,
+        phone:     phone || null,
       })
 
       // 4. Link platform user to the Supabase auth user
@@ -921,6 +927,7 @@ async function executeSideEffect(
         name:      user.name ?? email,
         roles:     [role],
         clinic_id: clinic.id,
+        phone:     fromPhone || null,
       })
       await supabase.from('wa_platform_users').update({
         linked_user_id: userId,

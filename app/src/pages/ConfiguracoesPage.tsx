@@ -18,6 +18,7 @@ import PagamentoTab from '../pages-v1/settings/PagamentoTab'
 import WhatsAppTab from '../pages-v1/settings/WhatsAppTab'
 import NotificacoesTab from '../pages-v1/settings/NotificacoesTab'
 import UsuariosTab from '../pages-v1/settings/UsuariosTab'
+import AnamnesisTab from '../pages-v1/settings/AnamnesisTab'
 
 // ─── Module cards ─────────────────────────────────────────────────────────────
 
@@ -40,6 +41,12 @@ const MODULES: ModuleDef[] = [
     label: 'Salas',
     description: 'Gerencie salas e espaços físicos. A agenda passa a filtrar por sala.',
     icon: Buildings,
+  },
+  {
+    key: 'services',
+    label: 'Tipos de consulta',
+    description: 'Cadastre tipos de atendimento com duração e valor padrão.',
+    icon: Stethoscope,
   },
   {
     key: 'whatsapp',
@@ -105,7 +112,7 @@ function ModuleCard({
 
 // ─── Settings tabs ────────────────────────────────────────────────────────────
 
-type Tab = 'dados' | 'agenda' | 'servicos' | 'campos' | 'disponibilidade' | 'salas' | 'pagamento' | 'whatsapp' | 'notificacoes' | 'usuarios'
+type Tab = 'dados' | 'agenda' | 'servicos' | 'anamnese' | 'campos' | 'disponibilidade' | 'salas' | 'pagamento' | 'whatsapp' | 'notificacoes' | 'usuarios'
 
 interface TabDef {
   id: Tab
@@ -119,10 +126,11 @@ const TABS: TabDef[] = [
   { id: 'agenda',          label: 'Agenda',            icon: CalendarBlank },
   { id: 'disponibilidade', label: 'Horários',          icon: Clock },
   { id: 'notificacoes',    label: 'Notificações',      icon: Bell },
-  { id: 'servicos',        label: 'Serviços',          icon: Stethoscope },
+  { id: 'servicos',        label: 'Tipos de consulta', icon: Stethoscope,  moduleRequired: 'services' },
   { id: 'salas',           label: 'Salas',             icon: Door,         moduleRequired: 'rooms' },
   { id: 'pagamento',       label: 'Pagamentos',        icon: CurrencyDollar, moduleRequired: 'financial' },
   { id: 'campos',          label: 'Formulários',       icon: Sliders },
+  { id: 'anamnese',        label: 'Anamnese',          icon: Bell },
   { id: 'usuarios',        label: 'Usuários e acesso', icon: UsersThree },
   { id: 'whatsapp',        label: 'WhatsApp',          icon: WhatsappLogo, moduleRequired: 'whatsapp' },
 ]
@@ -134,6 +142,7 @@ const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
   disponibilidade: DisponibilidadeTab,
   notificacoes:    NotificacoesTab,
   servicos:        ServicosTab,
+  anamnese:        AnamnesisTab,
   salas:           SalasTab,
   pagamento:       PagamentoTab,
   campos:          CamposTab,
@@ -146,7 +155,7 @@ const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
 export default function ConfiguracoesPage() {
   const location = useLocation()
   const { data: clinic } = useClinic()
-  const { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, enableModule, disableModule } = useClinicModules()
+  const { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, enableModule, disableModule } = useClinicModules()
   const [activeTab, setActiveTab] = useState<Tab>('dados')
   const [toggling, setToggling] = useState<ClinicModule | null>(null)
 
@@ -160,9 +169,10 @@ export default function ConfiguracoesPage() {
   }, [location.search, location.state])
 
   const moduleActiveMap: Record<ClinicModule, boolean> = {
-    rooms: hasRooms,
-    staff: hasStaff,
-    whatsapp: hasWhatsApp,
+    rooms:     hasRooms,
+    staff:     hasStaff,
+    services:  hasServices,
+    whatsapp:  hasWhatsApp,
     financial: hasFinancial,
   }
 
