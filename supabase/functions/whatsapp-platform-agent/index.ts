@@ -57,6 +57,7 @@ const META_GRAPH_BASE = 'https://graph.facebook.com/v21.0'
 const A = {
   // Utility
   REPLY:                        'reply',
+  REPLY_WITH_BUTTONS:           'reply_with_buttons',
   SAVE_INFO:                    'save_info',
   // Onboarding — clinic creation
   SEARCH_CLINICS:               'search_clinics',
@@ -97,6 +98,17 @@ interface PlatformAgentRequest {
   fromPhone:    string
   messageText:  string
   waMessageId?: string
+  buttonReplyId?: string
+}
+
+interface PlatformBotState {
+  pendingJoinCode?: string | null
+  lastVerifiedJoinCode?: {
+    code: string
+    found: boolean
+    clinicId?: string | null
+    clinicName?: string | null
+  } | null
 }
 
 interface PlatformUser {
@@ -106,6 +118,7 @@ interface PlatformUser {
   email:          string | null
   linked_user_id: string | null
   notes:          string | null
+  bot_state:      PlatformBotState | null
 }
 
 interface ClinicInfo {
@@ -126,6 +139,8 @@ interface ClinicBotConfig {
 interface PlatformAction {
   action:             ActionName
   replyText:          string
+  // reply_with_buttons
+  buttons?:           { id: string; title: string }[]
   // save_info
   name?:              string
   email?:             string
@@ -259,6 +274,45 @@ interface StaffRequest {
   role:            string
 }
 
+function normalizePlatformBotState(raw: unknown): PlatformBotState {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+
+  const state = raw as Record<string, unknown>
+  const pendingJoinCode = typeof state.pendingJoinCode === 'string'
+    ? state.pendingJoinCode.trim().toUpperCase()
+    : null
+
+  const verifiedRaw = state.lastVerifiedJoinCode
+  let lastVerifiedJoinCode: PlatformBotState['lastVerifiedJoinCode'] = null
+  if (verifiedRaw && typeof verifiedRaw === 'object' && !Array.isArray(verifiedRaw)) {
+    const verified = verifiedRaw as Record<string, unknown>
+    if (typeof verified.code === 'string' && typeof verified.found === 'boolean') {
+      lastVerifiedJoinCode = {
+        code:       verified.code.trim().toUpperCase(),
+        found:      verified.found,
+        clinicId:   typeof verified.clinicId === 'string' ? verified.clinicId : null,
+        clinicName: typeof verified.clinicName === 'string' ? verified.clinicName : null,
+      }
+    }
+  }
+
+  return {
+    pendingJoinCode: /^[A-Z0-9]{6}$/.test(pendingJoinCode ?? '') ? pendingJoinCode : null,
+    lastVerifiedJoinCode,
+  }
+}
+
+async function savePlatformBotState(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  botState: PlatformBotState,
+): Promise<void> {
+  await supabase
+    .from(T.WA_PLATFORM_USERS)
+    .update({ bot_state: botState })
+    .eq('id', userId)
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -276,24 +330,30 @@ serve(async (req) => {
   // ── Find or create platform user ──────────────────────────────────────────
   const { data: existingUser } = await supabase
     .from(T.WA_PLATFORM_USERS)
-    .select('id, phone, name, email, linked_user_id, notes')
+    .select('id, phone, name, email, linked_user_id, notes, bot_state')
     .eq('phone', fromPhone)
     .maybeSingle()
 
   let user: PlatformUser
   if (existingUser) {
-    user = existingUser as PlatformUser
+    user = {
+      ...(existingUser as PlatformUser),
+      bot_state: normalizePlatformBotState((existingUser as Record<string, unknown>).bot_state),
+    }
   } else {
     const { data: newUser, error } = await supabase
       .from(T.WA_PLATFORM_USERS)
       .insert({ phone: fromPhone })
-      .select('id, phone, name, email, linked_user_id, notes')
+      .select('id, phone, name, email, linked_user_id, notes, bot_state')
       .single()
     if (error || !newUser) {
       console.error('[platform-agent] Failed to create user:', error)
       return new Response('Internal error', { status: 500 })
     }
-    user = newUser as PlatformUser
+    user = {
+      ...(newUser as PlatformUser),
+      bot_state: normalizePlatformBotState((newUser as Record<string, unknown>).bot_state),
+    }
   }
 
   // ── Save the incoming message ─────────────────────────────────────────────
@@ -433,6 +493,228 @@ serve(async (req) => {
     .slice(0, -1)
 
   const isFirstMessage = history.length === 0
+  const buttonReplyId = body.buttonReplyId?.trim() ?? ''
+
+  if (buttonReplyId === 'open_dashboard') {
+    const directReply = [
+      `Aqui está o painel:`,
+      `${SITE_URL}`,
+      '',
+      `Se quiser, também posso te ajudar por aqui no WhatsApp.`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'view_pricing', title: 'Ver precos' },
+      { id: 'create_clinic', title: 'Criar clinica' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  if (buttonReplyId === 'view_pricing') {
+    const directReply = [
+      `Claro. Os detalhes dos planos estão aqui:`,
+      `${SITE_URL}/precos`,
+      '',
+      `Se quiser, eu também posso te ajudar a começar sua clínica agora mesmo.`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'open_dashboard', title: 'Abrir painel' },
+      { id: 'create_clinic', title: 'Criar clinica' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  if (buttonReplyId === 'create_clinic' || buttonReplyId === 'start_clinic') {
+    const directReply = [
+      `Bora criar sua clínica.`,
+      `Me manda o *nome da clínica* e seu *e-mail* em uma mensagem só para eu adiantar seu acesso.`,
+      '',
+      `Exemplo: Clínica Sorriso, joao@clinica.com`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'view_pricing', title: 'Ver precos' },
+      { id: 'open_dashboard', title: 'Abrir painel' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  if (buttonReplyId === 'role_professional' || buttonReplyId === 'role_reception') {
+    const roleLabel = buttonReplyId === 'role_professional' ? 'profissional' : 'recepcionista'
+    const pendingJoinCode = user.bot_state?.pendingJoinCode?.trim().toUpperCase() ?? ''
+    const directReply = pendingJoinCode
+      ? [
+          `Perfeito, vou te cadastrar como *${roleLabel}* usando o código *${pendingJoinCode}*.`,
+          `Agora me mande seu *e-mail* para eu concluir o acesso.`,
+          '',
+          `Exemplo: joao@clinica.com`,
+        ].join('\n')
+      : [
+          `Perfeito, vou te cadastrar como *${roleLabel}*.`,
+          `Agora me mande seu *e-mail* junto com o *código de acesso* da clínica para eu concluir.`,
+          '',
+          `Exemplo: ABC123, joao@clinica.com`,
+        ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWA(fromPhone, directReply)
+    return new Response('OK', { status: 200 })
+  }
+
+  const wantsSupport = /(\bsuporte\b|falar\s+com\s+(algu[eé]m|humano)|atendimento|resolver\s+um\s+problema)/i.test(messageText)
+  if (wantsSupport) {
+    const directReply = [
+      `Pode me chamar por aqui mesmo.`,
+      `Se me mandar em 1 mensagem o que aconteceu, o nome da clínica e o que você quer fazer, eu já te ajudo sem te jogar para outro canal.`,
+      '',
+      `Se preferir, você também pode abrir o painel:`,
+      `${SITE_URL}`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'open_dashboard', title: 'Abrir painel' },
+      { id: 'create_clinic', title: 'Criar clinica' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  const normalizedMessage = messageText.trim().toUpperCase()
+  const directJoinCode = /^[A-Z0-9]{6}$/.test(normalizedMessage)
+    ? normalizedMessage
+    : (messageText.match(/\bc[oó]digo\b[^A-Z0-9]*([A-Z0-9]{6})\b/i)?.[1] ?? '').toUpperCase()
+  if (directJoinCode) {
+    const joinCode = directJoinCode
+    const nextBotState = {
+      ...normalizePlatformBotState(user.bot_state),
+      pendingJoinCode: joinCode,
+    }
+    await savePlatformBotState(supabase, user.id, nextBotState)
+    user = { ...user, bot_state: nextBotState }
+    const directReply = [
+      `Perfeito. Vou usar o código *${joinCode}*.`,
+      `Agora me mande seu *e-mail* e sua função na clínica: *profissional* ou *recepcionista*.`,
+      '',
+      `Exemplo: joao@clinica.com, profissional`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'role_professional', title: 'Sou profissional' },
+      { id: 'role_reception', title: 'Sou recepcionista' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  const wantsCreateClinic = /(quero\s+criar|minha\s+clinica|minha\s+cl[ií]nica|criar\s+(uma\s+)?cl[ií]nica|abrir\s+minha\s+cl[ií]nica|come[cç]ar\s+minha\s+cl[ií]nica)/i.test(messageText)
+  if (wantsCreateClinic) {
+    const directReply = [
+      `Bora criar sua clínica.`,
+      `Me manda o *nome da clínica* e seu *e-mail* em uma mensagem só para eu adiantar seu acesso.`,
+      '',
+      `Exemplo: Clínica Sorriso, joao@clinica.com`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'create_clinic', title: 'Criar clinica' },
+      { id: 'view_pricing', title: 'Ver precos' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  // ── Deterministic fast-path: direct panel link requests ─────────────────
+  // Avoids relying on model variance for simple "send me the link" asks.
+  const wantsPricingLink = /(\bpreco\b|\bprecos\b|\bpreço\b|\bpreços\b|\bplano\b|\bplanos\b)/i.test(messageText)
+  if (wantsPricingLink) {
+    const directReply = [
+      `Claro. Você pode ver os detalhes dos planos por aqui:`,
+      `${SITE_URL}/precos`,
+      '',
+      `Se quiser, eu também posso te ajudar a começar sua clínica agora mesmo.`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'open_dashboard', title: 'Abrir painel' },
+      { id: 'start_clinic', title: 'Criar clinica' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
+
+  const wantsPanelLink = /(\bpainel\b|\bdashboard\b|manda\s+o?\s*link|link\s+de\s+acesso|como\s+(eu\s+)?(acesso|entro))/i.test(messageText)
+  if (wantsPanelLink) {
+    const directReply = [
+      `Tem sim! Você pode acessar o painel completo por aqui:`,
+      `${SITE_URL}`,
+      '',
+      `Se quiser, também posso te ajudar a configurar tudo por aqui no WhatsApp.`,
+    ].join('\n')
+
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+      platform_user_id: user.id,
+      role:             'assistant',
+      content:          directReply,
+    })
+
+    await sendWAInteractive(fromPhone, directReply, [
+      { id: 'open_dashboard', title: 'Abrir painel' },
+      { id: 'view_pricing', title: 'Ver precos' },
+    ])
+
+    return new Response('OK', { status: 200 })
+  }
 
   // ── Typing indicator (fire-and-forget) ──────────────────────────────────
   if (body.waMessageId) {
@@ -477,7 +759,11 @@ serve(async (req) => {
   // ── Send WhatsApp reply ───────────────────────────────────────────────────
   const finalReply = replyOverride ?? action.replyText
   if (finalReply) {
-    await sendWA(fromPhone, finalReply)
+    if (action.action === A.REPLY_WITH_BUTTONS && action.buttons && action.buttons.length > 0) {
+      await sendWAInteractive(fromPhone, finalReply, action.buttons)
+    } else {
+      await sendWA(fromPhone, finalReply)
+    }
   }
 
   return new Response('OK', { status: 200 })
@@ -702,6 +988,7 @@ function buildSystemPrompt(
     // Actions reference
     const acts = [
       `{ "action": "reply", "replyText": "..." }`,
+      `{ "action": "reply_with_buttons", "replyText": "...", "buttons": [{"id":"open_dashboard","title":"Abrir painel"},{"id":"view_pricing","title":"Ver preços"}] }`,
     ]
     if (P.canManageAgenda) acts.push(
       `{ "action": "update_appointment_status", "appointmentId": "ID_FROM_CONTEXT", "newStatus": "confirmed|completed|cancelled|no_show", "replyText": "..." }`,
@@ -764,7 +1051,9 @@ function buildSystemPrompt(
       `3. Para agendar: use search_available_slots antes de schedule_appointment.`,
       `4. Para paciente não encontrado em cache: use search_patients. Para criar: create_patient (tool loop).`,
       `5. Horários em America/Sao_Paulo (BRT = UTC-3). ISO8601 com offset: "2026-04-08T09:00:00-03:00"`,
-      `6. Respond ONLY with valid JSON matching an action below.`,
+      `6. Se o usuário pedir link do painel/preços/suporte, envie o link direto na resposta (não pergunte se pode enviar).`,
+      `7. Use reply_with_buttons quando houver 2-3 próximos passos claros para reduzir atrito.`,
+      `8. Respond ONLY with valid JSON matching an action below.`,
       ``,
       `ACTIONS:`,
       ...acts,
@@ -815,6 +1104,7 @@ function buildSystemPrompt(
     `COMMON SITUATIONS — read the message and adapt tone accordingly:`,
     `• "o que é o Consultin?" / "do que se trata?" / "me fala mais" → Elevator pitch in 3–4 lines: agenda, pacientes, WhatsApp bot que atende pacientes automaticamente, financeiro. Close with "Quer testar grátis? Crio sua clínica em 2 minutos."`,
     `• "quanto custa?" / "tem plano grátis?" / "preço?" → Tem período de teste gratuito; planos pagos desbloqueiam recursos avançados. Ver detalhes: ${SITE_URL}/precos. Pergunte: "Quer começar agora?"`,
+    `• "tem painel?" / "manda o link" / "como acesso?" → envie o link direto: ${SITE_URL}. Se ajudar, use reply_with_buttons com "Abrir painel" + "Ver preços".`,
     `• "recebi esse número" / "quem é você?" / confused user → Explain: this is Consultin's official channel for clinic owners and staff — not for patients. Ask if they own or work at a clinic.`,
     `• User mentions their specialty (dentista, fisioterapeuta, psicólogo, esteticista etc.) → Acknowledge that Consultin works great for that specialty. Then offer to create their clinic (FLOW A).`,
     `• User sends or mentions a 6-char code (letters+numbers) → Jump to FLOW B immediately, no re-introduction needed.`,
@@ -832,6 +1122,7 @@ function buildSystemPrompt(
     ``,
     `ACTIONS (respond with EXACTLY ONE JSON object):`,
     `{ "action": "reply", "replyText": "..." }`,
+    `{ "action": "reply_with_buttons", "replyText": "...", "buttons": [{"id":"open_dashboard","title":"Abrir painel"},{"id":"view_pricing","title":"Ver preços"}] }`,
     `{ "action": "save_info", "name": "...", "email": "...", "replyText": "..." }`,
     `{ "action": "search_clinics", "clinicName": "...", "replyText": "Deixa eu verificar..." }  ← TOOL LOOP`,
     `{ "action": "create_clinic_now", "clinicName": "...", "responsibleName": "...", "email": "...", "phone": "...", "replyText": "..." }`,
@@ -877,16 +1168,26 @@ async function executeSideEffect(
   if (action.action === A.SEARCH_CLINICS) return null
 
   if (action.action === A.VERIFY_JOIN_CODE && action.joinCode) {
-    // Store verification result in notes so next turn has context
     const { data: clinic } = await supabase
       .from(T.CLINICS)
       .select('id, name')
       .eq('join_code', action.joinCode.toUpperCase())
       .maybeSingle()
-    const note = clinic
-      ? `verify_code:${action.joinCode.toUpperCase()}=found:${clinic.name}[${clinic.id}]`
-      : `verify_code:${action.joinCode.toUpperCase()}=not_found`
-    await supabase.from(T.WA_PLATFORM_USERS).update({ notes: note }).eq('id', user.id)
+    const nextBotState = {
+      ...normalizePlatformBotState(user.bot_state),
+      lastVerifiedJoinCode: clinic
+        ? {
+            code:       action.joinCode.toUpperCase(),
+            found:      true,
+            clinicId:   (clinic as { id: string }).id,
+            clinicName: (clinic as { name: string }).name,
+          }
+        : {
+            code:  action.joinCode.toUpperCase(),
+            found: false,
+          },
+    }
+    await savePlatformBotState(supabase, user.id, nextBotState)
     return null
   }
 
@@ -955,6 +1256,7 @@ async function executeSideEffect(
         linked_user_id: userId,
         name:           (user.name ?? responsibleName) || null,
         email,
+        bot_state:      {},
       }).eq('id', user.id)
     }
 
@@ -975,7 +1277,7 @@ async function executeSideEffect(
     return [
       `✅ Tudo pronto, *${name}*! A clínica *${clinicName}* foi criada.`,
       ``,
-      `📧 Você vai receber um e-mail em *${email}* para definir sua senha e acessar o painel completo em consultin.pmatz.com`,
+      `📧 Você vai receber um e-mail em *${email}* para definir sua senha e acessar o painel completo em ${SITE_URL.replace(/^https?:\/\//, '')}`,
       ``,
       `*O que você já pode fazer por aqui no WhatsApp:*`,
       ``,
@@ -1050,6 +1352,7 @@ async function executeSideEffect(
       await supabase.from(T.WA_PLATFORM_USERS).update({
         linked_user_id: userId,
         email,
+        bot_state:      {},
       }).eq('id', user.id)
     }
 
@@ -1067,7 +1370,7 @@ async function executeSideEffect(
     return [
       `✅ Pronto, *${memberName}*! Você agora faz parte da clínica *${clinic.name}* como *${roleLabel}*.`,
       ``,
-      `📧 Verifique seu e-mail *${email}* para definir sua senha e acessar o painel em consultin.pmatz.com`,
+      `📧 Verifique seu e-mail *${email}* para definir sua senha e acessar o painel em ${SITE_URL.replace(/^https?:\/\//, '')}`,
       ``,
       `*O que você pode fazer aqui:*`,
       role === 'professional'
@@ -1844,4 +2147,53 @@ async function sendWA(toPhone: string, text: string): Promise<void> {
     }),
   })
   if (!res.ok) console.error('[platform-agent] WA send error:', await res.text())
+}
+
+async function sendWAInteractive(
+  toPhone: string,
+  text: string,
+  buttons: { id: string; title: string }[],
+): Promise<void> {
+  if (!PLATFORM_PHONE_ID || !PLATFORM_WA_TOKEN) {
+    console.warn('[platform-agent] WA credentials not set — skipping send')
+    return
+  }
+
+  const safeButtons = buttons
+    .slice(0, 3)
+    .map((b, i) => ({
+      type: 'reply' as const,
+      reply: {
+        id: (b.id?.trim() || `btn_${i + 1}`).slice(0, 256),
+        title: (b.title?.trim() || `Opção ${i + 1}`).slice(0, 20),
+      },
+    }))
+
+  if (safeButtons.length === 0) {
+    await sendWA(toPhone, text)
+    return
+  }
+
+  const res = await fetch(`${META_GRAPH_BASE}/${PLATFORM_PHONE_ID}/messages`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization:  `Bearer ${PLATFORM_WA_TOKEN}`,
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to:                toPhone,
+      type:              'interactive',
+      interactive: {
+        type: 'button',
+        body: { text: text.slice(0, 1024) },
+        action: { buttons: safeButtons },
+      },
+    }),
+  })
+
+  if (!res.ok) {
+    console.error('[platform-agent] WA interactive send error:', await res.text())
+    await sendWA(toPhone, text)
+  }
 }

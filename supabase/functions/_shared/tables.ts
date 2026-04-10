@@ -67,6 +67,16 @@ export const COL = {
     NOTIFICATION_PHONE:   'notification_phone',
   },
 
+  WA_PLATFORM_USERS: {
+    ID:             'id',
+    PHONE:          'phone',
+    NAME:           'name',
+    EMAIL:          'email',
+    LINKED_USER_ID: 'linked_user_id',
+    NOTES:          'notes',
+    BOT_STATE:      'bot_state',
+  },
+
   CLINICS: {
     ID:                       'id',
     NAME:                     'name',

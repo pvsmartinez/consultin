@@ -38,9 +38,10 @@ import { encode }       from 'https://deno.land/std@0.168.0/encoding/hex.ts'
 
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const META_APP_SECRET    = Deno.env.get('META_APP_SECRET') ?? ''
-const GROQ_API_KEY       = Deno.env.get('GROQ_API_KEY') ?? ''
-const SELF_URL           = Deno.env.get('SUPABASE_URL')!
+const META_APP_SECRET        = Deno.env.get('META_APP_SECRET') ?? ''
+const GROQ_API_KEY           = Deno.env.get('GROQ_API_KEY') ?? ''
+const SELF_URL               = Deno.env.get('SUPABASE_URL')!
+const PLATFORM_PHONE_NUMBER  = Deno.env.get('PLATFORM_PHONE_NUMBER') ?? ''  // e.g. 5511999999999
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
 const TELEGRAM_CHAT_ID   = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
 
@@ -99,13 +100,14 @@ serve(async (req) => {
       const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
       if (platformPhoneId && phoneNumberId === platformPhoneId) {
         for (const msg of value.messages ?? []) {
+          const buttonReplyId = msg.interactive?.button_reply?.id ?? null
           const msgText =
             msg.text?.body ??
             msg.button?.text ??
             msg.interactive?.button_reply?.title ??
             null
           if (!msgText || !msg.from) continue
-          await callPlatformAgent(msg.from, msgText, msg.id)
+          await callPlatformAgent(msg.from, msgText, msg.id, buttonReplyId ?? undefined)
         }
         continue
       }
@@ -156,6 +158,7 @@ async function processInbound(
     msg.button?.text ??
     msg.interactive?.button_reply?.title ??
     null
+  const buttonReplyId = msg.interactive?.button_reply?.id ?? null
 
   // ── Audio: transcribe via Groq Whisper ────────────────────────────────────
   if (msgType === 'audio' && msg.audio?.id) {
@@ -293,45 +296,41 @@ async function processInbound(
   const effectivePatientId = patient?.id ?? null
   const isStaffActor       = effectiveActorType === 'professional' || effectiveActorType === 'receptionist' || effectiveActorType === 'admin'
 
+  // ── Staff redirect — this number is for patients only ─────────────────────
+  // Staff should use the Consultin platform number (Helen) for all management.
+  if (isStaffActor) {
+    const staffName = (professional as { name?: string } | null)?.name
+      ?? (staffUser as { name?: string } | null)?.name
+      ?? null
+    const platformContactLine = PLATFORM_PHONE_NUMBER
+      ? `Para gerenciar agenda, consultas e equipe, use o WhatsApp da plataforma Consultin:\nhttps://wa.me/${PLATFORM_PHONE_NUMBER}`
+      : `Para gerenciar agenda, consultas e equipe, use o WhatsApp da plataforma Consultin.`
+    await sendReply(clinic.id, session.id, fromPhone, [
+      `Olá${staffName ? `, *${staffName}*` : ''}! 👋`,
+      '',
+      `Este número é exclusivo para *pacientes* da ${clinic.name}.`,
+      platformContactLine,
+    ].join('\n'))
+    return
+  }
+
   // ── Help / welcome message ─────────────────────────────────────────────────
   const isHelpRequest = /^(ajuda|help|\?|oi|olá|ola|oii|menu|comandos|inicio|início)$/i.test(msgText.trim())
 
   if (isNewSession || isHelpRequest) {
-    if (isStaffActor) {
-      const staffName = (professional as { name?: string } | null)?.name
-        ?? (staffUser as { name?: string } | null)?.name
-        ?? 'Equipe'
-      await sendReply(clinic.id, session.id, fromPhone, [
-        `Olá, *${staffName}*! 👋 Sou o assistente da *${clinic.name}*.`,
-        '',
-        '*O que posso fazer por você:*',
-        '📋 _"minha agenda"_ — agenda do dia',
-        '📅 _"agenda de amanhã"_ — agenda de outro dia',
-        '🚪 _"salas ocupadas"_ — status das salas agora',
-        '✅ _"concluir consulta do João"_ — marcar como concluída',
-        '❌ _"cancelar consulta das 14h"_ — cancelar',
-        '🔴 _"falta do paciente das 9h"_ — registrar no-show',
-        '🗓️ _"agendar João Silva amanhã às 10h com Dr. Ana"_ — novo agendamento',
-        '',
-        'Pode falar em linguagem natural ou por áudio! 😊',
-      ].join('\n'))
-      // On first message or pure help request: show menu and stop
-      if (isNewSession || isHelpRequest) return
-    } else {
-      const patientName = (patient as { name?: string } | null)?.name
-      await sendReply(clinic.id, session.id, fromPhone, [
-        `Olá${patientName ? `, *${patientName}*` : ''}! 👋 Sou o assistente virtual da *${clinic.name}*.`,
-        '',
-        '*Posso te ajudar com:*',
-        '📅 Suas consultas agendadas',
-        '✅ Confirmar ou cancelar consulta',
-        '🗓️ Marcar nova consulta',
-        '❓ Dúvidas e informações',
-        '',
-        'Como posso te ajudar hoje?',
-      ].join('\n'))
-      if (isNewSession || isHelpRequest) return
-    }
+    const patientName = (patient as { name?: string } | null)?.name
+    await sendReply(clinic.id, session.id, fromPhone, [
+      `Olá${patientName ? `, *${patientName}*` : ''}! 👋 Sou o assistente virtual da *${clinic.name}*.`,
+      '',
+      '*Posso te ajudar com:*',
+      '📅 Suas consultas agendadas',
+      '✅ Confirmar ou cancelar consulta',
+      '🗓️ Marcar nova consulta',
+      '❓ Dúvidas e informações',
+      '',
+      'Como posso te ajudar hoje?',
+    ].join('\n'))
+    return
   }
 
   // ── Typing indicator (fire-and-forget) ─────────────────────────────────
@@ -356,6 +355,7 @@ async function processInbound(
       message:        msgText,
       history:        session.context_snapshot ?? [],
       staffUserId:    staffUserId,
+      buttonReplyId,
     }),
   })
 
@@ -989,6 +989,7 @@ async function callPlatformAgent(
   fromPhone:    string,
   messageText:  string,
   waMessageId?: string,
+  buttonReplyId?: string,
 ): Promise<void> {
   try {
     await fetch(`${SELF_URL}/functions/v1/whatsapp-platform-agent`, {
@@ -997,7 +998,7 @@ async function callPlatformAgent(
         'Content-Type': 'application/json',
         Authorization:  `Bearer ${SUPABASE_SRK}`,
       },
-      body: JSON.stringify({ fromPhone, messageText, waMessageId }),
+      body: JSON.stringify({ fromPhone, messageText, waMessageId, buttonReplyId }),
     })
   } catch (e) {
     console.error('[webhook] callPlatformAgent error:', e)

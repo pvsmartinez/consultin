@@ -54,6 +54,7 @@ interface AgentRequest {
   message:         string
   history:         { role: 'user' | 'assistant'; content: string }[]
   staffUserId?:    string | null
+  buttonReplyId?:  string | null
 }
 
 interface ClinicRow {
@@ -125,7 +126,7 @@ async function handlePatientMessage(
   clinic:   ClinicRow,
   sessionId: string,
 ) {
-  const { clinicId, patientId, message, history } = body
+  const { clinicId, patientId, message, history, buttonReplyId } = body
 
   const allowConfirm  = clinic.wa_ai_allow_confirm  !== false
   const allowCancel   = clinic.wa_ai_allow_cancel   !== false
@@ -256,7 +257,7 @@ async function handlePatientMessage(
     rules,
   ].join('\n')
 
-  return callLLM(clinic, systemPrompt, history, message, sessionId, supabase, patientId)
+  return callLLM(clinic, systemPrompt, history, message, sessionId, supabase, patientId, buttonReplyId)
 }
 
 // ─── STAFF MODE ───────────────────────────────────────────────────────────────
@@ -267,7 +268,7 @@ async function handleStaffMessage(
   clinic:     ClinicRow,
   sessionId:  string,
 ) {
-  const { clinicId, professionalId, actorType, message, history } = body
+  const { clinicId, professionalId, actorType, message, history, buttonReplyId } = body
 
   // ── Detect which date(s) the staff is asking about ───────────────────────
   const dateRange    = detectRequestedDateRange(message)
@@ -444,7 +445,7 @@ async function handleStaffMessage(
     rules,
   ].join('\n')
 
-  return callLLM(clinic, systemPrompt, history, message, sessionId, supabase, null)
+  return callLLM(clinic, systemPrompt, history, message, sessionId, supabase, null, buttonReplyId)
 }
 
 // ─── LLM call (shared) ────────────────────────────────────────────────────────
@@ -508,12 +509,19 @@ async function callLLM(
   sessionId: string,
   supabase:  ReturnType<typeof createClient>,
   patientId: string | null | undefined,
+  buttonReplyId?: string | null,
 ) {
   const model           = clinic.wa_ai_model ?? 'google/gemma-4-31b-it'
   const supportsJsonMode = (model as string).startsWith('openai/')
 
   const messages = [
     { role: 'system', content: systemPrompt },
+    ...(buttonReplyId
+      ? [{
+          role: 'system' as const,
+          content: `[BUTTON_REPLY_ID]\n${buttonReplyId}\nThe user tapped a WhatsApp reply button. Use this semantic intent to disambiguate the visible button text when needed.`,
+        }]
+      : []),
     ...history.slice(-12),
     { role: 'user', content: message },
   ]
