@@ -81,13 +81,13 @@ serve(async (req) => {
 
   const { data: profile } = await serviceSupabase
     .from('user_profiles')
-    .select('clinic_id, role')
+    .select('clinic_id, roles')
     .eq('id', user.id)
     .single()
 
   if (!profile)                       return jsonError('Perfil de usuário não encontrado', 403, corsHeaders)
   if (profile.clinic_id !== clinicId) return jsonError('Acesso negado — clínica inválida', 403, corsHeaders)
-  if (profile.role !== 'admin')       return jsonError('Apenas administradores podem conectar o WhatsApp', 403, corsHeaders)
+  if (!(profile.roles ?? []).includes('admin')) return jsonError('Apenas administradores podem conectar o WhatsApp', 403, corsHeaders)
 
   // ── Exchange code → short-lived user access token ─────────────────────────
   const tokenRes = await fetch(

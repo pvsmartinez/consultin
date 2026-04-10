@@ -46,13 +46,13 @@ serve(async (req) => {
 
   const { data: profile } = await serviceSupabase
     .from('user_profiles')
-    .select('clinic_id, role')
+    .select('clinic_id, roles')
     .eq('id', user.id)
     .single()
 
-  if (!profile)                    return jsonError('User profile not found', 403)
+  if (!profile)                       return jsonError('User profile not found', 403)
   if (profile.clinic_id !== clinicId) return jsonError('Forbidden — wrong clinic', 403)
-  if (profile.role !== 'admin')    return jsonError('Forbidden — admin role required', 403)
+  if (!(profile.roles ?? []).includes('admin')) return jsonError('Forbidden — admin role required', 403)
 
   // ── Store token in Vault via the SECURITY DEFINER function ───────────────
   const { error: vaultErr } = await serviceSupabase

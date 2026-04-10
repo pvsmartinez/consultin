@@ -189,7 +189,7 @@ async function processInbound(
       .maybeSingle(),
     supabase
       .from('user_profiles')
-      .select('id, name, role')
+      .select('id, name, roles')
       .eq('clinic_id', clinic.id)
       .ilike('phone', `%${last9}%`)
       .maybeSingle(),
@@ -202,7 +202,7 @@ async function processInbound(
   if (professional) {
     actorType = 'professional'
   } else if (staffUser) {
-    actorType = (staffUser as { role: string }).role === 'admin' ? 'admin' : 'receptionist'
+    actorType = ((staffUser as { roles?: string[] }).roles ?? []).includes('admin') ? 'admin' : 'receptionist'
     staffUserId = (staffUser as { id: string }).id
   } else if (patient) {
     actorType = 'patient'

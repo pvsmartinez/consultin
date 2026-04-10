@@ -23,6 +23,7 @@
 
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { T, COL }       from '../_shared/tables.ts'
 
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -48,6 +49,47 @@ function computeUserPermissions(roles: string[], overrides: Record<string, boole
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
 const META_GRAPH_BASE = 'https://graph.facebook.com/v21.0'
+
+// ─── Action names ────────────────────────────────────────────────────────────
+// Single source of truth: used in both buildSystemPrompt() and executeSideEffect().
+// If you add a new action, add it here first — the TypeScript compiler will then
+// flag every place that needs to handle it.
+const A = {
+  // Utility
+  REPLY:                        'reply',
+  SAVE_INFO:                    'save_info',
+  // Onboarding — clinic creation
+  SEARCH_CLINICS:               'search_clinics',
+  CREATE_CLINIC_NOW:            'create_clinic_now',
+  // Onboarding — join / request
+  VERIFY_JOIN_CODE:             'verify_join_code',
+  JOIN_CLINIC:                  'join_clinic',
+  REQUEST_CLINIC_MEMBERSHIP:    'request_clinic_membership',
+  // Staff management
+  APPROVE_STAFF_REQUEST:        'approve_staff_request',
+  REJECT_STAFF_REQUEST:         'reject_staff_request',
+  INVITE_STAFF_DIRECTLY:        'invite_staff_directly',
+  UPDATE_MEMBER_PERMISSIONS:    'update_member_permissions',
+  // Appointments
+  UPDATE_APPOINTMENT_STATUS:    'update_appointment_status',
+  RESCHEDULE_APPOINTMENT:       'reschedule_appointment',
+  SCHEDULE_APPOINTMENT:         'schedule_appointment',
+  SEARCH_AVAILABLE_SLOTS:       'search_available_slots',
+  // Patients
+  SEARCH_PATIENTS:              'search_patients',
+  CREATE_PATIENT:               'create_patient',
+  // Clinic config
+  CONFIGURE_BOT:                'configure_bot',
+  // Profile & team
+  UPDATE_OWN_PROFILE:           'update_own_profile',
+  MANAGE_PROFESSIONAL:          'manage_professional',
+  MANAGE_SERVICE_TYPE:          'manage_service_type',
+  MANAGE_ROOM:                  'manage_room',
+  CLOSE_ROOM:                   'close_room',
+  UPDATE_OWN_AVAILABILITY:      'update_own_availability',
+} as const
+
+type ActionName = typeof A[keyof typeof A]
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,7 +124,7 @@ interface ClinicBotConfig {
 }
 
 interface PlatformAction {
-  action:             string
+  action:             ActionName
   replyText:          string
   // save_info
   name?:              string
@@ -233,7 +275,7 @@ serve(async (req) => {
 
   // ── Find or create platform user ──────────────────────────────────────────
   const { data: existingUser } = await supabase
-    .from('wa_platform_users')
+    .from(T.WA_PLATFORM_USERS)
     .select('id, phone, name, email, linked_user_id, notes')
     .eq('phone', fromPhone)
     .maybeSingle()
@@ -243,7 +285,7 @@ serve(async (req) => {
     user = existingUser as PlatformUser
   } else {
     const { data: newUser, error } = await supabase
-      .from('wa_platform_users')
+      .from(T.WA_PLATFORM_USERS)
       .insert({ phone: fromPhone })
       .select('id, phone, name, email, linked_user_id, notes')
       .single()
@@ -255,7 +297,7 @@ serve(async (req) => {
   }
 
   // ── Save the incoming message ─────────────────────────────────────────────
-  await supabase.from('wa_platform_messages').insert({
+  await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
     platform_user_id: user.id,
     role:             'user',
     content:          messageText,
@@ -267,7 +309,7 @@ serve(async (req) => {
   if (!user.linked_user_id) {
     const last9 = fromPhone.replace(/\D/g, '').slice(-9)
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from(T.USER_PROFILES)
       .select('id, name, roles, clinic_id, clinics(name, join_code)')
       .ilike('phone', `%${last9}`)
       .maybeSingle()
@@ -279,7 +321,7 @@ serve(async (req) => {
         clinics: { name: string; join_code: string } | null
       }
       await supabase
-        .from('wa_platform_users')
+        .from(T.WA_PLATFORM_USERS)
         .update({ linked_user_id: pr.id, name: user.name ?? pr.name })
         .eq('id', user.id)
       user = { ...user, linked_user_id: pr.id, name: user.name ?? pr.name }
@@ -297,7 +339,7 @@ serve(async (req) => {
     }
   } else {
     const { data: profiles } = await supabase
-      .from('user_profiles')
+      .from(T.USER_PROFILES)
       .select('roles, clinic_id, clinics(name, join_code)')
       .eq('id', user.linked_user_id)
 
@@ -325,7 +367,7 @@ serve(async (req) => {
 
   if (adminClinic) {
     const { data: cfg } = await supabase
-      .from('clinics')
+      .from(T.CLINICS)
       .select('wa_ai_model, wa_ai_custom_prompt, wa_ai_allow_schedule, wa_ai_allow_confirm, wa_ai_allow_cancel')
       .eq('id', adminClinic.id)
       .single()
@@ -337,7 +379,7 @@ serve(async (req) => {
   const adminClinicIds = linkedClinics.filter(c => c.role === 'admin').map(c => c.id)
   if (adminClinicIds.length > 0) {
     const { data: reqRows } = await supabase
-      .from('clinic_staff_requests')
+      .from(T.CLINIC_STAFF_REQUESTS)
       .select('id, clinic_id, requester_name, requester_email, requester_phone, role, clinics(name)')
       .in('clinic_id', adminClinicIds)
       .eq('status', 'pending')
@@ -360,7 +402,7 @@ serve(async (req) => {
 
   if (user.linked_user_id && primaryClinic) {
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from(T.USER_PROFILES)
       .select('roles, permission_overrides')
       .eq('id', user.linked_user_id)
       .eq('clinic_id', primaryClinic.id)
@@ -380,7 +422,7 @@ serve(async (req) => {
 
   // ── Load rolling history (last 16, excluding the message we just inserted) ─
   const { data: msgRows } = await supabase
-    .from('wa_platform_messages')
+    .from(T.WA_PLATFORM_MESSAGES)
     .select('role, content')
     .eq('platform_user_id', user.id)
     .order('created_at', { ascending: false })
@@ -399,12 +441,12 @@ serve(async (req) => {
 
   // ── Progress message for slow actions ────────────────────────────────────
   // Shown before the AI reply arrives; only for actions with meaningful latency
-  const PROGRESS_MSG: Partial<Record<string, string>> = {
-    create_clinic_now:         '⏳ Criando sua clínica e preparando o acesso…',
-    join_clinic:               '⏳ Verificando o código e configurando seu acesso…',
-    invite_staff_directly:     '⏳ Enviando o convite de acesso…',
-    schedule_appointment:      '⏳ Agendando consulta…',
-    reschedule_appointment:    '⏳ Alterando horário…',
+  const PROGRESS_MSG: Partial<Record<ActionName, string>> = {
+    [A.CREATE_CLINIC_NOW]:     '⏳ Criando sua clínica e preparando o acesso…',
+    [A.JOIN_CLINIC]:           '⏳ Verificando o código e configurando seu acesso…',
+    [A.INVITE_STAFF_DIRECTLY]: '⏳ Enviando o convite de acesso…',
+    [A.SCHEDULE_APPOINTMENT]:  '⏳ Agendando consulta…',
+    [A.RESCHEDULE_APPOINTMENT]:'⏳ Alterando horário…',
   }
 
   // ── Run AI ────────────────────────────────────────────────────────────────
@@ -416,7 +458,7 @@ serve(async (req) => {
 
   // ── Save assistant reply ──────────────────────────────────────────────────
   if (action.replyText) {
-    await supabase.from('wa_platform_messages').insert({
+    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
       platform_user_id: user.id,
       role:             'assistant',
       content:          action.replyText,
@@ -493,7 +535,7 @@ async function runAgent(
   })
 
   const fallback: PlatformAction = {
-    action:    'reply',
+    action:    A.REPLY,
     replyText: '😅 Tive um problema aqui. Pode tentar de novo em instantes?',
   }
 
@@ -514,9 +556,9 @@ async function runAgent(
   }
 
   // ── Safeguard: if second pass returns a tool action, force a plain reply ──
-  if (toolResult && ['search_clinics','search_patients','search_available_slots','create_patient'].includes(action.action)) {
+  if (toolResult && [A.SEARCH_CLINICS,A.SEARCH_PATIENTS,A.SEARCH_AVAILABLE_SLOTS,A.CREATE_PATIENT].includes(action.action)) {
     console.warn('[platform-agent] model returned tool action on tool-result pass:', action.action)
-    return { action: 'reply', replyText: action.replyText || '😅 Não consegui processar. Pode tentar de novo?' }
+    return { action: A.REPLY, replyText: action.replyText || '😅 Não consegui processar. Pode tentar de novo?' }
   }
 
   // ── Tool loops (only on first pass) ──────────────────────────────────────
@@ -531,7 +573,7 @@ async function runAgent(
     }
 
     // search_clinics
-    if (action.action === 'search_clinics' && action.clinicName) {
+    if (action.action === A.SEARCH_CLINICS && action.clinicName) {
       const results = await searchClinics(supabase, action.clinicName)
       const text = results.length > 0
         ? `Clinics similar to "${action.clinicName}":\n` +
@@ -542,7 +584,7 @@ async function runAgent(
     }
 
     // search_patients
-    if (action.action === 'search_patients' && action.patientQuery && primaryClinic) {
+    if (action.action === A.SEARCH_PATIENTS && action.patientQuery && primaryClinic) {
       const results = await searchPatients(supabase, primaryClinic.id, action.patientQuery)
       const text = results.length > 0
         ? `PATIENTS FOUND for "${action.patientQuery}":\n` +
@@ -553,7 +595,7 @@ async function runAgent(
     }
 
     // search_available_slots
-    if (action.action === 'search_available_slots' && action.professionalId && action.searchDate && primaryClinic) {
+    if (action.action === A.SEARCH_AVAILABLE_SLOTS && action.professionalId && action.searchDate && primaryClinic) {
       const dur   = action.durationMinutes ?? 30
       const slots = await computeAvailableSlots(supabase, primaryClinic.id, action.professionalId, action.searchDate, dur)
       const text  = slots.length > 0
@@ -565,7 +607,7 @@ async function runAgent(
     }
 
     // create_patient (tool loop so we get the ID back for scheduling)
-    if (action.action === 'create_patient' && action.patientName && primaryClinic) {
+    if (action.action === A.CREATE_PATIENT && action.patientName && primaryClinic) {
       const newId = await doCreatePatient(supabase, primaryClinic.id, action)
       const text  = newId
         ? `Patient created. Name: "${action.patientName}", patientId: "${newId}". Now use this ID to schedule the appointment with schedule_appointment.`
@@ -821,35 +863,35 @@ async function executeSideEffect(
 ): Promise<string | null> {  // returns non-null to override the AI's replyText
 
   // ── save_info ─────────────────────────────────────────────────────────────
-  if (action.action === 'save_info') {
+  if (action.action === A.SAVE_INFO) {
     const updates: Record<string, unknown> = {}
     if (action.name?.trim())  updates.name  = action.name.trim()
     if (action.email?.trim()) updates.email = action.email.trim().toLowerCase()
     if (Object.keys(updates).length > 0) {
-      await supabase.from('wa_platform_users').update(updates).eq('id', user.id)
+      await supabase.from(T.WA_PLATFORM_USERS).update(updates).eq('id', user.id)
     }
     return null
   }
 
   // ── search_clinics / verify_join_code — handled in tool loop, no DB side effect ──
-  if (action.action === 'search_clinics') return null
+  if (action.action === A.SEARCH_CLINICS) return null
 
-  if (action.action === 'verify_join_code' && action.joinCode) {
+  if (action.action === A.VERIFY_JOIN_CODE && action.joinCode) {
     // Store verification result in notes so next turn has context
     const { data: clinic } = await supabase
-      .from('clinics')
+      .from(T.CLINICS)
       .select('id, name')
       .eq('join_code', action.joinCode.toUpperCase())
       .maybeSingle()
     const note = clinic
       ? `verify_code:${action.joinCode.toUpperCase()}=found:${clinic.name}[${clinic.id}]`
       : `verify_code:${action.joinCode.toUpperCase()}=not_found`
-    await supabase.from('wa_platform_users').update({ notes: note }).eq('id', user.id)
+    await supabase.from(T.WA_PLATFORM_USERS).update({ notes: note }).eq('id', user.id)
     return null
   }
 
   // ── create_clinic_now ─────────────────────────────────────────────────────
-  if (action.action === 'create_clinic_now') {
+  if (action.action === A.CREATE_CLINIC_NOW) {
     const clinicName      = action.clinicName?.trim() ?? ''
     const responsibleName = (action.responsibleName ?? user.name ?? '').trim()
     const email           = (action.email ?? user.email ?? '').trim().toLowerCase()
@@ -862,7 +904,7 @@ async function executeSideEffect(
 
     // 1. Create clinic row (join_code auto-generated by DB default)
     const { data: newClinic, error: clinicErr } = await supabase
-      .from('clinics')
+      .from(T.CLINICS)
       .insert({ name: clinicName, phone })
       .select('id, join_code')
       .single()
@@ -900,7 +942,7 @@ async function executeSideEffect(
 
     if (userId) {
       // 3. Create user_profile as clinic admin
-      await supabase.from('user_profiles').upsert({
+      await supabase.from(T.USER_PROFILES).upsert({
         id:        userId,
         name:      responsibleName || email,
         roles:     ['admin'],
@@ -909,7 +951,7 @@ async function executeSideEffect(
       })
 
       // 4. Link platform user to the Supabase auth user
-      await supabase.from('wa_platform_users').update({
+      await supabase.from(T.WA_PLATFORM_USERS).update({
         linked_user_id: userId,
         name:           (user.name ?? responsibleName) || null,
         email,
@@ -956,7 +998,7 @@ async function executeSideEffect(
   }
 
   // ── join_clinic ───────────────────────────────────────────────────────────
-  if (action.action === 'join_clinic') {
+  if (action.action === A.JOIN_CLINIC) {
     const joinCode = action.joinCode?.trim().toUpperCase() ?? ''
     const email    = (action.email ?? user.email ?? '').trim().toLowerCase()
     const role     = action.role === 'receptionist' ? 'receptionist' : 'professional'
@@ -967,7 +1009,7 @@ async function executeSideEffect(
     }
 
     const { data: clinic } = await supabase
-      .from('clinics')
+      .from(T.CLINICS)
       .select('id, name')
       .eq('join_code', joinCode)
       .maybeSingle()
@@ -998,14 +1040,14 @@ async function executeSideEffect(
     }
 
     if (userId) {
-      await supabase.from('user_profiles').upsert({
+      await supabase.from(T.USER_PROFILES).upsert({
         id:        userId,
         name:      user.name ?? email,
         roles:     [role],
         clinic_id: clinic.id,
         phone:     fromPhone || null,
       })
-      await supabase.from('wa_platform_users').update({
+      await supabase.from(T.WA_PLATFORM_USERS).update({
         linked_user_id: userId,
         email,
       }).eq('id', user.id)
@@ -1037,7 +1079,7 @@ async function executeSideEffect(
   }
 
   // ── request_clinic_membership ─────────────────────────────────────────────
-  if (action.action === 'request_clinic_membership') {
+  if (action.action === A.REQUEST_CLINIC_MEMBERSHIP) {
     const clinicId = action.clinicId?.trim() ?? ''
     const role     = action.role === 'receptionist' ? 'receptionist' : 'professional'
     const reqName  = (action.staffName ?? user.name ?? '').trim()
@@ -1049,7 +1091,7 @@ async function executeSideEffect(
     }
 
     const { data: clinic } = await supabase
-      .from('clinics')
+      .from(T.CLINICS)
       .select('id, name')
       .eq('id', clinicId)
       .maybeSingle()
@@ -1058,7 +1100,7 @@ async function executeSideEffect(
     const cl = clinic as { id: string; name: string }
 
     const { error: reqErr } = await supabase
-      .from('clinic_staff_requests')
+      .from(T.CLINIC_STAFF_REQUESTS)
       .insert({ clinic_id: cl.id, requester_name: reqName, requester_email: reqEmail, requester_phone: fromPhone, role })
 
     if (reqErr) { console.error('[platform-agent] request_clinic_membership: insert error:', reqErr); return }
@@ -1085,9 +1127,9 @@ async function executeSideEffect(
   }
 
   // ── approve_staff_request ─────────────────────────────────────────────────
-  if (action.action === 'approve_staff_request' && action.requestId) {
+  if (action.action === A.APPROVE_STAFF_REQUEST && action.requestId) {
     const { data: req } = await supabase
-      .from('clinic_staff_requests')
+      .from(T.CLINIC_STAFF_REQUESTS)
       .select('id, clinic_id, requester_name, requester_email, requester_phone, role, clinics(name)')
       .eq('id', action.requestId)
       .eq('status', 'pending')
@@ -1109,16 +1151,16 @@ async function executeSideEffect(
     })
 
     await supabase
-      .from('clinic_staff_requests')
+      .from(T.CLINIC_STAFF_REQUESTS)
       .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.linked_user_id })
       .eq('id', action.requestId)
     return null
   }
 
   // ── reject_staff_request ──────────────────────────────────────────────────
-  if (action.action === 'reject_staff_request' && action.requestId) {
+  if (action.action === A.REJECT_STAFF_REQUEST && action.requestId) {
     const { data: req } = await supabase
-      .from('clinic_staff_requests')
+      .from(T.CLINIC_STAFF_REQUESTS)
       .select('id, requester_name, requester_phone, clinics(name)')
       .eq('id', action.requestId)
       .eq('status', 'pending')
@@ -1131,7 +1173,7 @@ async function executeSideEffect(
     const firstName  = (r.requester_name as string)?.split(' ')[0] ?? ''
 
     await supabase
-      .from('clinic_staff_requests')
+      .from(T.CLINIC_STAFF_REQUESTS)
       .update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.linked_user_id })
       .eq('id', action.requestId)
 
@@ -1143,7 +1185,7 @@ async function executeSideEffect(
   }
 
   // ── invite_staff_directly ─────────────────────────────────────────────────
-  if (action.action === 'invite_staff_directly') {
+  if (action.action === A.INVITE_STAFF_DIRECTLY) {
     const staffEmail = (action.staffEmail ?? '').trim().toLowerCase()
     const staffPhone = (action.staffPhone ?? '').trim()
     const staffName  = (action.staffName  ?? '').trim()
@@ -1174,10 +1216,10 @@ async function executeSideEffect(
   }
 
   // ── update_appointment_status ─────────────────────────────────────────────
-  if (action.action === 'update_appointment_status') {
+  if (action.action === A.UPDATE_APPOINTMENT_STATUS) {
     if (!userPermissions.canManageAgenda || !primaryClinic || !action.appointmentId || !action.newStatus) return
     const { error } = await supabase
-      .from('appointments')
+      .from(T.APPOINTMENTS)
       .update({ status: action.newStatus })
       .eq('id', action.appointmentId)
       .eq('clinic_id', primaryClinic.id)
@@ -1186,14 +1228,14 @@ async function executeSideEffect(
   }
 
   // ── reschedule_appointment ────────────────────────────────────────────────
-  if (action.action === 'reschedule_appointment') {
+  if (action.action === A.RESCHEDULE_APPOINTMENT) {
     if (!userPermissions.canManageAgenda || !primaryClinic || !action.appointmentId) return
     const updates: Record<string, unknown> = {}
     if (action.startsAt) updates.starts_at = action.startsAt
     if (action.endsAt)   updates.ends_at   = action.endsAt
     if (Object.keys(updates).length > 0) {
       const { error } = await supabase
-        .from('appointments')
+        .from(T.APPOINTMENTS)
         .update(updates)
         .eq('id', action.appointmentId)
         .eq('clinic_id', primaryClinic.id)
@@ -1203,10 +1245,10 @@ async function executeSideEffect(
   }
 
   // ── schedule_appointment ──────────────────────────────────────────────────
-  if (action.action === 'schedule_appointment') {
+  if (action.action === A.SCHEDULE_APPOINTMENT) {
     if (!userPermissions.canManageAgenda || !primaryClinic || !action.patientId || !action.professionalId || !action.startsAt || !action.endsAt) return
     const { error } = await supabase
-      .from('appointments')
+      .from(T.APPOINTMENTS)
       .insert({
         clinic_id:       primaryClinic.id,
         patient_id:      action.patientId,
@@ -1222,25 +1264,25 @@ async function executeSideEffect(
   }
 
   // ── update_own_profile ────────────────────────────────────────────────────
-  if (action.action === 'update_own_profile') {
+  if (action.action === A.UPDATE_OWN_PROFILE) {
     const updates: Record<string, unknown> = {}
     if (action.profileName?.trim())  updates.name  = action.profileName.trim()
     if (action.profilePhone?.trim()) updates.phone = action.profilePhone.trim()
     if (Object.keys(updates).length === 0) return
     if (user.linked_user_id && primaryClinic) {
-      await supabase.from('user_profiles').update(updates).eq('id', user.linked_user_id).eq('clinic_id', primaryClinic.id)
+      await supabase.from(T.USER_PROFILES).update(updates).eq('id', user.linked_user_id).eq('clinic_id', primaryClinic.id)
     }
     if (action.profileName?.trim()) {
-      await supabase.from('wa_platform_users').update({ name: action.profileName.trim() }).eq('id', user.id)
+      await supabase.from(T.WA_PLATFORM_USERS).update({ name: action.profileName.trim() }).eq('id', user.id)
     }
     return null
   }
 
   // ── update_member_permissions ─────────────────────────────────────────────
-  if (action.action === 'update_member_permissions') {
+  if (action.action === A.UPDATE_MEMBER_PERMISSIONS) {
     if (!userPermissions.canManageSettings || !primaryClinic || !action.memberId || !action.permissionKey) return
     const { data: existing } = await supabase
-      .from('user_profiles')
+      .from(T.USER_PROFILES)
       .select('permission_overrides')
       .eq('id', action.memberId)
       .eq('clinic_id', primaryClinic.id)
@@ -1248,7 +1290,7 @@ async function executeSideEffect(
     const curr    = (existing as { permission_overrides?: Record<string, boolean> } | null)?.permission_overrides ?? {}
     const updated = { ...curr, [action.permissionKey]: action.permissionValue ?? false }
     await supabase
-      .from('user_profiles')
+      .from(T.USER_PROFILES)
       .update({ permission_overrides: updated })
       .eq('id', action.memberId)
       .eq('clinic_id', primaryClinic.id)
@@ -1256,7 +1298,7 @@ async function executeSideEffect(
   }
 
   // ── manage_professional ───────────────────────────────────────────────────
-  if (action.action === 'manage_professional') {
+  if (action.action === A.MANAGE_PROFESSIONAL) {
     if (!userPermissions.canManageProfessionals || !primaryClinic) return
     const row: Record<string, unknown> = { clinic_id: primaryClinic.id }
     if (action.professionalName?.trim())  row.name       = action.professionalName.trim()
@@ -1266,17 +1308,17 @@ async function executeSideEffect(
     if (action.professionalPhone?.trim()) row.phone      = action.professionalPhone.trim()
     if (typeof action.activeProfessional === 'boolean') row.active = action.activeProfessional
     if (action.professionalId) {
-      const { error } = await supabase.from('professionals').update(row).eq('id', action.professionalId).eq('clinic_id', primaryClinic.id)
+      const { error } = await supabase.from(T.PROFESSIONALS).update(row).eq('id', action.professionalId).eq('clinic_id', primaryClinic.id)
       if (error) console.error('[platform-agent] manage_professional update:', error)
     } else {
-      const { error } = await supabase.from('professionals').insert(row)
+      const { error } = await supabase.from(T.PROFESSIONALS).insert(row)
       if (error) console.error('[platform-agent] manage_professional insert:', error)
     }
     return null
   }
 
   // ── manage_service_type ───────────────────────────────────────────────────
-  if (action.action === 'manage_service_type') {
+  if (action.action === A.MANAGE_SERVICE_TYPE) {
     if (!userPermissions.canManageProfessionals || !primaryClinic) return
     const row: Record<string, unknown> = { clinic_id: primaryClinic.id }
     if (action.serviceTypeName?.trim())              row.name             = action.serviceTypeName.trim()
@@ -1284,36 +1326,36 @@ async function executeSideEffect(
     if (typeof action.serviceTypePriceCents === 'number') row.price_cents = action.serviceTypePriceCents
     if (action.serviceTypeColor?.trim())             row.color            = action.serviceTypeColor.trim()
     if (action.serviceTypeId) {
-      const { error } = await supabase.from('service_types').update(row).eq('id', action.serviceTypeId).eq('clinic_id', primaryClinic.id)
+      const { error } = await supabase.from(T.SERVICE_TYPES).update(row).eq('id', action.serviceTypeId).eq('clinic_id', primaryClinic.id)
       if (error) console.error('[platform-agent] manage_service_type update:', error)
     } else {
-      const { error } = await supabase.from('service_types').insert(row)
+      const { error } = await supabase.from(T.SERVICE_TYPES).insert(row)
       if (error) console.error('[platform-agent] manage_service_type insert:', error)
     }
     return null
   }
 
   // ── manage_room ───────────────────────────────────────────────────────────
-  if (action.action === 'manage_room') {
+  if (action.action === A.MANAGE_ROOM) {
     if (!userPermissions.canManageSettings || !primaryClinic) return
     const row: Record<string, unknown> = { clinic_id: primaryClinic.id }
     if (action.roomName?.trim())  row.name  = action.roomName.trim()
     if (action.roomColor?.trim()) row.color = action.roomColor.trim()
     if (typeof action.activeRoom === 'boolean') row.active = action.activeRoom
     if (action.roomId) {
-      const { error } = await supabase.from('clinic_rooms').update(row).eq('id', action.roomId).eq('clinic_id', primaryClinic.id)
+      const { error } = await supabase.from(T.CLINIC_ROOMS).update(row).eq('id', action.roomId).eq('clinic_id', primaryClinic.id)
       if (error) console.error('[platform-agent] manage_room update:', error)
     } else {
-      const { error } = await supabase.from('clinic_rooms').insert(row)
+      const { error } = await supabase.from(T.CLINIC_ROOMS).insert(row)
       if (error) console.error('[platform-agent] manage_room insert:', error)
     }
     return null
   }
 
   // ── close_room ────────────────────────────────────────────────────────────
-  if (action.action === 'close_room') {
+  if (action.action === A.CLOSE_ROOM) {
     if (!userPermissions.canManageSettings || !primaryClinic || !action.roomId || !action.closeDate) return
-    const { error } = await supabase.from('room_closures').insert({
+    const { error } = await supabase.from(T.ROOM_CLOSURES).insert({
       clinic_id: primaryClinic.id,
       room_id:   action.roomId,
       date:      action.closeDate,
@@ -1323,10 +1365,10 @@ async function executeSideEffect(
   }
 
   // ── update_own_availability ───────────────────────────────────────────────
-  if (action.action === 'update_own_availability') {
+  if (action.action === A.UPDATE_OWN_AVAILABILITY) {
     if (!userPermissions.canManageOwnAvailability || !primaryClinic || !action.availabilitySlots || !user.linked_user_id) return
     const { data: profRow } = await supabase
-      .from('professionals')
+      .from(T.PROFESSIONALS)
       .select('id')
       .eq('clinic_id', primaryClinic.id)
       .or(`email.ilike.${(user.email ?? '').toLowerCase()},phone.ilike.%${fromPhone.slice(-9)}`)
@@ -1334,7 +1376,7 @@ async function executeSideEffect(
       .maybeSingle()
     if (!profRow) { console.warn('[platform-agent] update_own_availability: no professional row found'); return }
     const profId = (profRow as { id: string }).id
-    await supabase.from('availability_slots').delete().eq('professional_id', profId).eq('clinic_id', primaryClinic.id)
+    await supabase.from(T.AVAILABILITY_SLOTS).delete().eq('professional_id', profId).eq('clinic_id', primaryClinic.id)
     if (action.availabilitySlots.length > 0) {
       const rows = action.availabilitySlots.map(s => ({
         clinic_id:       primaryClinic.id,
@@ -1345,14 +1387,14 @@ async function executeSideEffect(
         active:          s.active ?? true,
         room_id:         s.room_id ?? null,
       }))
-      const { error } = await supabase.from('availability_slots').insert(rows)
+      const { error } = await supabase.from(T.AVAILABILITY_SLOTS).insert(rows)
       if (error) console.error('[platform-agent] update_own_availability insert:', error)
     }
     return null
   }
 
   // ── configure_bot ─────────────────────────────────────────────────────────
-  if (action.action === 'configure_bot') {
+  if (action.action === A.CONFIGURE_BOT) {
     const targetClinicId = action.clinicId ?? adminClinic?.id ?? null
     if (!targetClinicId) return
 
@@ -1376,7 +1418,7 @@ async function executeSideEffect(
     }
 
     if (Object.keys(updates).length > 0) {
-      const { error } = await supabase.from('clinics').update(updates).eq('id', targetClinicId)
+      const { error } = await supabase.from(T.CLINICS).update(updates).eq('id', targetClinicId)
       if (error) console.error('[platform-agent] configure_bot update error:', error)
     }
   }
@@ -1406,7 +1448,7 @@ async function loadClinicSnapshot(
   let myProfessionalId: string | null = null
   if (userRoles.includes('professional') && userEmail) {
     const { data: profRow } = await supabase
-      .from('professionals')
+      .from(T.PROFESSIONALS)
       .select('id')
       .eq('clinic_id', clinicId)
       .ilike('email', userEmail)
@@ -1418,8 +1460,8 @@ async function loadClinicSnapshot(
   // Load agenda (today + tomorrow)
   const loadAgenda = async (dateStr: string): Promise<AgendaItem[]> => {
     let q = supabase
-      .from('appointments')
-      .select('id, starts_at, ends_at, status, patients(name, phone), professionals(name), service_types(name), charge_cents')
+      .from(T.APPOINTMENTS)
+      .select('id, starts_at, ends_at, status, patients(name, phone), professionals(name), service_types(name), charge_amount_cents')
       .eq('clinic_id', clinicId)
       .gte('starts_at', `${dateStr}T00:00:00Z`)
       .lt('starts_at',  `${dateStr}T23:59:59Z`)
@@ -1428,15 +1470,15 @@ async function loadClinicSnapshot(
     if (myProfessionalId) q = q.eq('professional_id', myProfessionalId)
     const { data } = await q
     return ((data ?? []) as Record<string, unknown>[]).map(a => ({
-      id:               a.id               as string,
-      startsAt:         a.starts_at        as string,
-      endsAt:           a.ends_at          as string,
-      status:           a.status           as string,
+      id:               a.id                    as string,
+      startsAt:         a.starts_at             as string,
+      endsAt:           a.ends_at               as string,
+      status:           a.status                as string,
       patientName:      (a.patients as { name: string } | null)?.name ?? '—',
       patientPhone:     (a.patients as { phone?: string } | null)?.phone ?? null,
       professionalName: (a.professionals as { name: string } | null)?.name ?? '—',
       serviceType:      (a.service_types as { name: string } | null)?.name ?? null,
-      chargeCents:      (a.charge_cents   as number | null),
+      chargeCents:      (a.charge_amount_cents  as number | null),
     }))
   }
 
@@ -1463,7 +1505,7 @@ async function loadClinicSnapshot(
   let team: TeamMemberInfo[] = []
   if (userRoles.includes('admin')) {
     const { data: profiles } = await supabase
-      .from('user_profiles')
+      .from(T.USER_PROFILES)
       .select('id, name, roles, phone')
       .eq('clinic_id', clinicId)
       .limit(20)
@@ -1477,7 +1519,7 @@ async function loadClinicSnapshot(
 
   // Service types
   const { data: stRows } = await supabase
-    .from('service_types')
+    .from(T.SERVICE_TYPES)
     .select('id, name, duration_minutes, price_cents')
     .eq('clinic_id', clinicId)
     .eq('active', true)
@@ -1492,7 +1534,7 @@ async function loadClinicSnapshot(
 
   // Rooms
   const { data: roomRows } = await supabase
-    .from('clinic_rooms')
+    .from(T.CLINIC_ROOMS)
     .select('id, name')
     .eq('clinic_id', clinicId)
     .eq('active', true)
@@ -1521,7 +1563,7 @@ async function computeAvailableSlots(
   const weekday = jsSun0 === 0 ? 7 : jsSun0  // 1=Mon ... 7=Sun
 
   const { data: slots } = await supabase
-    .from('availability_slots')
+    .from(T.AVAILABILITY_SLOTS)
     .select('start_time, end_time')
     .eq('clinic_id', clinicId)
     .eq('professional_id', professionalId)
@@ -1534,7 +1576,7 @@ async function computeAvailableSlots(
   const utcDayStart = `${dateStr}T03:00:00Z`
   const utcDayEnd   = new Date(d.getTime() + 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString()
   const { data: appts } = await supabase
-    .from('appointments')
+    .from(T.APPOINTMENTS)
     .select('starts_at, ends_at')
     .eq('professional_id', professionalId)
     .gte('starts_at', utcDayStart)
@@ -1578,7 +1620,7 @@ async function searchPatients(
 ): Promise<{ id: string; name: string; phone: string | null; cpf: string | null }[]> {
   const term = query.trim().replace(/[%_]/g, '')
   const { data } = await supabase
-    .from('patients')
+    .from(T.PATIENTS)
     .select('id, name, phone, cpf')
     .eq('clinic_id', clinicId)
     .or(`name.ilike.%${term}%,cpf.ilike.%${term}%,phone.ilike.%${term}%`)
@@ -1601,7 +1643,7 @@ async function doCreatePatient(
   }
   if (action.patientPhone?.trim())     row.phone      = action.patientPhone.trim()
   if (action.patientBirthDate?.trim()) row.birth_date = action.patientBirthDate.trim()
-  const { data, error } = await supabase.from('patients').insert(row).select('id').single()
+  const { data, error } = await supabase.from(T.PATIENTS).insert(row).select('id').single()
   if (error) { console.error('[platform-agent] doCreatePatient:', error); return null }
   return (data as { id: string }).id
 }
@@ -1641,7 +1683,7 @@ async function searchClinics(
   const term  = words[0] ?? name.trim()
 
   const { data } = await supabase
-    .from('clinics')
+    .from(T.CLINICS)
     .select('id, name')
     .ilike('name', `%${term}%`)
     .limit(5)
@@ -1657,7 +1699,7 @@ async function findAdminPhonesForClinic(
 ): Promise<string[]> {
   // 1. Find all admin user_ids for this clinic
   const { data: profiles } = await supabase
-    .from('user_profiles')
+    .from(T.USER_PROFILES)
     .select('id')
     .eq('clinic_id', clinicId)
     .contains('roles', ['admin'])
@@ -1667,7 +1709,7 @@ async function findAdminPhonesForClinic(
 
   // 2. Cross-reference against wa_platform_users
   const { data: waUsers } = await supabase
-    .from('wa_platform_users')
+    .from(T.WA_PLATFORM_USERS)
     .select('phone')
     .in('linked_user_id', adminIds)
 
@@ -1712,7 +1754,7 @@ async function inviteStaffWithWA(opts: {
   }
 
   if (userId) {
-    await supabase.from('user_profiles').upsert({
+    await supabase.from(T.USER_PROFILES).upsert({
       id:        userId,
       name:      staffName || staffEmail,
       roles:     [role],
@@ -1735,31 +1777,6 @@ async function inviteStaffWithWA(opts: {
       `Qualquer dúvida, é só responder aqui. 😊`,
     ].join('\n'),
   )
-}
-
-// ─── Typing indicator ────────────────────────────────────────────────────
-
-/**
- * Shows the 3-dot typing indicator to the user while the AI is processing.
- * Fire-and-forget — never throw.
- */
-async function sendPlatformTypingIndicator(waMessageId: string): Promise<void> {
-  if (!PLATFORM_PHONE_ID || !PLATFORM_WA_TOKEN) return
-  try {
-    await fetch(`${META_GRAPH_BASE}/${PLATFORM_PHONE_ID}/messages`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization:  `Bearer ${PLATFORM_WA_TOKEN}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        status:            'read',
-        message_id:        waMessageId,
-        typing_indicator:  { type: 'text' },
-      }),
-    })
-  } catch { /* best-effort */ }
 }
 
 // ─── Typing indicator ────────────────────────────────────────────────────────
