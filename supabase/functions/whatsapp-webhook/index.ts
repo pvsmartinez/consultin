@@ -42,6 +42,7 @@ const META_APP_SECRET        = Deno.env.get('META_APP_SECRET') ?? ''
 const GROQ_API_KEY           = Deno.env.get('GROQ_API_KEY') ?? ''
 const SELF_URL               = Deno.env.get('SUPABASE_URL')!
 const PLATFORM_PHONE_NUMBER  = Deno.env.get('PLATFORM_PHONE_NUMBER') ?? ''  // e.g. 5511999999999
+const PLATFORM_WA_TOKEN      = Deno.env.get('PLATFORM_WA_TOKEN') ?? ''
 const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
 const TELEGRAM_CHAT_ID   = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
 
@@ -100,12 +101,19 @@ serve(async (req) => {
       const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
       if (platformPhoneId && phoneNumberId === platformPhoneId) {
         for (const msg of value.messages ?? []) {
+          const msgType = msg.type as string
           const buttonReplyId = msg.interactive?.button_reply?.id ?? null
-          const msgText =
+          let msgText =
             msg.text?.body ??
             msg.button?.text ??
             msg.interactive?.button_reply?.title ??
             null
+          if (msgType === 'audio' && msg.audio?.id) {
+            const transcribed = await transcribeAudio(msg.audio.id, { accessToken: PLATFORM_WA_TOKEN })
+            if (transcribed) {
+              msgText = `[Áudio transcrito]: ${transcribed}`
+            }
+          }
           if (!msgText || !msg.from) continue
           await callPlatformAgent(msg.from, msgText, msg.id, buttonReplyId ?? undefined)
         }
@@ -162,7 +170,7 @@ async function processInbound(
 
   // ── Audio: transcribe via Groq Whisper ────────────────────────────────────
   if (msgType === 'audio' && msg.audio?.id) {
-    const transcribed = await transcribeAudio(supabase, clinic.id, msg.audio.id)
+    const transcribed = await transcribeAudio(msg.audio.id, { supabase, clinicId: clinic.id })
     if (transcribed) {
       msgText = `[Áudio transcrito]: ${transcribed}`
     } else {
@@ -852,14 +860,17 @@ async function executeBookAppointment(
 // ─── Audio transcription via Groq Whisper ─────────────────────────────────────
 
 async function transcribeAudio(
-  supabase:  ReturnType<typeof createClient>,
-  clinicId:  string,
-  mediaId:   string,
+  mediaId: string,
+  options: {
+    supabase?: ReturnType<typeof createClient>
+    clinicId?: string
+    accessToken?: string
+  },
 ): Promise<string | null> {
   if (!GROQ_API_KEY) return null
 
-  const { data: accessToken } = await supabase
-    .rpc('get_clinic_whatsapp_token', { p_clinic_id: clinicId })
+  const accessToken = options.accessToken
+    ?? await resolveWhatsAppAccessToken(options.supabase, options.clinicId)
   if (!accessToken) return null
 
   try {
@@ -901,6 +912,19 @@ async function transcribeAudio(
     console.error('[webhook] transcribeAudio error:', err)
     return null
   }
+}
+
+async function resolveWhatsAppAccessToken(
+  supabase?: ReturnType<typeof createClient>,
+  clinicId?: string,
+): Promise<string | null> {
+  if (clinicId && supabase) {
+    const { data: clinicToken } = await supabase
+      .rpc('get_clinic_whatsapp_token', { p_clinic_id: clinicId })
+    return clinicToken ?? null
+  }
+
+  return PLATFORM_WA_TOKEN || null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
