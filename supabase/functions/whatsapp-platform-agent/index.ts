@@ -268,13 +268,13 @@ serve(async (req) => {
     const last9 = fromPhone.replace(/\D/g, '').slice(-9)
     const { data: profile } = await supabase
       .from('user_profiles')
-      .select('id, name, role, clinic_id, clinics(name, join_code)')
+      .select('id, name, roles, clinic_id, clinics(name, join_code)')
       .ilike('phone', `%${last9}`)
       .maybeSingle()
 
     if (profile) {
       const pr = profile as {
-        id: string; name: string; role: string
+        id: string; name: string; roles: string[]
         clinic_id: string | null
         clinics: { name: string; join_code: string } | null
       }
@@ -284,10 +284,13 @@ serve(async (req) => {
         .eq('id', user.id)
       user = { ...user, linked_user_id: pr.id, name: user.name ?? pr.name }
       if (pr.clinic_id && pr.clinics?.name) {
+        const primaryRole = (pr.roles ?? []).includes('admin') ? 'admin'
+          : (pr.roles ?? []).includes('receptionist') ? 'receptionist'
+          : (pr.roles ?? [])[0] ?? 'professional'
         linkedClinics = [{
           id:       pr.clinic_id,
           name:     pr.clinics.name,
-          role:     pr.role,
+          role:     primaryRole,
           joinCode: pr.clinics.join_code,
         }]
       }
@@ -295,20 +298,25 @@ serve(async (req) => {
   } else {
     const { data: profiles } = await supabase
       .from('user_profiles')
-      .select('role, clinic_id, clinics(name, join_code)')
+      .select('roles, clinic_id, clinics(name, join_code)')
       .eq('id', user.linked_user_id)
 
     linkedClinics = ((profiles ?? []) as {
-      role: string; clinic_id: string | null
+      roles: string[]; clinic_id: string | null
       clinics: { name: string; join_code: string } | null
     }[])
       .filter(p => p.clinic_id && p.clinics?.name)
-      .map(p => ({
-        id:       p.clinic_id!,
-        name:     p.clinics!.name,
-        role:     p.role,
-        joinCode: p.clinics!.join_code,
-      }))
+      .map(p => {
+        const primaryRole = (p.roles ?? []).includes('admin') ? 'admin'
+          : (p.roles ?? []).includes('receptionist') ? 'receptionist'
+          : (p.roles ?? [])[0] ?? 'professional'
+        return {
+          id:       p.clinic_id!,
+          name:     p.clinics!.name,
+          role:     primaryRole,
+          joinCode: p.clinics!.join_code,
+        }
+      })
   }
 
   // ── Load bot config for the first admin clinic ────────────────────────────
