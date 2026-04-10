@@ -113,7 +113,7 @@ serve(async (req) => {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
       const { data: clinic } = await supabase
         .from('clinics')
-        .select('id, whatsapp_enabled, wa_attendant_inbox')
+        .select('id, whatsapp_enabled, wa_attendant_inbox, whatsapp_phone_number_id')
         .eq('whatsapp_phone_number_id', phoneNumberId)
         .eq('whatsapp_enabled', true)
         .maybeSingle()
@@ -129,7 +129,7 @@ serve(async (req) => {
       }
 
       for (const msg of value.messages ?? []) {
-        await processInbound(supabase, clinic, msg, value.contacts ?? [])
+        await processInbound(supabase, clinic, msg, value.contacts ?? [], phoneNumberId)
       }
     }
   }
@@ -141,10 +141,11 @@ serve(async (req) => {
 // ─── Inbound message processing ───────────────────────────────────────────────
 
 async function processInbound(
-  supabase:  ReturnType<typeof createClient>,
-  clinic:    { id: string; wa_attendant_inbox: boolean },
-  msg:       MetaMessage,
-  _contacts: MetaContact[],
+  supabase:     ReturnType<typeof createClient>,
+  clinic:       { id: string; wa_attendant_inbox: boolean; whatsapp_phone_number_id?: string | null },
+  msg:          MetaMessage,
+  _contacts:    MetaContact[],
+  phoneNumberId?: string,
 ) {
   const fromPhone = msg.from
   const msgType   = msg.type as string
@@ -331,6 +332,12 @@ async function processInbound(
       ].join('\n'))
       if (isNewSession || isHelpRequest) return
     }
+  }
+
+  // ── Typing indicator (fire-and-forget) ─────────────────────────────────
+  const pnId = phoneNumberId ?? clinic.whatsapp_phone_number_id
+  if (pnId && msg.id) {
+    sendTypingIndicator(supabase, clinic.id, pnId, msg.id)
   }
 
   // ── Call AI agent ─────────────────────────────────────────────────────────
@@ -897,6 +904,40 @@ async function transcribeAudio(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// ─── Typing indicator ───────────────────────────────────────────────────────
+
+/**
+ * Sends a typing indicator to the user (shows 3 animated dots).
+ * Combines mark-as-read + typing_indicator in a single call per Meta Cloud API.
+ * Dismissed automatically once a message is sent, or after 25 seconds.
+ * Fire-and-forget — never throw.
+ */
+async function sendTypingIndicator(
+  supabase:      ReturnType<typeof createClient>,
+  clinicId:      string,
+  phoneNumberId: string,
+  waMessageId:   string,
+): Promise<void> {
+  try {
+    const { data: tokenRow } = await supabase
+      .rpc('get_clinic_whatsapp_token', { p_clinic_id: clinicId })
+    if (!tokenRow) return
+    await fetch(`${GRAPH_BASE}/${phoneNumberId}/messages`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization:  `Bearer ${tokenRow}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status:            'read',
+        message_id:        waMessageId,
+        typing_indicator:  { type: 'text' },
+      }),
+    })
+  } catch { /* best-effort */ }
+}
 
 async function notifyTelegramError(title: string, lines: string[]): Promise<void> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return

@@ -384,6 +384,21 @@ serve(async (req) => {
 
   const isFirstMessage = history.length === 0
 
+  // ── Typing indicator (fire-and-forget) ──────────────────────────────────
+  if (body.waMessageId) {
+    sendPlatformTypingIndicator(body.waMessageId)
+  }
+
+  // ── Progress message for slow actions ────────────────────────────────────
+  // Shown before the AI reply arrives; only for actions with meaningful latency
+  const PROGRESS_MSG: Partial<Record<string, string>> = {
+    create_clinic_now:         '⏳ Criando sua clínica e preparando o acesso…',
+    join_clinic:               '⏳ Verificando o código e configurando seu acesso…',
+    invite_staff_directly:     '⏳ Enviando o convite de acesso…',
+    schedule_appointment:      '⏳ Agendando consulta…',
+    reschedule_appointment:    '⏳ Alterando horário…',
+  }
+
   // ── Run AI ────────────────────────────────────────────────────────────────
   const action = await runAgent(
     user, linkedClinics, adminClinic, botConfig,
@@ -400,12 +415,19 @@ serve(async (req) => {
     })
   }
 
-  // ── Execute side effects ──────────────────────────────────────────────────
-  await executeSideEffect(action, user, adminClinic, linkedClinics, fromPhone, supabase, pendingRequests, userPermissions, primaryClinic)
+  // ── Send progress message for slow actions (before executing) ────────────
+  const progressMsg = PROGRESS_MSG[action.action]
+  if (progressMsg) {
+    await sendWA(fromPhone, progressMsg)
+  }
+
+  // ── Execute side effects (may override the AI reply) ─────────────────────
+  const replyOverride = await executeSideEffect(action, user, adminClinic, linkedClinics, fromPhone, supabase, pendingRequests, userPermissions, primaryClinic)
 
   // ── Send WhatsApp reply ───────────────────────────────────────────────────
-  if (action.replyText) {
-    await sendWA(fromPhone, action.replyText)
+  const finalReply = replyOverride ?? action.replyText
+  if (finalReply) {
+    await sendWA(fromPhone, finalReply)
   }
 
   return new Response('OK', { status: 200 })
@@ -662,16 +684,17 @@ function buildSystemPrompt(
       `  weekday: 1=Segunda...5=Sexta, 6=Sábado, 7=Domingo`,
     )
 
+    const firstName = user.name ? user.name.split(' ')[0] : null
+
     return [
-      `You are the WhatsApp management assistant for Consultin (clinic management platform, Brazil).`,
+      `You are Helen, the WhatsApp assistant for Consultin (clinic management platform, Brazil). You help clinic staff and owners manage their work directly from WhatsApp.`,
       `This number is for CLINIC STAFF AND OWNERS — never for patients.`,
       ``,
       ...ctx,
-      `PERSONALITY: Warm, concise, like a helpful colleague on WhatsApp. Short messages. Reply in PT-BR.`,
+      `PERSONALITY: You are Helen — warm, direct, like a helpful colleague on WhatsApp. Short messages. Use the person's first name occasionally. Reply in PT-BR.`,
       ``,
       ...(isFirstMessage ? [
-        `FIRST MESSAGE RULE: Send a warm greeting (2–3 lines max). Show a concise menu of what you can do`,
-        `based on the WHAT YOU CAN HELP WITH list below. End with "O que posso fazer por você hoje?".`,
+        `FIRST MESSAGE RULE: Greet ${firstName ? firstName : 'the person'} by first name. Mention the clinic *${clinic?.name ?? 'their clinic'}* by name. Show a SHORT menu (4–5 bullets max) from WHAT YOU CAN HELP WITH below — only the most relevant to their role. End with "Como posso ajudar hoje?" or similar. Max 5 lines total. Warm but not over the top.`,
         ``,
       ] : []),
       `WHAT YOU CAN HELP WITH:`,
@@ -700,9 +723,13 @@ function buildSystemPrompt(
 
   // ── ONBOARDING MODE (no clinic yet) ───────────────────────────────────────
   const firstMsgBlock = isFirstMessage ? [
-    `FIRST MESSAGE RULE:`,
-    `Introduce yourself as the Consultin platform assistant and ask for the user's name.`,
-    `Keep it natural, 2–3 lines max. Then wait for their name before proceeding.`,
+    `FIRST MESSAGE RULE (their very first contact with Consultin via WhatsApp):`,
+    `Introduce yourself as Helen from Consultin. Give a one-sentence pitch of what Consultin does. Then ask what brings them — present 3 numbered options:`,
+    `  1️⃣ Quero criar minha clínica`,
+    `  2️⃣ Tenho um código de acesso (entrar na equipe)`,
+    `  3️⃣ Só estou conhecendo o Consultin`,
+    `Keep it 3–4 lines. 1–2 emojis ok. Friendly, not corporate.`,
+    `Example tone (vary it, don't copy literally): "Oi! 👋 Sou a Helen do Consultin — a gente ajuda clínicas a gerenciar agenda, pacientes e equipe, com um bot de WhatsApp que atende seus pacientes sozinho. O que te traz aqui?\n\n1️⃣ Criar minha clínica\n2️⃣ Entrar na equipe (tenho um código)\n3️⃣ Só estou conhecendo"`,
     ``,
   ] : []
 
@@ -722,8 +749,9 @@ function buildSystemPrompt(
     : ''
 
   return [
-    `You are the WhatsApp assistant for Consultin — a clinic management platform for Brazil.`,
-    `This number belongs to Consultin the PLATFORM. People here are clinic owners or staff — NOT patients.`,
+    `You are Helen, the WhatsApp assistant for Consultin — a clinic management platform built for Brazil.`,
+    `Consultin helps clinics manage scheduling, patients, team, and finances — plus a WhatsApp bot that handles patient inquiries automatically. Works for dental, aesthetic, physio, medical, and other clinic types.`,
+    `This is Consultin's official WhatsApp channel for clinic owners, staff, and interested prospects. NOT a channel for patients.`,
     ``,
     `KNOWN ABOUT THIS PERSON:`,
     `- Phone: ${user.phone} | Name: ${user.name ?? 'unknown'} | Email: ${user.email ?? 'unknown'}`,
@@ -731,12 +759,21 @@ function buildSystemPrompt(
     joinCodeLine,
     ...pendingReqLines,
     ``,
-    `PERSONALITY: Natural, warm, concise. Reply in the same language (PT-BR or EN). One step at a time.`,
+    `PERSONALITY: You are Helen — friendly, a bit like a smart friend who works at Consultin. Speak PT-BR (or match the user's language if they write in English). Concise and natural (this is WhatsApp — no walls of text). One emoji per message is fine. Never robotic. Be a helpful guide, not just an FAQ.`,
     ``,
     ...firstMsgBlock,
+    `COMMON SITUATIONS — read the message and adapt tone accordingly:`,
+    `• "o que é o Consultin?" / "do que se trata?" / "me fala mais" → Elevator pitch in 3–4 lines: agenda, pacientes, WhatsApp bot que atende pacientes automaticamente, financeiro. Close with "Quer testar grátis? Crio sua clínica em 2 minutos."`,
+    `• "quanto custa?" / "tem plano grátis?" / "preço?" → Tem período de teste gratuito; planos pagos desbloqueiam recursos avançados. Ver detalhes: ${SITE_URL}/precos. Pergunte: "Quer começar agora?"`,
+    `• "recebi esse número" / "quem é você?" / confused user → Explain: this is Consultin's official channel for clinic owners and staff — not for patients. Ask if they own or work at a clinic.`,
+    `• User mentions their specialty (dentista, fisioterapeuta, psicólogo, esteticista etc.) → Acknowledge that Consultin works great for that specialty. Then offer to create their clinic (FLOW A).`,
+    `• User sends or mentions a 6-char code (letters+numbers) → Jump to FLOW B immediately, no re-introduction needed.`,
+    `• "quero criar minha clínica" (directly) → Skip intro, go straight to FLOW A (ask clinic name).`,
+    `• If user's name is already known (in KNOWN ABOUT THIS PERSON above) → Use it naturally in replies.`,
+    ``,
     `FLOWS:`,
-    `FLOW A — New clinic: ask name → search_clinics → confirm no match → ask email → create_clinic_now`,
-    `FLOW B — Join via code: ask 6-char code → verify_join_code → ask email+role → join_clinic`,
+    `FLOW A — New clinic: ask clinic name → search_clinics → confirm no match → ask responsible's name + email → create_clinic_now`,
+    `FLOW B — Join via code: user gives 6-char code → verify_join_code → ask email + role → join_clinic`,
     `FLOW D — Request without code: search_clinics → confirm clinic → collect name+email+role → request_clinic_membership`,
     ...(hasAdmin ? [
       `FLOW E — Approve/reject requests: "APROVAR [name/nº]" → approve_staff_request | "REPROVAR" → reject_staff_request`,
@@ -773,7 +810,7 @@ async function executeSideEffect(
   pendingRequests: StaffRequest[],
   userPermissions: Record<string, boolean>,
   primaryClinic:   ClinicInfo | null,
-): Promise<void> {
+): Promise<string | null> {  // returns non-null to override the AI's replyText
 
   // ── save_info ─────────────────────────────────────────────────────────────
   if (action.action === 'save_info') {
@@ -783,11 +820,11 @@ async function executeSideEffect(
     if (Object.keys(updates).length > 0) {
       await supabase.from('wa_platform_users').update(updates).eq('id', user.id)
     }
-    return
+    return null
   }
 
   // ── search_clinics / verify_join_code — handled in tool loop, no DB side effect ──
-  if (action.action === 'search_clinics') return
+  if (action.action === 'search_clinics') return null
 
   if (action.action === 'verify_join_code' && action.joinCode) {
     // Store verification result in notes so next turn has context
@@ -800,7 +837,7 @@ async function executeSideEffect(
       ? `verify_code:${action.joinCode.toUpperCase()}=found:${clinic.name}[${clinic.id}]`
       : `verify_code:${action.joinCode.toUpperCase()}=not_found`
     await supabase.from('wa_platform_users').update({ notes: note }).eq('id', user.id)
-    return
+    return null
   }
 
   // ── create_clinic_now ─────────────────────────────────────────────────────
@@ -812,7 +849,7 @@ async function executeSideEffect(
 
     if (!clinicName || !email) {
       console.warn('[platform-agent] create_clinic_now: missing clinicName or email', { clinicName, email })
-      return
+      return null
     }
 
     // 1. Create clinic row (join_code auto-generated by DB default)
@@ -824,7 +861,7 @@ async function executeSideEffect(
 
     if (clinicErr || !newClinic) {
       console.error('[platform-agent] clinic insert error:', clinicErr)
-      return
+      return null
     }
 
     // 2. Invite responsible person by email (Supabase Auth Admin invite)
@@ -882,7 +919,32 @@ async function executeSideEffect(
       `*Código de equipe:* \`${newClinic.join_code}\``,
       `*ID:* \`${newClinic.id}\``,
     ])
-    return
+
+    // 6. Override AI reply with rich onboarding welcome
+    const name = responsibleName || email
+    return [
+      `✅ Tudo pronto, *${name}*! A clínica *${clinicName}* foi criada.`,
+      ``,
+      `📧 Você vai receber um e-mail em *${email}* para definir sua senha e acessar o painel completo em consultin.pmatz.com`,
+      ``,
+      `*O que você já pode fazer por aqui no WhatsApp:*`,
+      ``,
+      `👥 *Equipe* — Convidar profissionais e recepcionistas`,
+      `   _"convidar Dr. João Silva, joao@clinica.com, profissional"_`,
+      ``,
+      `🗓️ *Agenda* — Ver e gerenciar consultas`,
+      `   _"minha agenda de amanhã"_`,
+      ``,
+      `👤 *Pacientes* — Cadastrar e buscar`,
+      `   _"cadastrar paciente Maria, 11 99999-0000"_`,
+      ``,
+      `⚙️ *Configurar o bot de pacientes* — Quando você configurar o WhatsApp da clínica, posso ajustar o assistente`,
+      ``,
+      `🔑 *Código para sua equipe entrar:* \`${newClinic.join_code}\``,
+      `   Compartilhe com quem precisa acessar a clínica.`,
+      ``,
+      `O que quer fazer primeiro?`,
+    ].join('\n')
   }
 
   // ── join_clinic ───────────────────────────────────────────────────────────
@@ -893,7 +955,7 @@ async function executeSideEffect(
 
     if (!joinCode || !email) {
       console.warn('[platform-agent] join_clinic: missing joinCode or email', { joinCode, email })
-      return
+      return null
     }
 
     const { data: clinic } = await supabase
@@ -904,7 +966,7 @@ async function executeSideEffect(
 
     if (!clinic) {
       console.warn('[platform-agent] join_clinic: code not found', joinCode)
-      return
+      return null
     }
 
     // Send email invite
@@ -949,7 +1011,21 @@ async function executeSideEffect(
       `*Função:* ${role}`,
       `*Telefone:* ${user.phone}`,
     ])
-    return
+
+    const memberName = user.name || email
+    const roleLabel  = role === 'receptionist' ? 'recepcionista' : 'profissional'
+    return [
+      `✅ Pronto, *${memberName}*! Você agora faz parte da clínica *${clinic.name}* como *${roleLabel}*.`,
+      ``,
+      `📧 Verifique seu e-mail *${email}* para definir sua senha e acessar o painel em consultin.pmatz.com`,
+      ``,
+      `*O que você pode fazer aqui:*`,
+      role === 'professional'
+        ? `🗓️ _"minha agenda"_ — Ver suas consultas do dia\n✅ _"concluir consulta do João"_ — Atualizar status\n👤 _"buscar paciente Maria"_ — Encontrar paciente`
+        : `🗓️ _"agenda de hoje"_ — Ver agenda da clínica\n👤 _"cadastrar paciente novo"_ — Registrar paciente\n🗓️ _"agendar Jo\u00e3o às 14h com Dr. Ana"_ — Novo agendamento`,
+      ``,
+      `Como posso te ajudar?`,
+    ].join('\n')
   }
 
   // ── request_clinic_membership ─────────────────────────────────────────────
@@ -961,7 +1037,7 @@ async function executeSideEffect(
 
     if (!clinicId || !reqEmail || !reqName) {
       console.warn('[platform-agent] request_clinic_membership: missing fields', { clinicId, reqEmail, reqName })
-      return
+      return null
     }
 
     const { data: clinic } = await supabase
@@ -997,7 +1073,7 @@ async function executeSideEffect(
     for (const adminPhone of adminPhones) {
       await sendWA(adminPhone, notifyMsg)
     }
-    return
+    return null
   }
 
   // ── approve_staff_request ─────────────────────────────────────────────────
@@ -1028,7 +1104,7 @@ async function executeSideEffect(
       .from('clinic_staff_requests')
       .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.linked_user_id })
       .eq('id', action.requestId)
-    return
+    return null
   }
 
   // ── reject_staff_request ──────────────────────────────────────────────────
@@ -1055,7 +1131,7 @@ async function executeSideEffect(
       r.requester_phone as string,
       `Olá${firstName ? `, ${firstName}` : ''}. 👋\n\nSua solicitação para fazer parte da equipe da *${clinicName}* não foi aprovada desta vez.\n\nSe tiver dúvidas, fale diretamente com a clínica.`,
     )
-    return
+    return null
   }
 
   // ── invite_staff_directly ─────────────────────────────────────────────────
@@ -1067,7 +1143,7 @@ async function executeSideEffect(
 
     if (!staffEmail || !staffPhone || !adminClinic) {
       console.warn('[platform-agent] invite_staff_directly: missing fields or no admin clinic')
-      return
+      return null
     }
 
     await inviteStaffWithWA({
@@ -1086,7 +1162,7 @@ async function executeSideEffect(
       `*Telefone:* ${staffPhone}`,
       `*Função:* ${role}`,
     ])
-    return
+    return null
   }
 
   // ── update_appointment_status ─────────────────────────────────────────────
@@ -1098,7 +1174,7 @@ async function executeSideEffect(
       .eq('id', action.appointmentId)
       .eq('clinic_id', primaryClinic.id)
     if (error) console.error('[platform-agent] update_appointment_status:', error)
-    return
+    return null
   }
 
   // ── reschedule_appointment ────────────────────────────────────────────────
@@ -1115,7 +1191,7 @@ async function executeSideEffect(
         .eq('clinic_id', primaryClinic.id)
       if (error) console.error('[platform-agent] reschedule_appointment:', error)
     }
-    return
+    return null
   }
 
   // ── schedule_appointment ──────────────────────────────────────────────────
@@ -1134,7 +1210,7 @@ async function executeSideEffect(
         status:          'scheduled',
       })
     if (error) console.error('[platform-agent] schedule_appointment:', error)
-    return
+    return null
   }
 
   // ── update_own_profile ────────────────────────────────────────────────────
@@ -1149,7 +1225,7 @@ async function executeSideEffect(
     if (action.profileName?.trim()) {
       await supabase.from('wa_platform_users').update({ name: action.profileName.trim() }).eq('id', user.id)
     }
-    return
+    return null
   }
 
   // ── update_member_permissions ─────────────────────────────────────────────
@@ -1168,7 +1244,7 @@ async function executeSideEffect(
       .update({ permission_overrides: updated })
       .eq('id', action.memberId)
       .eq('clinic_id', primaryClinic.id)
-    return
+    return null
   }
 
   // ── manage_professional ───────────────────────────────────────────────────
@@ -1188,7 +1264,7 @@ async function executeSideEffect(
       const { error } = await supabase.from('professionals').insert(row)
       if (error) console.error('[platform-agent] manage_professional insert:', error)
     }
-    return
+    return null
   }
 
   // ── manage_service_type ───────────────────────────────────────────────────
@@ -1206,7 +1282,7 @@ async function executeSideEffect(
       const { error } = await supabase.from('service_types').insert(row)
       if (error) console.error('[platform-agent] manage_service_type insert:', error)
     }
-    return
+    return null
   }
 
   // ── manage_room ───────────────────────────────────────────────────────────
@@ -1223,7 +1299,7 @@ async function executeSideEffect(
       const { error } = await supabase.from('clinic_rooms').insert(row)
       if (error) console.error('[platform-agent] manage_room insert:', error)
     }
-    return
+    return null
   }
 
   // ── close_room ────────────────────────────────────────────────────────────
@@ -1235,7 +1311,7 @@ async function executeSideEffect(
       date:      action.closeDate,
     })
     if (error) console.error('[platform-agent] close_room:', error)
-    return
+    return null
   }
 
   // ── update_own_availability ───────────────────────────────────────────────
@@ -1264,7 +1340,7 @@ async function executeSideEffect(
       const { error } = await supabase.from('availability_slots').insert(rows)
       if (error) console.error('[platform-agent] update_own_availability insert:', error)
     }
-    return
+    return null
   }
 
   // ── configure_bot ─────────────────────────────────────────────────────────
@@ -1275,7 +1351,7 @@ async function executeSideEffect(
     const isAuthorised = linkedClinics.some(c => c.id === targetClinicId && c.role === 'admin')
     if (!isAuthorised) {
       console.warn('[platform-agent] configure_bot: user not authorised for', targetClinicId)
-      return
+      return null
     }
 
     const updates: Record<string, unknown> = {}
@@ -1296,6 +1372,7 @@ async function executeSideEffect(
       if (error) console.error('[platform-agent] configure_bot update error:', error)
     }
   }
+  return null
 }
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
@@ -1652,7 +1729,57 @@ async function inviteStaffWithWA(opts: {
   )
 }
 
-// ─── Telegram notification ────────────────────────────────────────────────────
+// ─── Typing indicator ────────────────────────────────────────────────────
+
+/**
+ * Shows the 3-dot typing indicator to the user while the AI is processing.
+ * Fire-and-forget — never throw.
+ */
+async function sendPlatformTypingIndicator(waMessageId: string): Promise<void> {
+  if (!PLATFORM_PHONE_ID || !PLATFORM_WA_TOKEN) return
+  try {
+    await fetch(`${META_GRAPH_BASE}/${PLATFORM_PHONE_ID}/messages`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization:  `Bearer ${PLATFORM_WA_TOKEN}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status:            'read',
+        message_id:        waMessageId,
+        typing_indicator:  { type: 'text' },
+      }),
+    })
+  } catch { /* best-effort */ }
+}
+
+// ─── Typing indicator ────────────────────────────────────────────────────────
+
+/**
+ * Shows the 3-dot typing indicator to the user while the AI is processing.
+ * Fire-and-forget — never throw.
+ */
+async function sendPlatformTypingIndicator(waMessageId: string): Promise<void> {
+  if (!PLATFORM_PHONE_ID || !PLATFORM_WA_TOKEN) return
+  try {
+    await fetch(`${META_GRAPH_BASE}/${PLATFORM_PHONE_ID}/messages`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization:  `Bearer ${PLATFORM_WA_TOKEN}`,
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        status:            'read',
+        message_id:        waMessageId,
+        typing_indicator:  { type: 'text' },
+      }),
+    })
+  } catch { /* best-effort */ }
+}
+
+// ─── Telegram notification ──────────────────────────────────────────────────
 
 async function notifyTelegram(lines: string[]): Promise<void> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return
