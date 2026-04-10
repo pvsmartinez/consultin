@@ -455,7 +455,7 @@ async function runAgent(
       'X-Title':      'Consultin Platform Bot',
     },
     body: JSON.stringify({
-      model:       'google/gemini-2.0-flash-001',
+      model:       'google/gemma-4-31b-it',
       messages,
       temperature: 0.3,
       max_tokens:  800,

@@ -36,11 +36,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto }       from 'https://deno.land/std@0.168.0/crypto/mod.ts'
 import { encode }       from 'https://deno.land/std@0.168.0/encoding/hex.ts'
 
-const SUPABASE_URL    = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SRK    = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const META_APP_SECRET = Deno.env.get('META_APP_SECRET') ?? ''
-const GROQ_API_KEY    = Deno.env.get('GROQ_API_KEY') ?? ''
-const SELF_URL        = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const META_APP_SECRET    = Deno.env.get('META_APP_SECRET') ?? ''
+const GROQ_API_KEY       = Deno.env.get('GROQ_API_KEY') ?? ''
+const SELF_URL           = Deno.env.get('SUPABASE_URL')!
+const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN') ?? ''
+const TELEGRAM_CHAT_ID   = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
 
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0'
 
@@ -351,7 +353,21 @@ async function processInbound(
   })
 
   if (!agentRes.ok) {
-    console.error('[webhook] AI agent failed:', await agentRes.text())
+    const errBody = await agentRes.text()
+    console.error('[webhook] AI agent failed:', errBody)
+    await sendReply(
+      clinic.id, session.id, fromPhone,
+      '😅 Tive um problema aqui. Por favor, tente novamente em instantes.',
+    )
+    await notifyTelegramError(
+      `🚨 *whatsapp-ai-agent falhou* (HTTP ${agentRes.status})`,
+      [
+        `*Clínica:* ${clinic.name} (\`${clinic.id}\`)`,
+        `*Actor:* ${effectiveActorType} | *Phone:* ${fromPhone}`,
+        `*Mensagem:* ${msgText.slice(0, 150)}`,
+        `*Erro:* \`${errBody.slice(0, 300)}\``,
+      ],
+    )
     return
   }
 
@@ -881,6 +897,18 @@ async function transcribeAudio(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function notifyTelegramError(title: string, lines: string[]): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return
+  try {
+    const text = [title, '', ...lines].join('\n')
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'Markdown' }),
+    })
+  } catch { /* best-effort */ }
+}
 
 async function sendReply(
   clinicId:  string,
