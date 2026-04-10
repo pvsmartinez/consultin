@@ -436,7 +436,7 @@ async function runAgent(
   )
 
   const extraContext = toolResult
-    ? [{ role: 'system' as const, content: `[TOOL RESULT]\n${toolResult}` }]
+    ? [{ role: 'system' as const, content: `[TOOL RESULT — use this to reply NOW with action:reply. Do NOT call any search/tool action again.]\n${toolResult}` }]
     : []
 
   const messages = [
@@ -481,6 +481,12 @@ async function runAgent(
   } catch {
     console.error('[platform-agent] JSON parse error:', rawContent)
     return fallback
+  }
+
+  // ── Safeguard: if second pass returns a tool action, force a plain reply ──
+  if (toolResult && ['search_clinics','search_patients','search_available_slots','create_patient'].includes(action.action)) {
+    console.warn('[platform-agent] model returned tool action on tool-result pass:', action.action)
+    return { action: 'reply', replyText: action.replyText || '😅 Não consegui processar. Pode tentar de novo?' }
   }
 
   // ── Tool loops (only on first pass) ──────────────────────────────────────
