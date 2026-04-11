@@ -646,11 +646,13 @@ async function processInbound(
       // Patient announced they've arrived — notify staff
       const appointmentId = action.appointmentId
       if (appointmentId) {
-        await supabase
+        const checkinQuery = supabase
           .from('appointments')
           .update({ status: 'checked_in' })
           .eq('id', appointmentId)
           .eq('clinic_id', clinic.id)
+        if (effectivePatientId) checkinQuery.eq('patient_id', effectivePatientId)
+        await checkinQuery
       }
       await supabase.from('clinic_notifications').insert({
         clinic_id: clinic.id,
@@ -664,11 +666,13 @@ async function processInbound(
     case 'reschedule_request': {
       // Cancel current appointment and offer new slots
       if (action.appointmentId) {
-        await supabase
+        const reschedQuery = supabase
           .from('appointments')
           .update({ status: 'cancelled' })
           .eq('id', action.appointmentId)
           .eq('clinic_id', clinic.id)
+        if (effectivePatientId) reschedQuery.eq('patient_id', effectivePatientId)
+        await reschedQuery
         await supabase.from('clinic_notifications').insert({
           clinic_id: clinic.id,
           type: 'appointment_rescheduled_request',

@@ -21,6 +21,7 @@ import {
 } from '../utils/exportCSV'
 import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
+import { useAuthContext } from '../contexts/AuthContext'
 
 // ─── PDF export ──────────────────────────────────────────────────────────────
 
@@ -58,8 +59,17 @@ function exportPDF(
 
 type RawRow = Record<string, unknown>
 
-export default function RelatoriosPage() {
-  const [month, setMonth] = useState(new Date())
+interface RelatoriosPageProps {
+  /** When provided, the parent controls the month and the internal selector is hidden. */
+  month?: Date
+}
+
+export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPageProps = {}) {
+  const { profile } = useAuthContext()
+  const clinicId = profile?.clinicId
+  const [internalMonth, setInternalMonth] = useState(new Date())
+  const month = controlledMonth ?? internalMonth
+  const setMonth = (m: Date) => { if (!controlledMonth) setInternalMonth(m) }
   const [professionalId, setProfessionalId] = useState('')
   const [exportingPatients, setExportingPatients] = useState(false)
   const [exportingProfessionals, setExportingProfessionals] = useState(false)
@@ -147,6 +157,7 @@ export default function RelatoriosPage() {
           starts_at, status, charge_amount_cents, paid_amount_cents, paid_at,
           patient:patients(name), professional:professionals(name)
         `)
+        .eq('clinic_id', clinicId!)
         .gte('starts_at', monthStart)
         .lte('starts_at', monthEnd)
         .order('starts_at')
@@ -176,7 +187,7 @@ export default function RelatoriosPage() {
   async function handleExportPatients() {
     setExportingPatients(true)
     try {
-      const { data: patients, error } = await supabase.from('patients').select('*').order('name')
+      const { data: patients, error } = await supabase.from('patients').select('*').eq('clinic_id', clinicId!).order('name')
       if (error) throw error
       exportPatientsCSV(
         (patients ?? []).map(p => ({
@@ -208,7 +219,7 @@ export default function RelatoriosPage() {
   async function handleExportProfessionals() {
     setExportingProfessionals(true)
     try {
-      const { data: profs, error } = await supabase.from('professionals').select('*').order('name')
+      const { data: profs, error } = await supabase.from('professionals').select('*').eq('clinic_id', clinicId!).order('name')
       if (error) throw error
       exportProfessionalsCSV(
         (profs ?? []).map(p => ({
@@ -237,21 +248,23 @@ export default function RelatoriosPage() {
         <h1 className="text-xl font-semibold text-gray-800">Relatórios</h1>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Month selector */}
-          <select
-            value={format(month, 'yyyy-MM')}
-            onChange={e => {
-              const [y, m] = e.target.value.split('-').map(Number)
-              setMonth(new Date(y, m - 1, 1))
-            }}
-            className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-          >
-            {Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i)).map(d => (
-              <option key={format(d, 'yyyy-MM')} value={format(d, 'yyyy-MM')}>
-                {format(d, "MMMM 'de' yyyy", { locale: ptBR })}
-              </option>
-            ))}
-          </select>
+          {/* Month selector — hidden when parent controls the month */}
+          {!controlledMonth && (
+            <select
+              value={format(month, 'yyyy-MM')}
+              onChange={e => {
+                const [y, m] = e.target.value.split('-').map(Number)
+                setMonth(new Date(y, m - 1, 1))
+              }}
+              className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+            >
+              {Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i)).map(d => (
+                <option key={format(d, 'yyyy-MM')} value={format(d, 'yyyy-MM')}>
+                  {format(d, "MMMM 'de' yyyy", { locale: ptBR })}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* Professional filter */}
           <select

@@ -151,7 +151,7 @@ export default function PatientDetailPage() {
               {patient.phone}
             </a>
             <a
-              href={`https://wa.me/55${patient.phone.replace(/\D/g, '')}`}
+              href={(() => { const d = patient.phone.replace(/\D/g, ''); return `https://wa.me/${d.startsWith('55') ? d : '55' + d}` })()}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition"

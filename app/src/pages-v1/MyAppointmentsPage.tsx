@@ -1,6 +1,7 @@
 import { format, parseISO, differenceInHours } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CalendarBlank, Clock, XCircle } from '@phosphor-icons/react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useMyPatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
@@ -8,12 +9,14 @@ import { useUpdateAppointmentStatus } from '../hooks/useAppointmentsMutations'
 import { useClinic } from '../hooks/useClinic'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
 import type { Appointment } from '../types'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
 
 export default function MyAppointmentsPage() {
   const { patient, loading: loadingPatient } = useMyPatient()
   const { appointments, loading: loadingAppts } = usePatientAppointments(patient?.id ?? '')
   const { data: clinic } = useClinic()
   const updateStatus = useUpdateAppointmentStatus()
+  const [confirmCancel, setConfirmCancel] = useState<{ id: string; startsAt: string } | null>(null)
   // Show spinner while finding the patient, or while loading their appointments once found
   const loading = loadingPatient || (!!patient && loadingAppts)
   const upcoming = appointments.filter(a => new Date(a.startsAt) >= new Date())
@@ -33,9 +36,14 @@ export default function MyAppointmentsPage() {
       toast.error('O prazo para cancelamento já encerrou.')
       return
     }
-    if (!confirm('Tem certeza que deseja cancelar esta consulta?')) return
+    setConfirmCancel({ id, startsAt })
+  }
+
+  function executeCancel() {
+    if (!confirmCancel) return
+    setConfirmCancel(null)
     updateStatus.mutate(
-      { id, status: 'cancelled' },
+      { id: confirmCancel.id, status: 'cancelled' },
       {
         onSuccess: () => toast.success('Consulta cancelada.'),
         onError:   () => toast.error('Erro ao cancelar. Tente novamente.'),
@@ -96,6 +104,16 @@ export default function MyAppointmentsPage() {
           </ul>
         </section>
       )}
+
+      <ConfirmDialog
+        open={!!confirmCancel}
+        title="Cancelar consulta"
+        description="Tem certeza que deseja cancelar esta consulta?"
+        confirmLabel="Cancelar consulta"
+        danger
+        onConfirm={executeCancel}
+        onCancel={() => setConfirmCancel(null)}
+      />
     </div>
   )
 }

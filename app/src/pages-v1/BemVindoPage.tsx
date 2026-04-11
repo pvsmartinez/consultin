@@ -6,8 +6,8 @@ import { gtagEvent } from '../lib/gtag'
 
 export default function BemVindoPage() {
   useEffect(() => {
-    // Google Ads conversion event — fires once when the user lands here
-    gtagEvent('conversion', { send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL' })
+    // TODO: replace with real Google Ads conversion IDs before activating paid campaigns
+    // gtagEvent('conversion', { send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL' })
     gtagEvent('sign_up', { method: 'clinic_form' })
   }, [])
 

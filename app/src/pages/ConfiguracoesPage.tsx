@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo,
-  Stethoscope, Bell, UsersThree, Buildings, UsersFour, ToggleRight, ToggleLeft,
+  Stethoscope, Bell, ClipboardText, UsersThree, Buildings, UsersFour, ToggleRight, ToggleLeft,
   CheckCircle,
 } from '@phosphor-icons/react'
 import { useClinic } from '../hooks/useClinic'
@@ -130,7 +130,7 @@ const TABS: TabDef[] = [
   { id: 'salas',           label: 'Salas',             icon: Door,         moduleRequired: 'rooms' },
   { id: 'pagamento',       label: 'Pagamentos',        icon: CurrencyDollar, moduleRequired: 'financial' },
   { id: 'campos',          label: 'Formulários',       icon: Sliders },
-  { id: 'anamnese',        label: 'Anamnese',          icon: Bell },
+  { id: 'anamnese',        label: 'Anamnese',          icon: ClipboardText },
   { id: 'usuarios',        label: 'Usuários e acesso', icon: UsersThree },
   { id: 'whatsapp',        label: 'WhatsApp',          icon: WhatsappLogo, moduleRequired: 'whatsapp' },
 ]

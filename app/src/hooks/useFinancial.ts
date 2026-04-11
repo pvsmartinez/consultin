@@ -18,7 +18,7 @@ export function useFinancial(month: Date) {
   const clinicId = profile?.clinicId
 
   return useQuery({
-    queryKey: QK.financial.monthly(monthStart),
+    queryKey: QK.financial.monthly(clinicId, monthStart),
     staleTime: 60_000,
     enabled: !!clinicId,
     queryFn: async () => {

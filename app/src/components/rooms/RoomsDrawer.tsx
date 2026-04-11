@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X, Plus, PencilSimple, Check, Clock, Eye, EyeSlash, Trash } from '@phosphor-icons/react'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import { toast } from 'sonner'
 import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom } from '../../hooks/useRooms'
 import RoomAvailabilityEditor from '../availability/RoomAvailabilityEditor'
@@ -22,6 +23,7 @@ function RoomRow({ room }: { room: ClinicRoom }) {
   const [editing, setEditing]   = useState(false)
   const [name, setName]         = useState(room.name)
   const [color, setColor]       = useState(room.color)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function save() {
     if (!name.trim()) return
@@ -44,13 +46,17 @@ function RoomRow({ room }: { room: ClinicRoom }) {
   }
 
   async function remove() {
-    if (!confirm(`Excluir "${room.name}"? As consultas associadas perderão o vínculo com a sala.`)) return
+    setConfirmDelete(true)
+  }
+
+  async function executeDelete() {
     try {
       await deleteRoom.mutateAsync(room.id)
       toast.success('Sala excluída')
     } catch {
       toast.error('Erro ao excluir')
     }
+    setConfirmDelete(false)
   }
 
   return (
@@ -133,6 +139,16 @@ function RoomRow({ room }: { room: ClinicRoom }) {
           <RoomAvailabilityEditor roomId={room.id} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Excluir sala"
+        description={`Excluir "${room.name}"? As consultas associadas perderão o vínculo com a sala.`}
+        confirmLabel="Excluir"
+        danger
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   )
 }

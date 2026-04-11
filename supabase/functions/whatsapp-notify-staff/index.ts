@@ -81,7 +81,7 @@ serve(async (req) => {
     .eq('clinic_id', clinicId)
     .eq(notifCol, true)
     .not('notification_phone', 'is', null)
-    .in('role', ['admin', 'receptionist', 'professional'])
+    .filter('roles', 'ov', '{admin,receptionist,professional}')
 
   if (recipientsErr) {
     console.error('[notify-staff] recipients query failed:', recipientsErr)

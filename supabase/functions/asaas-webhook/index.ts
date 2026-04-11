@@ -112,11 +112,18 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: CORS })
   }
 
-  // ── Verificar token do webhook (se configurado) ────────────────────────────
-  if (WEBHOOK_TOKEN) {
+  // ── Verificar token do webhook ────────────────────────────────────────────
+  if (!WEBHOOK_TOKEN) {
+    if (isProd) {
+      // Fail closed in production — never accept unverified payment callbacks
+      console.error('[asaas-webhook] FATAL: ASAAS_WEBHOOK_TOKEN_PRODUCTION is not configured')
+      return new Response('Service misconfigured', { status: 500, headers: CORS })
+    }
+    console.warn('[asaas-webhook] WARNING: webhook token not configured (sandbox — accepting all)')
+  } else {
     const incomingToken = req.headers.get('asaas-access-token') ?? ''
     if (incomingToken !== WEBHOOK_TOKEN) {
-      console.warn('[asaas-webhook] Token inválido')
+      console.warn('[asaas-webhook] Invalid webhook token')
       return new Response('Unauthorized', { status: 401, headers: CORS })
     }
   }

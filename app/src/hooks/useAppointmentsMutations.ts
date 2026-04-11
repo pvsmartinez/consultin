@@ -83,19 +83,22 @@ export function useAppointmentsQuery(
   /** Filter by one or many professional IDs (for professional role: pass all their IDs) */
   professionalFilter?: string | string[] | null,
 ) {
+  const { profile } = useAuthContext()
+  const clinicId = profile?.clinicId
   const ids = professionalFilter
     ? Array.isArray(professionalFilter) ? professionalFilter : [professionalFilter]
     : null
 
   return useQuery({
-    queryKey: QK.appointments.list(startsFrom, startsUntil, ids ?? 'all'),
+    queryKey: QK.appointments.list(clinicId, startsFrom, startsUntil, ids ?? 'all'),
     // Skip query when ids is an explicit empty array (personal view before prof records load,
     // or professional with no linked record) — prevents leaking all-clinic appointments.
-    enabled: ids === null || ids.length > 0,
+    enabled: !!clinicId && (ids === null || ids.length > 0),
     queryFn: async () => {
       let q = supabase
         .from('appointments')
         .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty), clinic_room:clinic_rooms(id,name,color), clinics(id,name)`)
+        .eq('clinic_id', clinicId!)
         .gte('starts_at', startsFrom)
         .lte('starts_at', startsUntil)
         .order('starts_at')

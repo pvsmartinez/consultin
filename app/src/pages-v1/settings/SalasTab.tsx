@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash, PencilSimple, Check, X, Clock } from '@phosphor-icons/react'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { toast } from 'sonner'
 import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom } from '../../hooks/useRooms'
 import RoomAvailabilityEditor from '../../components/availability/RoomAvailabilityEditor'
@@ -21,6 +22,7 @@ export default function SalasTab() {
   const [name, setName] = useState('')
   const [color, setColor] = useState(ROOM_COLORS[0])
   const [expandedAvail, setExpandedAvail] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<ClinicRoom | null>(null)
 
   function openNew() { setEditing(null); setName(''); setColor(ROOM_COLORS[0]); setShowForm(true) }
   function openEdit(r: ClinicRoom) { setEditing(r); setName(r.name); setColor(r.color); setShowForm(true) }
@@ -46,10 +48,15 @@ export default function SalasTab() {
     } catch { toast.error('Erro') }
   }
 
-  async function remove(r: ClinicRoom) {
-    if (!confirm(`Excluir "${r.name}"? Consultas associadas perderão o vínculo com a sala.`)) return
-    try { await deleteRoom.mutateAsync(r.id); toast.success('Sala excluída') }
+  function remove(r: ClinicRoom) {
+    setConfirmDelete(r)
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return
+    try { await deleteRoom.mutateAsync(confirmDelete.id); toast.success('Sala excluída') }
     catch { toast.error('Não é possível excluir — sala possui consultas vinculadas') }
+    setConfirmDelete(null)
   }
 
   return (
@@ -170,6 +177,16 @@ export default function SalasTab() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir sala"
+        description={`Excluir "${confirmDelete?.name}"? Consultas associadas perderão o vínculo com a sala.`}
+        confirmLabel="Excluir"
+        danger
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

@@ -35,6 +35,29 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
+  // ── IP-based rate limit: max 3 submissions per IP per hour ────────────────
+  // Uses the clinic_signup_requests table — no extra infrastructure needed.
+  // CF-Connecting-IP → X-Forwarded-For → fallback 'unknown'
+  const clientIp =
+    req.headers.get('cf-connecting-ip') ??
+    (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() ??
+    'unknown'
+
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  })
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { count: recentCount } = await admin
+    .from('clinic_signup_requests')
+    .select('*', { count: 'exact', head: true })
+    .eq('submitter_ip', clientIp)
+    .gte('created_at', oneHourAgo)
+
+  if ((recentCount ?? 0) >= 3) {
+    return json({ error: 'Muitas solicitações. Tente novamente em 1 hora.' }, 429)
+  }
+
   let body: {
     clinicName: string
     responsibleName: string
@@ -58,10 +81,8 @@ serve(async (req: Request) => {
     return json({ error: 'E-mail inválido' }, 400)
   }
 
-  // ─── Insert via service role (no RLS) ──────────────────────────────────────
-  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  })
+  // ─── Insert via service role (no RLS) ──────────────────────────────
+  // (admin client already created above for rate limit check)
 
   const { error: insertError } = await admin
     .from('clinic_signup_requests')
@@ -72,6 +93,7 @@ serve(async (req: Request) => {
       email:            email.trim().toLowerCase(),
       responsible_name: responsibleName.trim(),
       message:          body.message?.trim()           || null,
+      submitter_ip:     clientIp !== 'unknown' ? clientIp : null,
     })
 
   if (insertError) {

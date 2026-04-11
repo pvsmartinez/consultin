@@ -43,7 +43,7 @@ export function usePatients(search = '', page = 0) {
   const qc = useQueryClient()
 
   const query = useQuery({
-    queryKey: QK.patients.list(search, page),
+    queryKey: QK.patients.list(profile?.clinicId, search, page),
     staleTime: 2 * 60_000,
     queryFn: async () => {
       const from = page * PATIENTS_PAGE_SIZE

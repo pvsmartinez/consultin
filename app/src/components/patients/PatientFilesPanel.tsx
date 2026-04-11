@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { DownloadSimple, Trash, FilePlus, File, FilePdf, Image } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import {
   usePatientFiles,
   useUploadPatientFile,
@@ -32,6 +33,7 @@ interface Props {
 export default function PatientFilesPanel({ patientId, clinicId }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ fileId: string; storagePath: string; name: string } | null>(null)
 
   const { data: files = [], isLoading }        = usePatientFiles(patientId)
   const uploadMut                               = useUploadPatientFile(patientId)
@@ -69,11 +71,16 @@ export default function PatientFilesPanel({ patientId, clinicId }: Props) {
     }
   }
 
-  async function handleDelete(fileId: string, storagePath: string, name: string) {
-    if (!window.confirm(`Excluir "${name}"? Esta ação não pode ser desfeita.`)) return
-    setDeleting(fileId)
+  function handleDelete(fileId: string, storagePath: string, name: string) {
+    setConfirmDelete({ fileId, storagePath, name })
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return
+    setDeleting(confirmDelete.fileId)
+    setConfirmDelete(null)
     try {
-      await deleteMut.mutateAsync({ fileId, storagePath })
+      await deleteMut.mutateAsync({ fileId: confirmDelete.fileId, storagePath: confirmDelete.storagePath })
       toast.success('Arquivo excluído')
     } catch {
       toast.error('Erro ao excluir arquivo')
@@ -144,6 +151,16 @@ export default function PatientFilesPanel({ patientId, clinicId }: Props) {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir arquivo"
+        description={`Excluir "${confirmDelete?.name}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        danger
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

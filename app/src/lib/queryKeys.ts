@@ -22,8 +22,8 @@ export const QK = {
   // ── Appointments ──────────────────────────────────────────────
   appointments: {
     /** Prefix — invalidates every ['appointments', ...] entry */
-    all:      ()                                                    => ['appointments']                      as const,
-    list:     (from: string, to: string, ids: string[] | 'all')    => ['appointments', from, to, ids]       as const,
+    all:      ()                                                                            => ['appointments']                              as const,
+    list:     (clinicId: string | null | undefined, from: string, to: string, ids: string[] | 'all') => ['appointments', clinicId, from, to, ids] as const,
     today:    (clinicId: string | null | undefined)                 => ['today-appointments', clinicId]      as const,
     /** Prefix — invalidates every ['today-appointments', ...] entry */
     todayAll: ()                                                    => ['today-appointments']                as const,
@@ -33,7 +33,7 @@ export const QK = {
   patients: {
     /** Prefix — invalidates every ['patients', ...] entry */
     all:          ()                              => ['patients']                          as const,
-    list:         (search: string, page: number)  => ['patients', search, page]           as const,
+    list:         (clinicId: string | null | undefined, search: string, page: number)  => ['patients', clinicId, search, page]           as const,
     detail:       (id: string)                    => ['patient', id]                      as const,
     my:           (userId: string | undefined)    => ['my-patient', userId]               as const,
     appointments: (patientId: string)             => ['patient-appointments', patientId]  as const,
@@ -86,8 +86,8 @@ export const QK = {
   financial: {
     /** Prefix — invalidates every ['financial', ...] entry */
     all:           ()                                              => ['financial']                             as const,
-    monthly:       (monthStart: string)                            => ['financial', monthStart]                as const,
-    report:        (monthStart: string, profId: string)            => ['report', monthStart, profId]           as const,
+    monthly:       (clinicId: string | null | undefined, monthStart: string)                            => ['financial', clinicId, monthStart]                as const,
+    report:        (clinicId: string | null | undefined, monthStart: string, profId: string)            => ['report', clinicId, monthStart, profId]           as const,
     apptPayments:  (apptId: string | undefined)                    => ['appt-payments', apptId]                as const,
     clinicPayments:(clinicId: string | undefined, start?: string)  => start ? ['clinic-appt-payments', clinicId, start] as const : ['clinic-appt-payments', clinicId] as const,
     profEarnings:  (profId: string, month: string)                 => ['prof-earnings', profId, month]         as const,

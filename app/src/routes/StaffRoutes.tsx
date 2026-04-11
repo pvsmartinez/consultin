@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import RequireAuth from '../components/auth/RequireAuth'
+import RequireModule from '../components/auth/RequireModule'
 
 // ─── v2 pages ────────────────────────────────────────────────────────────────
 const AgendaPage          = lazy(() => import('../pages/AgendaPage'))
@@ -57,7 +58,9 @@ export default function StaffRoutes() {
       } />
 
       {/* Salas (módulo rooms) */}
-      <Route path="/salas" element={<SalasPage />} />
+      <Route path="/salas" element={
+        <RequireModule module="rooms"><SalasPage /></RequireModule>
+      } />
 
       {/* Equipe (módulo staff) */}
       <Route path="/equipe" element={
@@ -67,12 +70,16 @@ export default function StaffRoutes() {
 
       {/* WhatsApp (módulo whatsapp) */}
       <Route path="/whatsapp" element={
-        <RequireAuth permission="canViewWhatsApp"><WhatsAppInboxPage /></RequireAuth>
+        <RequireModule module="whatsapp">
+          <RequireAuth permission="canViewWhatsApp"><WhatsAppInboxPage /></RequireAuth>
+        </RequireModule>
       } />
 
       {/* Financeiro (módulo financial) */}
       <Route path="/financeiro" element={
-        <RequireAuth permission="canViewFinancial"><FinanceiroPage /></RequireAuth>
+        <RequireModule module="financial">
+          <RequireAuth permission="canViewFinancial"><FinanceiroPage /></RequireAuth>
+        </RequireModule>
       } />
       <Route path="/relatorios" element={<Navigate to="/financeiro" replace />} />
 

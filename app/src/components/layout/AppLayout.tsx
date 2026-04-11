@@ -10,6 +10,7 @@ import {
   SignOut,
   Plus,
   CreditCard,
+  CurrencyDollar,
 } from '@phosphor-icons/react'
 import { AppShell, SideNav, NavItem, Avatar, Button, TopBar, BottomTabBar, TabItem } from '@pvsmartinez/shared/ui'
 import AppointmentModal from '../appointments/AppointmentModal'
@@ -35,7 +36,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const { signOut, hasPermission, profile, role } = useAuthContext()
   const { data: clinic } = useClinic()
-  const { hasRooms, hasStaff, hasWhatsApp } = useClinicModules()
+  const { hasRooms, hasStaff, hasWhatsApp, hasFinancial } = useClinicModules()
   const navigate = useNavigate()
   const location = useLocation()
   const { unreadCount } = useClinicNotifications(navigate)
@@ -52,11 +53,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // Conditional: Equipe, Salas, WhatsApp driven by active modules + permissions
   // Settings always visible to admins
   const navItems = [
-    { to: '/agenda',         icon: CalendarBlank, label: 'Agenda',       show: true },
-    { to: '/pacientes',      icon: Users,         label: 'Pacientes',    show: hasPermission('canViewPatients') },
-    { to: '/equipe',         icon: UsersFour,     label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
-    { to: '/salas',          icon: Buildings,     label: 'Salas',        show: hasRooms },
-    { to: '/whatsapp',       icon: WhatsappLogo,  label: 'Mensagens',    show: hasWhatsApp && hasPermission('canViewWhatsApp') },
+    { to: '/agenda',         icon: CalendarBlank,   label: 'Agenda',       show: true },
+    { to: '/pacientes',      icon: Users,           label: 'Pacientes',    show: hasPermission('canViewPatients') },
+    { to: '/equipe',         icon: UsersFour,       label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
+    { to: '/salas',          icon: Buildings,       label: 'Salas',        show: hasRooms },
+    { to: '/financeiro',     icon: CurrencyDollar,  label: 'Financeiro',   show: hasFinancial && hasPermission('canViewFinancial') },
+    { to: '/whatsapp',       icon: WhatsappLogo,    label: 'Mensagens',    show: hasWhatsApp && hasPermission('canViewWhatsApp') },
   ].filter(item => item.show)
 
   const settingsItem = { to: '/configuracoes', icon: Gear, label: 'Configurações', show: hasPermission('canManageSettings') }

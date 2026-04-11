@@ -17,7 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const META_API_VERSION  = 'v19.0'
+const META_API_VERSION  = 'v21.0'
 const META_BASE         = `https://graph.facebook.com/${META_API_VERSION}`
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,6 +48,15 @@ interface SendRequest {
 serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
+  }
+
+  // ── Auth: only internal callers (service role) may invoke this function ──
+  // This prevents external actors who discover the function URL from sending
+  // arbitrary WhatsApp messages on behalf of any clinic.
+  const authHeader = req.headers.get('Authorization') ?? ''
+  const callerToken = authHeader.replace(/^Bearer\s+/i, '')
+  if (!callerToken || callerToken !== SUPABASE_SRK) {
+    return jsonError('Forbidden', 403)
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)

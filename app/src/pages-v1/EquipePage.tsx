@@ -11,6 +11,7 @@ import { Plus, PencilSimple, ToggleRight, ToggleLeft, Envelope, Trash, Bank,
          EnvelopeSimple, UsersThree, UsersFour, Sliders } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
+import ConfirmDialog from '../components/ui/ConfirmDialog'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { usePendingInvites, useCreateInvite, useDeleteInvite, useResendInviteEmail } from '../hooks/useInvites'
 import ProfessionalModal from '../components/professionals/ProfessionalModal'
@@ -280,6 +281,7 @@ function AcessoTab() {
   const [pendingRoles, setPendingRoles] = useState<UserRole[]>(['professional'])
   const [pendingPerms, setPendingPerms] = useState<Record<string, boolean>>({})
   const [showPerms,    setShowPerms]    = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
 
   const effectivePermsForEdit = useMemo(() => mergedPermissions(pendingRoles, pendingPerms), [pendingRoles, pendingPerms])
   const roleDefaultsForEdit   = useMemo(() => mergedPermissions(pendingRoles), [pendingRoles])
@@ -309,12 +311,17 @@ function AcessoTab() {
   }
 
   async function handleRemove(memberId: string, memberName: string) {
-    if (!confirm(`Remover "${memberName}" da clínica?`)) return
+    setConfirmRemove({ id: memberId, name: memberName })
+  }
+
+  async function executeRemove() {
+    if (!confirmRemove) return
     try {
-      await removeMember.mutateAsync(memberId)
-      toast.success(`${memberName} removido(a)!`)
-      if (editingId === memberId) setEditingId(null)
+      await removeMember.mutateAsync(confirmRemove.id)
+      toast.success(`${confirmRemove.name} removido(a)!`)
+      if (editingId === confirmRemove.id) setEditingId(null)
     } catch (e: unknown) { toast.error((e as Error).message ?? 'Erro') }
+    setConfirmRemove(null)
   }
 
   if (isLoading) return <p className="text-sm text-gray-400 py-6 text-center">Carregando membros…</p>
@@ -479,6 +486,16 @@ function AcessoTab() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Remover membro"
+        description={`Remover "${confirmRemove?.name}" da clínica? O acesso será revogado imediatamente.`}
+        confirmLabel="Remover"
+        danger
+        onConfirm={executeRemove}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </div>
   )
 }

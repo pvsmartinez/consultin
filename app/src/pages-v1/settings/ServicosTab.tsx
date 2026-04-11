@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, PencilSimple, Trash, Check, X, CurrencyDollar, Clock, ClipboardText } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useServiceTypes, useCreateServiceType, useUpdateServiceType, useDeleteServiceType } from '../../hooks/useServiceTypes'
 import { useClinic } from '../../hooks/useClinic'
 import { SERVICE_TYPE_COLORS } from '../../types'
@@ -35,6 +36,7 @@ export default function ServicosTab() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<ServiceType | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY)
+  const [confirmDelete, setConfirmDelete] = useState<ServiceType | null>(null)
 
   // Resync form when editing changes
   useEffect(() => {
@@ -103,14 +105,19 @@ export default function ServicosTab() {
     }
   }
 
-  async function handleDelete(s: ServiceType) {
-    if (!confirm(`Excluir "${s.name}"? Consultas já agendadas com este serviço não serão afetadas.`)) return
+  function handleDelete(s: ServiceType) {
+    setConfirmDelete(s)
+  }
+
+  async function executeDelete() {
+    if (!confirmDelete) return
     try {
-      await remove.mutateAsync(s.id)
+      await remove.mutateAsync(confirmDelete.id)
       toast.success('Serviço excluído')
     } catch {
       toast.error('Não é possível excluir — serviço com consultas vinculadas')
     }
+    setConfirmDelete(null)
   }
 
   return (
@@ -324,6 +331,16 @@ export default function ServicosTab() {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Excluir tipo de consulta"
+        description={`Excluir "${confirmDelete?.name}"? Consultas já agendadas com este serviço não serão afetadas.`}
+        confirmLabel="Excluir"
+        danger
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

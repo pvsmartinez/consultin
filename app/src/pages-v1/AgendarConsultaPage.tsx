@@ -71,6 +71,7 @@ export default function AgendarConsultaPage() {
         .gte('starts_at', dayStartUTC)
         .lte('starts_at', dayEndUTC)
         .neq('status', 'cancelled')
+      query = query.eq('clinic_id', clinic!.id)
       if (allowProfSelection) {
         query = query.eq('professional_id', selectedProf)
       } else {

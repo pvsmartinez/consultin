@@ -38,6 +38,7 @@ function cors(origin: string | null) {
     'Access-Control-Allow-Origin': allowedOrigin(origin),
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Credentials': 'true',
   }
 }
 

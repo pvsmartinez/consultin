@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { UserCircle, Trash, Check, X, SlidersHorizontal, Clock, EnvelopeSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useClinicMembers, useUpdateMemberRole, useRemoveClinicMember, useClinicInvites, useResendInvite, useCancelInvite } from '../../hooks/useClinic'
 import type { ClinicInvite } from '../../hooks/useClinic'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -49,6 +50,8 @@ export default function UsuariosTab() {
   const [pendingRoles,   setPendingRoles]   = useState<UserRole[]>(['professional'])
   const [pendingPerms,   setPendingPerms]   = useState<Record<string, boolean>>({})
   const [showPerms,      setShowPerms]      = useState(false)
+  const [confirmRemove,  setConfirmRemove]  = useState<{ id: string; name: string } | null>(null)
+  const [confirmCancel,  setConfirmCancel]  = useState<ClinicInvite | null>(null)
 
   // When roles change in edit mode, recalculate effective perms (preserving manual overrides)
   const effectivePermsForEdit = useMemo(
@@ -107,14 +110,19 @@ export default function UsuariosTab() {
   }
 
   async function handleRemove(memberId: string, memberName: string) {
-    if (!confirm(`Remover "${memberName}" da clínica? O acesso será revogado imediatamente.`)) return
+    setConfirmRemove({ id: memberId, name: memberName })
+  }
+
+  async function executeRemove() {
+    if (!confirmRemove) return
     try {
-      await removeMember.mutateAsync(memberId)
-      toast.success(`${memberName} removido(a)!`)
-      if (editingId === memberId) setEditingId(null)
+      await removeMember.mutateAsync(confirmRemove.id)
+      toast.success(`${confirmRemove.name} removido(a)!`)
+      if (editingId === confirmRemove.id) setEditingId(null)
     } catch (e: unknown) {
       toast.error((e as Error).message ?? 'Erro ao remover membro')
     }
+    setConfirmRemove(null)
   }
 
   async function handleResend(invite: ClinicInvite) {
@@ -127,13 +135,18 @@ export default function UsuariosTab() {
   }
 
   async function handleCancelInvite(invite: ClinicInvite) {
-    if (!confirm(`Cancelar convite para "${invite.email}"?`)) return
+    setConfirmCancel(invite)
+  }
+
+  async function executeCancelInvite() {
+    if (!confirmCancel) return
     try {
-      await cancelInvite.mutateAsync(invite.id)
+      await cancelInvite.mutateAsync(confirmCancel.id)
       toast.success('Convite cancelado.')
     } catch (e: unknown) {
       toast.error((e as Error).message ?? 'Erro ao cancelar convite')
     }
+    setConfirmCancel(null)
   }
 
 
@@ -377,6 +390,25 @@ export default function UsuariosTab() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmRemove}
+        title="Remover membro"
+        description={`Remover "${confirmRemove?.name}" da clínica? O acesso será revogado imediatamente.`}
+        confirmLabel="Remover"
+        danger
+        onConfirm={executeRemove}
+        onCancel={() => setConfirmRemove(null)}
+      />
+      <ConfirmDialog
+        open={!!confirmCancel}
+        title="Cancelar convite"
+        description={`Cancelar convite para "${confirmCancel?.email}"?`}
+        confirmLabel="Cancelar convite"
+        danger
+        onConfirm={executeCancelInvite}
+        onCancel={() => setConfirmCancel(null)}
+      />
     </div>
   )
 }

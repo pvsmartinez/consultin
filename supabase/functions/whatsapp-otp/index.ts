@@ -176,22 +176,25 @@ async function getPhoneForEmail(
   supabase:   ReturnType<typeof createClient>,
   email:      string,
 ): Promise<string | null> {
-  // Look through auth.users to find the user id by email
-  const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-  const user = (users ?? []).find((u: { email?: string }) => u.email === email)
-  if (!user) return null
+  // Look up user id via secure RPC — avoids paginating auth.admin.listUsers()
+  // which would miss users beyond the first 1000 and is slow at scale.
+  const { data: userId, error: rpcErr } = await supabase
+    .rpc('get_user_id_by_email', { p_email: email })
+  if (rpcErr) {
+    console.error('[whatsapp-otp] get_user_id_by_email error:', rpcErr)
+    return null
+  }
+  if (!userId) return null
 
-  // Then get the phone from user_profiles
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('phone')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   const rawPhone = (profile as { phone?: string } | null)?.phone?.trim()
   if (!rawPhone) return null
 
-  // Also check wa_platform_users as fallback (users who came via WhatsApp bot)
   return rawPhone
 }
 
