@@ -70,9 +70,12 @@ export default function ServicosTab() {
 
   async function submit() {
     if (!form.name.trim()) { toast.error('Nome obrigatório'); return }
-    const priceCentsVal = form.priceCents.trim()
-      ? Math.round(parseFloat(form.priceCents.replace(',', '.')) * 100)
-      : null
+    let priceCentsVal: number | null = null
+    if (form.priceCents.trim()) {
+      const parsed = parseFloat(form.priceCents.replace(',', '.'))
+      if (isNaN(parsed)) { toast.error('Valor inválido'); return }
+      priceCentsVal = Math.round(parsed * 100)
+    }
 
     const input: ServiceTypeInput = {
       name:            form.name.trim(),

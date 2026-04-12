@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,15 +19,27 @@ const schema = z.object({
 type Form = z.infer<typeof schema>
 
 export default function DadosTab({ clinic }: { clinic: Clinic }) {
+  const formKey = [
+    clinic.id,
+    clinic.name,
+    clinic.cnpj ?? '',
+    clinic.phone ?? '',
+    clinic.email ?? '',
+    clinic.address ?? '',
+    clinic.city ?? '',
+    clinic.state ?? '',
+    clinic.allowSelfRegistration ? '1' : '0',
+  ].join('|')
+
+  return <DadosTabForm key={formKey} clinic={clinic} />
+}
+
+function DadosTabForm({ clinic }: { clinic: Clinic }) {
   const { update } = useClinic()
   const [selfReg, setSelfReg] = useState(clinic.allowSelfRegistration)
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<Form>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({
     resolver: zodResolver(schema),
-  })
-
-  useEffect(() => {
-    setSelfReg(clinic.allowSelfRegistration)
-    reset({
+    defaultValues: {
       name:    clinic.name,
       cnpj:    clinic.cnpj ?? '',
       phone:   clinic.phone ?? '',
@@ -35,8 +47,8 @@ export default function DadosTab({ clinic }: { clinic: Clinic }) {
       address: clinic.address ?? '',
       city:    clinic.city ?? '',
       state:   clinic.state ?? '',
-    })
-  }, [clinic, reset])
+    },
+  })
 
   async function onSubmit(values: Form) {
     try {

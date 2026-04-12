@@ -358,16 +358,29 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     setModalOpen(true)
   }
 
-  async function handleEventDrop(arg: { event: { id: string; startStr: string; endStr: string; start: Date | null; extendedProps: Record<string, unknown> }; revert: () => void }) {
+  async function handleEventDrop(arg: { event: { id: string; startStr: string; endStr: string; start: Date | null; extendedProps: Record<string, unknown>; getResources: () => Array<{ id: string }> }; revert: () => void }) {
     const appt = arg.event.extendedProps.appointment as Appointment
     const newStart = arg.event.start!
     const diffMs = new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()
+    // Detect resource column change (pro or room view)
+    const newResourceId = arg.event.getResources()[0]?.id
+    const newProfessionalId = effectiveAgendaView === 'prof' && newResourceId && newResourceId !== '__solo__'
+      ? newResourceId
+      : appt.professionalId
+    const newRoomId = effectiveAgendaView === 'room' && newResourceId && newResourceId !== '__no_room__'
+      ? newResourceId
+      : appt.roomId
     try {
       await update.mutateAsync({
-        id: appt.id, patientId: appt.patientId, professionalId: appt.professionalId,
+        id: appt.id, patientId: appt.patientId,
+        professionalId: newProfessionalId,
         startsAt: newStart.toISOString(),
         endsAt: new Date(newStart.getTime() + diffMs).toISOString(),
-        status: appt.status, notes: appt.notes, chargeAmountCents: appt.chargeAmountCents,
+        status: appt.status, notes: appt.notes,
+        chargeAmountCents: appt.chargeAmountCents,
+        roomId: newRoomId,
+        serviceTypeId: appt.serviceTypeId,
+        professionalFeeCents: appt.professionalFeeCents,
       })
       toast.success('Consulta remarcada')
     } catch {
@@ -396,7 +409,11 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       await update.mutateAsync({
         id: appt.id, patientId: appt.patientId, professionalId: appt.professionalId,
         startsAt: appt.startsAt, endsAt: newEnd.toISOString(),
-        status: appt.status, notes: appt.notes, chargeAmountCents: appt.chargeAmountCents,
+        status: appt.status, notes: appt.notes,
+        chargeAmountCents: appt.chargeAmountCents,
+        roomId: appt.roomId,
+        serviceTypeId: appt.serviceTypeId,
+        professionalFeeCents: appt.professionalFeeCents,
       })
       toast.success('Consulta atualizada')
     } catch {
@@ -413,7 +430,11 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       await update.mutateAsync({
         id: appt.id, patientId: appt.patientId, professionalId: appt.professionalId,
         startsAt: appt.startsAt, endsAt: newEndsAt,
-        status: appt.status, notes: appt.notes, chargeAmountCents: appt.chargeAmountCents,
+        status: appt.status, notes: appt.notes,
+        chargeAmountCents: appt.chargeAmountCents,
+        roomId: appt.roomId,
+        serviceTypeId: appt.serviceTypeId,
+        professionalFeeCents: appt.professionalFeeCents,
       })
       if (also && clinic?.workingHours) {
         const current = clinic.workingHours[dayKey]

@@ -1,22 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useClinic } from '../../hooks/useClinic'
 import { PAYMENT_METHOD_OPTIONS, PAYMENT_TIMING_LABELS } from '../../types'
 import type { Clinic } from '../../types'
 
 export default function PagamentoTab({ clinic }: { clinic: Clinic }) {
+  const formKey = [
+    clinic.id,
+    clinic.acceptedPaymentMethods.join(','),
+    clinic.paymentTiming,
+    String(clinic.cancellationHours),
+  ].join('|')
+
+  return <PagamentoTabForm key={formKey} clinic={clinic} />
+}
+
+function PagamentoTabForm({ clinic }: { clinic: Clinic }) {
   const { update } = useClinic()
 
   const [methods, setMethods]   = useState<string[]>(clinic.acceptedPaymentMethods)
   const [timing, setTiming]     = useState<Clinic['paymentTiming']>(clinic.paymentTiming)
   const [cancelH, setCancelH]   = useState<string>(String(clinic.cancellationHours))
   const [saving, setSaving]     = useState(false)
-
-  useEffect(() => {
-    setMethods(clinic.acceptedPaymentMethods)
-    setTiming(clinic.paymentTiming)
-    setCancelH(String(clinic.cancellationHours))
-  }, [clinic])
 
   function toggleMethod(value: string) {
     setMethods(prev =>
@@ -26,12 +31,13 @@ export default function PagamentoTab({ clinic }: { clinic: Clinic }) {
 
   async function save() {
     if (methods.length === 0) { toast.error('Selecione ao menos uma forma de pagamento'); return }
+    const parsedCancelH = parseInt(cancelH, 10)
     setSaving(true)
     try {
       await update.mutateAsync({
         acceptedPaymentMethods: methods,
         paymentTiming:         timing,
-        cancellationHours:     parseInt(cancelH) || 24,
+        cancellationHours:     isNaN(parsedCancelH) ? 24 : parsedCancelH,
       })
       toast.success('Regras de pagamento salvas')
     } catch {

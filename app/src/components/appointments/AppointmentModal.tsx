@@ -48,6 +48,15 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+function defaultTimeSlot(): string {
+  const now = new Date()
+  const totalMin = now.getHours() * 60 + now.getMinutes()
+  const rounded = Math.ceil(totalMin / 30) * 30
+  const h = Math.floor(rounded / 60) % 24
+  const m = rounded % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 const PRESET_DURATIONS = [15, 20, 30, 45, 60, 90, 120]
 const STATUSES = Object.entries(APPOINTMENT_STATUS_LABELS) as [AppointmentStatus, string][]
 
@@ -185,7 +194,7 @@ export default function AppointmentModal({
         patientId:       initialPatientId ?? '',
         professionalId:  initialProfessionalId ?? '',
         date:            initialDate ?? format(new Date(), 'yyyy-MM-dd'),
-        startTime:       initialTime ?? '08:00',
+        startTime:       initialTime ?? defaultTimeSlot(),
         durationMin:     String(initialDurationMin ?? 30),
         status:          'scheduled',
         notes:           '',
@@ -219,12 +228,18 @@ export default function AppointmentModal({
       const durationMin = parseInt(values.durationMin)
       const startsAt    = toUTC(values.date, values.startTime)
       const endsAt      = addMinutes(new Date(startsAt), durationMin).toISOString()
-      const chargeAmountCents = values.chargeAmount
-        ? Math.round(parseFloat(values.chargeAmount.replace(',', '.')) * 100)
-        : null
-      const professionalFeeCents = values.professionalFee
-        ? Math.round(parseFloat(values.professionalFee.replace(',', '.')) * 100)
-        : null
+      const chargeRaw = values.chargeAmount ? parseFloat(values.chargeAmount.replace(',', '.')) : NaN
+      const feeRaw = values.professionalFee ? parseFloat(values.professionalFee.replace(',', '.')) : NaN
+      if (values.chargeAmount && isNaN(chargeRaw)) {
+        toast.error('Valor cobrado inválido')
+        return
+      }
+      if (values.professionalFee && isNaN(feeRaw)) {
+        toast.error('Repasse ao profissional inválido')
+        return
+      }
+      const chargeAmountCents = values.chargeAmount ? Math.round(chargeRaw * 100) : null
+      const professionalFeeCents = values.professionalFee ? Math.round(feeRaw * 100) : null
 
       const basePayload = {
         patientId:           values.patientId,

@@ -4,13 +4,14 @@
  * Staff fills / edits the anamnesis questionnaire for a patient.
  * Questions are configured per-clinic in Configurações → Anamnese.
  */
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, ClipboardText, Gear } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { usePatient, useUpdateAnamnesis } from '../hooks/usePatients'
 import { useClinic } from '../hooks/useClinic'
 import CustomFieldInput from '../components/ui/CustomFieldInput'
+import type { CustomFieldDef } from '../types'
 
 function hasCustomFieldValue(value: unknown) {
   if (value == null) return false
@@ -25,15 +26,6 @@ export default function PatientAnamnesisPage() {
 
   const { patient, loading: loadingPatient } = usePatient(id!)
   const { data: clinic, isLoading: loadingClinic } = useClinic()
-  const updateAnamnesis = useUpdateAnamnesis()
-
-  const [answers, setAnswers] = useState<Record<string, unknown>>({})
-  const [saving, setSaving] = useState(false)
-
-  // Seed form with existing answers when patient loads
-  useEffect(() => {
-    if (patient?.anamnesisData) setAnswers(patient.anamnesisData)
-  }, [patient])
 
   if (loadingPatient || loadingClinic) {
     return <div className="text-center text-gray-400 text-sm mt-20">Carregando...</div>
@@ -51,24 +43,7 @@ export default function PatientAnamnesisPage() {
   }
 
   const questions = clinic?.anamnesisFields ?? []
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    const missingRequiredQuestion = questions.find(q => q.required && !hasCustomFieldValue(answers[q.key]))
-    if (missingRequiredQuestion) {
-      toast.error(`Preencha a pergunta obrigatória "${missingRequiredQuestion.label}".`)
-      return
-    }
-    setSaving(true)
-    try {
-      await updateAnamnesis.mutateAsync({ patientId: id!, data: answers })
-      toast.success('Anamnese salva!')
-    } catch {
-      toast.error('Erro ao salvar anamnese.')
-    } finally {
-      setSaving(false)
-    }
-  }
+  const formKey = `${patient.id}:${JSON.stringify(patient.anamnesisData ?? {})}:${questions.map(q => q.key).join(',')}`
 
   return (
     <div className="max-w-2xl">
@@ -106,37 +81,82 @@ export default function PatientAnamnesisPage() {
           </Link>
         </div>
       ) : (
-        <form onSubmit={handleSave}
-          className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
-
-          {questions.map(q => (
-            <CustomFieldInput
-              key={q.key}
-              field={q}
-              value={answers[q.key] ?? null}
-              onChange={(key, value) => setAnswers(prev => ({ ...prev, [key]: value }))}
-            />
-          ))}
-
-          <div className="pt-2 flex gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
-              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
-            >
-              {saving ? 'Salvando...' : 'Salvar anamnese'}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/pacientes/${id}`)}
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+        <PatientAnamnesisForm
+          key={formKey}
+          patientId={id!}
+          patientReturnPath={`/pacientes/${id}`}
+          questions={questions}
+          initialAnswers={patient.anamnesisData ?? {}}
+        />
       )}
     </div>
+  )
+}
+
+function PatientAnamnesisForm({
+  patientId,
+  patientReturnPath,
+  questions,
+  initialAnswers,
+}: {
+  patientId: string
+  patientReturnPath: string
+  questions: CustomFieldDef[]
+  initialAnswers: Record<string, unknown>
+}) {
+  const navigate = useNavigate()
+  const updateAnamnesis = useUpdateAnamnesis()
+  const [answers, setAnswers] = useState<Record<string, unknown>>(initialAnswers)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    const missingRequiredQuestion = questions.find(q => q.required && !hasCustomFieldValue(answers[q.key]))
+    if (missingRequiredQuestion) {
+      toast.error(`Preencha a pergunta obrigatória "${missingRequiredQuestion.label}".`)
+      return
+    }
+    setSaving(true)
+    try {
+      await updateAnamnesis.mutateAsync({ patientId, data: answers })
+      toast.success('Anamnese salva!')
+    } catch {
+      toast.error('Erro ao salvar anamnese.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave}
+      className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
+
+      {questions.map(q => (
+        <CustomFieldInput
+          key={q.key}
+          field={q}
+          value={answers[q.key] ?? null}
+          onChange={(key, value) => setAnswers(prev => ({ ...prev, [key]: value }))}
+        />
+      ))}
+
+      <div className="pt-2 flex gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+        >
+          {saving ? 'Salvando...' : 'Salvar anamnese'}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(patientReturnPath)}
+          className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   )
 }

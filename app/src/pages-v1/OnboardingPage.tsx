@@ -99,7 +99,13 @@ export default function OnboardingPage() {
           name:           patientName.trim(),
           is_super_admin: false,
         })
-      if (profileErr) throw new Error(profileErr.message)
+      if (profileErr) {
+        // Compensate: remove the patient record so the user can retry cleanly
+        await supabase.from('patients').delete()
+          .eq('user_id', session.user.id)
+          .eq('clinic_id', patientClinicId)
+        throw new Error(profileErr.message)
+      }
 
       // 3. Re-fetch session → AuthContext picks up the new profile
       await supabase.auth.refreshSession()

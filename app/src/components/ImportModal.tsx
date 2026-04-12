@@ -5,6 +5,7 @@ import { Modal } from '@pvsmartinez/shared/ui'
 import { format, parse, isValid } from 'date-fns'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
+import type { Database } from '../types/database'
 import { parseCSV } from '../utils/exportCSV'
 
 // ─── Field definitions ────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ interface Props {
 }
 
 type Mapping = Record<string, string> // fieldKey → csvHeader
+type PatientInsert = Database['public']['Tables']['patients']['Insert']
 
 export default function ImportModal({ open, onClose, onImported }: Props) {
   const { profile } = useAuthContext()
@@ -155,7 +157,7 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
   }
 
   // Build the DB row from a CSV row
-  function buildDbRow(csvRow: string[]): Record<string, string | null> | null {
+  function buildDbRow(csvRow: string[], clinicId: string): PatientInsert | null {
     const get = (fieldKey: string): string => {
       const col = mapping[fieldKey]
       if (!col) return ''
@@ -165,6 +167,7 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     const name = get('name')
     if (!name) return null // skip rows without a name
     return {
+      clinic_id:            clinicId,
       name,
       cpf:                  get('cpf') || null,
       rg:                   get('rg') || null,
@@ -189,9 +192,8 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     if (!clinicId) { toast.error('Clínica não identificada'); setStep('preview'); return }
 
     const dbRows = rows
-      .map(r => buildDbRow(r))
-      .filter((r): r is Record<string, string | null> => r !== null)
-      .map(r => ({ ...r, clinic_id: clinicId }))
+      .map(r => buildDbRow(r, clinicId))
+      .filter((r): r is PatientInsert => r !== null)
 
     if (dbRows.length === 0) {
       toast.error('Nenhuma linha válida encontrada (coluna Nome vazia em todas as linhas?)')
@@ -206,7 +208,7 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
       for (let i = 0; i < dbRows.length; i += BATCH) {
         const batch = dbRows.slice(i, i + BATCH)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await supabase.from('patients').insert(batch as any)
+        const { error } = await supabase.from('patients').insert(batch)
         if (error) throw new Error(error.message)
         imported += batch.length
       }
