@@ -36,62 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/software-para-consultorios",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Software para consultórios e equipes pequenas no Brasil com agenda, pacientes e financeiro em um fluxo único.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Software para Consultórios",
-            "item": "https://consultin.pmatz.com/software-para-consultorios"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Esse tipo de software faz sentido para consultório pequeno?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. Consultórios com operação enxuta costumam sentir ainda mais o impacto de agenda desorganizada, recado perdido e financeiro separado da rotina."
+            "url": "https://consultin.pmatz.com/software-para-consultorios",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Software para consultórios e equipes pequenas no Brasil com agenda, pacientes e financeiro em um fluxo único.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "O Consultin foi pensado para equipes menores?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. A proposta do produto é ser direto o suficiente para consultórios e clínicas pequenas, sem exigir uma implantação pesada."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Software para Consultórios",
+                    "item": "https://consultin.pmatz.com/software-para-consultorios"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "Esse tipo de software faz sentido para consultório pequeno?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A organização de agenda, pacientes e financeiro em um só lugar poupa mais tempo quanto menor for a equipe, porque cada tarefa manual pesa mais."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin foi pensado para equipes menores?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A plataforma foi desenhada para clínicas e consultórios com equipes pequenas — sem funcionalidades excessivas ou configurações complexas."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O que inclui um software de gestão para consultório?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O Consultin inclui agenda, cadastro de pacientes, prontuário eletrônico, controle financeiro e lembretes automáticos por WhatsApp."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o software para consultório?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto tempo leva para configurar o sistema e começar a usar?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "A maioria dos consultórios configura e começa a atender no mesmo dia do cadastro."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

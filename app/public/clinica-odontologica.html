@@ -36,62 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/clinica-odontologica",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Software para clínica odontológica brasileira com agenda, retornos, pacientes e gestão financeira integrados.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Clínica Odontológica",
-            "item": "https://consultin.pmatz.com/clinica-odontologica"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "O Consultin serve para clínica odontológica com mais de um dentista?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. A proposta é dar visibilidade para agenda, encaixes, retornos e rotina operacional de equipes odontológicas em um mesmo sistema."
+            "url": "https://consultin.pmatz.com/clinica-odontologica",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Software para clínica odontológica brasileira com agenda, retornos, pacientes e gestão financeira integrados.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "Ajuda a organizar retorno e encaixe?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. Esse é um dos cenários em que um fluxo unificado entre recepção, profissionais e agenda faz mais diferença."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Clínica Odontológica",
+                    "item": "https://consultin.pmatz.com/clinica-odontologica"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin serve para clínica odontológica com mais de um dentista?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema foi desenhado para clínicas com equipes, com controle de agenda e produção por profissional."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Ajuda a organizar retorno e encaixe?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A agenda facilita identificar horários livres para encaixes rápidos e controlar os retornos agendados."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin tem prontuário para registrar evoluções odontológicas?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Cada paciente tem ficha completa e prontuário eletrônico integrado ao sistema."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O sistema envia lembrete de consulta pelo WhatsApp?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Lembretes automáticos por WhatsApp são enviados antes dos atendimentos, reduzindo faltas."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o Consultin para clínica odontológica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

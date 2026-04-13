@@ -36,62 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/agenda-medica-online",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Agenda médica online para clínicas e consultórios brasileiros com visibilidade de encaixes, faltas e ocupação da equipe.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Agenda Médica Online",
-            "item": "https://consultin.pmatz.com/agenda-medica-online"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "Uma agenda médica online ajuda a reduzir faltas?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Ajuda porque melhora visibilidade, confirmação e acompanhamento da rotina, reduzindo esquecimentos e ruído operacional."
+            "url": "https://consultin.pmatz.com/agenda-medica-online",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Agenda médica online para clínicas e consultórios brasileiros com visibilidade de encaixes, faltas e ocupação da equipe.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "Esse tipo de agenda serve para consultório pequeno?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. Consultórios pequenos costumam sentir rápido o ganho de previsibilidade quando a agenda deixa de depender de recados soltos."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Agenda Médica Online",
+                    "item": "https://consultin.pmatz.com/agenda-medica-online"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "Uma agenda médica online ajuda a reduzir faltas?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Confirmações automáticas por WhatsApp e melhor visibilidade de encaixes reduzem esquecimentos e cancelamentos de última hora."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Esse tipo de agenda serve para consultório pequeno?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Consultórios pequenos costumam sentir o ganho mais rápido porque qualquer ruído operacional pesa mais quando a equipe é enxuta."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa uma agenda médica online?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O Consultin oferece 7 dias de teste grátis sem cadastro de cartão. Após o período, planos a partir de R$ 100 por mês."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin tem aplicativo para celular?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "É uma plataforma web que funciona em qualquer dispositivo com navegador — computador, tablet ou celular — sem precisar instalar nada."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto tempo leva para configurar a agenda e começar a usar?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "A maioria das clínicas configura a agenda e começa a atender no mesmo dia do cadastro."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

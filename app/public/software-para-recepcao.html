@@ -36,70 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/software-para-recepcao",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Software para recepção de clínicas brasileiras com agenda, confirmações via WhatsApp e cadastro de pacientes centralizado.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Software para Recepção de Clínica",
-            "item": "https://consultin.pmatz.com/software-para-recepcao"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "O Consultin ajuda a organizar a rotina da recepção?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. O Consultin centraliza agenda, pacientes, confirmações por WhatsApp e rotina administrativa em um único sistema, reduzindo a dependência de planilhas, papéis e mensagens avulsas."
+            "url": "https://consultin.pmatz.com/software-para-recepcao",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Software para recepção de clínicas brasileiras com agenda, confirmações via WhatsApp e cadastro de pacientes centralizado.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
+            }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Software para Recepção de Clínica",
+                    "item": "https://consultin.pmatz.com/software-para-recepcao"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin ajuda a organizar a rotina da recepção?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Centraliza agenda, confirmações, cadastro de pacientes e encaixes num único painel, reduzindo o trabalho manual e os erros da recepção."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "A recepção consegue confirmar consultas pelo sistema?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A confirmação pode ser feita manualmente pelo sistema ou automaticamente via WhatsApp, sem que a recepção precise ligar para cada paciente."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Funciona para clínicas com mais de um profissional?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A recepção vê os horários de todos os profissionais numa visão consolidada e consegue agendar em agendas diferentes simultaneamente."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O sistema avisa a recepção sobre encaixes e cancelamentos em tempo real?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Qualquer alteração na agenda aparece em tempo real para toda a equipe com acesso ao sistema."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o software de gestão para recepção de clínica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                }
+            ]
         }
-      },
-      {
-        "@type": "Question",
-        "name": "A recepção consegue confirmar consultas pelo sistema?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. O sistema envia confirmações automáticas por WhatsApp e permite que a recepção acompanhe o status de cada horário sem precisar ligar para os pacientes."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Funciona para clínicas com mais de um profissional?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. Clínicas com múltiplos profissionais ganham mais quando a recepção tem visibilidade centralizada da agenda de toda a equipe em um único lugar."
-        }
-      }
-        ]
-      }
     ]
-  }
+}
   </script>
 </head>
 <body>

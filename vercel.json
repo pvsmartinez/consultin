@@ -121,6 +121,21 @@
       "source": "/lembrete-de-consulta/",
       "destination": "/lembrete-de-consulta",
       "permanent": true
+    },
+    {
+      "source": "/gestao-de-clinica/",
+      "destination": "/gestao-de-clinica",
+      "permanent": true
+    },
+    {
+      "source": "/controle-financeiro-clinica/",
+      "destination": "/controle-financeiro-clinica",
+      "permanent": true
+    },
+    {
+      "source": "/agendamento-online/",
+      "destination": "/agendamento-online",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -223,6 +238,18 @@
     {
       "source": "/lembrete-de-consulta",
       "destination": "/lembrete-de-consulta.html"
+    },
+    {
+      "source": "/gestao-de-clinica",
+      "destination": "/gestao-de-clinica.html"
+    },
+    {
+      "source": "/controle-financeiro-clinica",
+      "destination": "/controle-financeiro-clinica.html"
+    },
+    {
+      "source": "/agendamento-online",
+      "destination": "/agendamento-online.html"
     },
     {
       "source": "/(.*)",

@@ -27,70 +27,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/confirmar-consulta-whatsapp",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Sistema de confirmação de consultas por WhatsApp para clínicas brasileiras, com lembretes automáticos e redução de faltas.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Confirmar Consulta por WhatsApp",
-            "item": "https://consultin.pmatz.com/confirmar-consulta-whatsapp"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "O Consultin envia confirmação de consulta pelo WhatsApp automaticamente?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. O Consultin envia lembretes e pedidos de confirmação por WhatsApp antes do horário marcado, sem precisar que a recepção faça isso manualmente."
+            "url": "https://consultin.pmatz.com/confirmar-consulta-whatsapp",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Sistema de confirmação de consultas por WhatsApp para clínicas brasileiras, com lembretes automáticos e redução de faltas.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
+            }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Confirmar Consulta por WhatsApp",
+                    "item": "https://consultin.pmatz.com/confirmar-consulta-whatsapp"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin envia confirmação de consulta pelo WhatsApp automaticamente?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema envia mensagens automáticas de confirmação ou lembrete pelo WhatsApp antes dos atendimentos."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto antes do atendimento o lembrete é enviado?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O prazo é configurável pela clínica. O mais comum é enviar 24 horas antes para dar tempo ao paciente de confirmar ou cancelar."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Funciona para qualquer tipo de clínica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A confirmação automática por WhatsApp funciona para odontologia, psicologia, fisioterapia, estética e outros."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Preciso ter WhatsApp Business separado para usar a confirmação automática?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Não é necessário WhatsApp Business separado. A integração funciona com a conta do WhatsApp já usada pela clínica."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o sistema com confirmação automática por WhatsApp?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                }
+            ]
         }
-      },
-      {
-        "@type": "Question",
-        "name": "Quanto antes do atendimento o lembrete é enviado?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "O sistema permite configurar o momento do envio. O padrão é enviar um lembrete no dia anterior e outro poucas horas antes da consulta."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Funciona para qualquer tipo de clínica?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. O sistema de confirmação por WhatsApp funciona para clínicas odontológicas, psicologia, fisioterapia, estética e consultórios médicos no geral."
-        }
-      }
-        ]
-      }
     ]
-  }
+}
   </script>
 </head>
 <body>

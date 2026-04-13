@@ -36,70 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/clinica-de-psicologia",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Software para clínicas e consultórios de psicologia com sessões recorrentes, agenda, pacientes e rotina administrativa.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Clínica de Psicologia",
-            "item": "https://consultin.pmatz.com/clinica-de-psicologia"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "O Consultin serve para consultórios de psicologia com sessões semanais?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O sistema é voltado para clínicas com alta recorrência, como psicologia, onde controlar faltas, reagendamentos e continuidade de sessões é parte central da operação."
+            "url": "https://consultin.pmatz.com/clinica-de-psicologia",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Software para clínicas e consultórios de psicologia com sessões recorrentes, agenda, pacientes e rotina administrativa.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "Como o Consultin ajuda a reduzir faltas em clínicas de psicologia?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "O Consultin centraliza a agenda e integra lembretes e confirmações via WhatsApp, reduzindo o impacto de cancelamentos de última hora na rotina do consultório."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Funciona para clínica de psicologia com mais de um profissional?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. A proposta é dar visibilidade à agenda de toda a equipe, facilitar a recepção e conectar sessões, pacientes e produção em um único fluxo."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Clínica de Psicologia",
+                    "item": "https://consultin.pmatz.com/clinica-de-psicologia"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin serve para consultórios de psicologia com sessões semanais?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A agenda suporta recorrências semanais e mantém o histórico de sessões de cada paciente."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Como o Consultin ajuda a reduzir faltas em clínicas de psicologia?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Com lembretes automáticos por WhatsApp antes das sessões e controle de frequência por paciente."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Funciona para clínica de psicologia com mais de um profissional?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema é multi-profissional, com agendas independentes e controle de produção por colaborador."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin tem prontuário para registrar evoluções de sessões?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Cada paciente tem prontuário eletrônico integrado à agenda, com histórico de atendimentos e evoluções."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o sistema para consultório de psicologia?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

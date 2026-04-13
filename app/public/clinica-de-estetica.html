@@ -36,70 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/clinica-de-estetica",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Software para clínicas de estética brasileiras com agenda, recorrência de pacientes, equipe e financeiro integrados.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Clínica de Estética",
-            "item": "https://consultin.pmatz.com/clinica-de-estetica"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "O Consultin serve para clínica de estética com procedimentos recorrentes?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O sistema ajuda a organizar agenda, retornos e acompanhamento de pacientes em clínicas de estética com múltiplos procedimentos."
+            "url": "https://consultin.pmatz.com/clinica-de-estetica",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Software para clínicas de estética brasileiras com agenda, recorrência de pacientes, equipe e financeiro integrados.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "Dá para acompanhar a ocupação da equipe em clínica de estética?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O Consultin centraliza agenda e equipe para que gestão e recepção tenham melhor leitura de ocupação e reagendamentos."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "É possível controlar o financeiro junto com a agenda?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. Produção e recebimento ficam conectados à agenda, reduzindo a distância entre atendimentos realizados e o fechamento financeiro da clínica."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Clínica de Estética",
+                    "item": "https://consultin.pmatz.com/clinica-de-estetica"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin serve para clínica de estética com procedimentos recorrentes?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A agenda suporta qualquer tipo de atendimento recorrente e mantém o histórico completo de cada cliente."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Dá para acompanhar a ocupação da equipe em clínica de estética?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema mostra quais profissionais estão ocupados, com encaixes disponíveis e histórico de produção por colaborador."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "É possível controlar o financeiro junto com a agenda?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O Consultin integra agenda, atendimentos e financeiro, sem precisar de planilha separada."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin envia lembrete automático para clientes de procedimentos?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Lembretes automáticos por WhatsApp são enviados antes dos procedimentos, reduzindo faltas e cancelamentos."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o Consultin para clínica de estética?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

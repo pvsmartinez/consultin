@@ -36,70 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/prontuario-eletronico",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Prontuário eletrônico para clínicas e consultórios brasileiros integrado à agenda médica, histórico de pacientes e financeiro.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Prontuário Eletrônico",
-            "item": "https://consultin.pmatz.com/prontuario-eletronico"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "O Consultin tem prontuário eletrônico integrado?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O histórico do paciente fica no mesmo sistema da agenda e do financeiro, eliminando a necessidade de alternar entre ferramentas durante o atendimento."
+            "url": "https://consultin.pmatz.com/prontuario-eletronico",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Prontuário eletrônico para clínicas e consultórios brasileiros integrado à agenda médica, histórico de pacientes e financeiro.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "O prontuário funciona para qualquer especialidade clínica?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O Consultin atende clínicas de fisioterapia, psicologia, odontologia, estética, nutrição e consultórios médicos gerais com o mesmo fluxo de prontuário e agenda."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "O prontuário eletrônico substitui o papel na clínica?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. Com o Consultin, a equipe registra o histórico do paciente digitalmente, sem fichas de papel separadas. O acesso fica disponível para toda a equipe autorizada no sistema."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Prontuário Eletrônico",
+                    "item": "https://consultin.pmatz.com/prontuario-eletronico"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin tem prontuário eletrônico integrado?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O prontuário eletrônico faz parte do sistema e fica integrado à agenda e ao cadastro de pacientes."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O prontuário funciona para qualquer especialidade clínica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O modelo é flexível e se adapta a médicos, psicólogos, fisioterapeutas, dentistas, nutricionistas e outros profissionais de saúde."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O prontuário eletrônico substitui o papel na clínica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Com busca rápida por paciente, histórico completo de atendimentos e acesso de qualquer dispositivo, o papel deixa de ser necessário."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O prontuário eletrônico do Consultin atende às normas do Conselho Federal de Medicina?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Prontuários com controle de acesso e histórico de alterações atendem às diretrizes normativas para registros de saúde no Brasil."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa um sistema com prontuário eletrônico integrado?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O Consultin inclui prontuário eletrônico em todos os planos, a partir de R$ 100 por mês. Experimente 7 dias grátis, sem cadastro de cartão."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

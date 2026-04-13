@@ -36,78 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/lembrete-de-consulta",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Sistema de lembretes automáticos de consulta por WhatsApp para clínicas e consultórios brasileiros, com confirmação automática e redução de no-show.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Lembrete Automático de Consulta",
-            "item": "https://consultin.pmatz.com/lembrete-de-consulta"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "O Consultin envia lembrete de consulta pelo WhatsApp automaticamente?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O Consultin envia lembretes automáticos por WhatsApp antes do horário agendado, sem que a recepção precise fazer isso manualmente. O paciente pode confirmar ou cancelar direto no chat."
+            "url": "https://consultin.pmatz.com/lembrete-de-consulta",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Sistema de lembretes automáticos de consulta por WhatsApp para clínicas e consultórios brasileiros, com confirmação automática e redução de no-show.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "Com quanto tempo de antecedência o lembrete é enviado?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "O sistema envia lembretes no dia anterior e poucas horas antes da consulta. Isso dá tempo para a recepção encaixar outro paciente caso haja cancelamento."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "O lembrete automático funciona para qualquer especialidade?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. Funciona para odontologia, psicologia, fisioterapia, estética, nutrição e consultórios médicos em geral — qualquer clínica que precise reduzir o índice de no-show."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "A recepção precisa acompanhar cada confirmação manualmente?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Não. O Consultin automatiza o envio e registra as respostas do paciente, dando visibilidade à recepção do status de confirmação de cada horário sem precisar ligar ou checar manualmente."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Lembrete Automático de Consulta",
+                    "item": "https://consultin.pmatz.com/lembrete-de-consulta"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin envia lembrete de consulta pelo WhatsApp automaticamente?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema envia mensagens automáticas pelo WhatsApp antes dos atendimentos, sem nenhuma ação manual da recepção."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Com quanto tempo de antecedência o lembrete é enviado?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O prazo é configurável. A maioria das clínicas envia 24 horas antes do atendimento para dar tempo ao paciente de confirmar."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O lembrete automático funciona para qualquer especialidade?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Funciona para odontologia, psicologia, fisioterapia, estética, nutrição e qualquer outra especialidade clínica."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "A recepção precisa acompanhar cada confirmação manualmente?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Não. O sistema envia os lembretes automaticamente com base na agenda do dia seguinte. A recepção só precisa acompanhar os casos de cancelamento."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa o lembrete automático de consulta pelo WhatsApp?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O recurso está incluído em todos os planos pagos, a partir de R$ 100 por mês. Há 7 dias de teste grátis sem cadastro de cartão."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

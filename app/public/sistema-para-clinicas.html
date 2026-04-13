@@ -36,62 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/sistema-para-clinicas",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Sistema para clínicas brasileiras com agenda médica, pacientes, financeiro e gestão operacional.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Sistema para Clínicas",
-            "item": "https://consultin.pmatz.com/sistema-para-clinicas"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "O Consultin serve para clínicas com recepção e mais de um profissional?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. O fluxo contempla agenda, operação e visibilidade para gestores, recepção e equipe clínica, sem forçar uma estrutura pesada para negócios menores."
+            "url": "https://consultin.pmatz.com/sistema-para-clinicas",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Sistema para clínicas brasileiras com agenda médica, pacientes, financeiro e gestão operacional.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
             }
-          },
-          {
-            "@type": "Question",
-            "name": "O sistema ajuda a centralizar agenda e financeiro?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Sim. A proposta é reduzir a fragmentação entre agenda, atendimento, pacientes e controle financeiro da clínica."
-            }
-          }
-        ]
-      }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Sistema para Clínicas",
+                    "item": "https://consultin.pmatz.com/sistema-para-clinicas"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "O Consultin serve para clínicas com recepção e mais de um profissional?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema foi desenhado para clínicas com equipes, com agendas por profissional, controle de acesso e visibilidade operacional para a recepção."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O sistema ajuda a centralizar agenda e financeiro?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O Consultin une agenda, cadastro de pacientes, prontuário e controle financeiro numa única plataforma, sem precisar de sistemas separados."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin é um sistema de gestão completo para clínicas?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Inclui agenda médica, cadastro de pacientes, prontuário eletrônico, controle financeiro e gestão da equipe em uma única plataforma web."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa um sistema de gestão para clínica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O Consultin tem 7 dias de teste grátis sem cartão. Planos a partir de R$ 100/mês para até 40 atendimentos, R$ 200/mês para até 100 e R$ 300/mês ilimitado."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "O Consultin funciona para clínicas com mais de uma unidade?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. O sistema suporta múltiplos profissionais e é acessível de qualquer dispositivo, facilitando a gestão de operações maiores."
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   </script>
 </head>
 <body>

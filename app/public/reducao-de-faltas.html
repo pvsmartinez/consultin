@@ -36,70 +36,89 @@
   {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/reducao-de-faltas",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Software para clínicas que reduz faltas com lembretes automáticos e confirmação de consultas via WhatsApp.",
-        "offers": {
-          "@type": "Offer",
-          "priceCurrency": "BRL",
-          "availability": "https://schema.org/InStock",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
-        }
-      },
-      {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
+        {
+            "@type": "SoftwareApplication",
             "name": "Consultin",
-            "item": "https://consultin.pmatz.com/"
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Redução de Faltas em Clínicas",
-            "item": "https://consultin.pmatz.com/reducao-de-faltas"
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
-        "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Como o Consultin ajuda a reduzir faltas?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "O Consultin envia lembretes automáticos por WhatsApp antes das consultas, permite que o paciente confirme ou cancele diretamente pelo chat, e dá à recepção visibilidade da agenda com antecedência suficiente para encaixar outros pacientes nas vagas liberadas."
+            "url": "https://consultin.pmatz.com/reducao-de-faltas",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "pt-BR",
+            "areaServed": "BR",
+            "description": "Software para clínicas que reduz faltas com lembretes automáticos e confirmação de consultas via WhatsApp.",
+            "offers": {
+                "@type": "AggregateOffer",
+                "priceCurrency": "BRL",
+                "lowPrice": "100",
+                "highPrice": "300",
+                "offerCount": 3,
+                "availability": "https://schema.org/InStock",
+                "url": "https://consultin.pmatz.com/cadastro-clinica"
+            }
+        },
+        {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Consultin",
+                    "item": "https://consultin.pmatz.com/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Redução de Faltas em Clínicas",
+                    "item": "https://consultin.pmatz.com/reducao-de-faltas"
+                }
+            ]
+        },
+        {
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "Como o Consultin ajuda a reduzir faltas?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Com lembretes automáticos por WhatsApp antes dos atendimentos e confirmação fácil pelo próprio app, reduzindo esquecimentos e cancelamentos de última hora."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "É possível encaixar outro paciente quando há cancelamento?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. A agenda mostra horários livres em tempo real, facilitando encaixes rápidos quando há cancelamento."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Funciona para qualquer especialidade?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sim. Funciona para odontologia, psicologia, fisioterapia, estética, nutrição e qualquer especialidade clínica."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Além do lembrete, o que mais o Consultin faz para reduzir faltas?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "O sistema registra pacientes com histórico de ausência, facilita encaixes rápidos em cancelamentos e mantém o controle de frequência por paciente."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quanto custa um sistema de redução de faltas para clínica?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "7 dias de teste grátis, sem cadastro de cartão. Planos a partir de R$ 100 por mês."
+                    }
+                }
+            ]
         }
-      },
-      {
-        "@type": "Question",
-        "name": "É possível encaixar outro paciente quando há cancelamento?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. Porque o cancelamento chega com antecedência e a lista de espera fica acessível, a recepção pode oferecer a vaga para outro paciente antes que ela fique ociosa."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Funciona para qualquer especialidade?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. O sistema de redução de faltas funciona para odontologia, psicologia, fisioterapia, estética e consultórios médicos em geral."
-        }
-      }
-        ]
-      }
     ]
-  }
+}
   </script>
 </head>
 <body>
