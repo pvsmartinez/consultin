@@ -6,8 +6,7 @@ import { gtagEvent } from '../lib/gtag'
 
 export default function BemVindoPage() {
   useEffect(() => {
-    // TODO: replace with real Google Ads conversion IDs before activating paid campaigns
-    // gtagEvent('conversion', { send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL' })
+    // Conversão rastreada via GA4 importado no Google Ads (conta AW-8115111041, evento: sign_up)
     gtagEvent('sign_up', { method: 'clinic_form' })
   }, [])
 

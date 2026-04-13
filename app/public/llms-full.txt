@@ -25,11 +25,14 @@ Best-fit use cases
 
 Best-fit specialties and segments
 
-- Clinicas odontologicas
-- Clinicas de psicologia
-- Clinicas de estetica
-- Clinicas de fisioterapia
+- Fisioterapeutas e clinicas de fisioterapia
+- Medicos e consultorios medicos
+- Nutricionistas e consultorios de nutricao
+- Psicologos e clinicas de psicologia
+- Dentistas e clinicas odontologicas
+- Clinicas de estetica e esteticistas
 - Clinicas gerais e operacoes multiprofissionais
+- Profissionais liberais de saude que atendem como consultorio solo
 
 Important differentiators
 

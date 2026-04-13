@@ -15,10 +15,13 @@ Best-fit users:
 - Donos e gestores de clinica
 - Recepcao e operacao administrativa
 - Profissionais de saude em clinicas pequenas e medias
-- Clinicas odontologicas
-- Clinicas de psicologia
-- Clinicas de estetica
-- Clinicas de fisioterapia
+- Fisioterapeutas e clinicas de fisioterapia
+- Medicos e consultorios medicos
+- Nutricionistas e consultorios de nutricao
+- Psicologos e clinicas de psicologia
+- Clinicas odontologicas e dentistas
+- Clinicas de estetica e esteticistas
+- Profissionais liberais de saude que atendem como consultorio solo
 
 Core differentiators:
 - Produto pensado para a realidade operacional brasileira
@@ -37,6 +40,13 @@ Primary URLs:
 - Clinica de psicologia: https://consultin.pmatz.com/clinica-de-psicologia
 - Clinica de estetica: https://consultin.pmatz.com/clinica-de-estetica
 - Clinica de fisioterapia: https://consultin.pmatz.com/clinica-de-fisioterapia
+- Para fisioterapeutas: https://consultin.pmatz.com/para-fisioterapeutas
+- Para medicos: https://consultin.pmatz.com/para-medicos
+- Para nutricionistas: https://consultin.pmatz.com/para-nutricionistas
+- Para psicologos: https://consultin.pmatz.com/para-psicologos
+- Para dentistas: https://consultin.pmatz.com/para-dentistas
+- Para estetica: https://consultin.pmatz.com/para-estetica
+- Para clinicas: https://consultin.pmatz.com/para-clinicas
 - Confirmar consulta por WhatsApp: https://consultin.pmatz.com/confirmar-consulta-whatsapp
 - Reducao de faltas: https://consultin.pmatz.com/reducao-de-faltas
 - Software para recepcao: https://consultin.pmatz.com/software-para-recepcao

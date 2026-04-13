@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-R0H4QWW1YP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-R0H4QWW1YP');
+    gtag('config', 'AW-8115111041');
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, follow" />
+  <title>Sistema para Médicos | Consultin</title>
+  <meta name="description" content="Organize agenda, pacientes e financeiro do consultório em uma plataforma web simples. Experimente grátis por 7 dias." />
+  <link rel="canonical" href="https://consultin.pmatz.com/para-medicos" />
+  <link rel="icon" type="image/svg+xml" href="/clinic.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/seo-pages.css" />
+  <style>
+    .lp-bar {
+      position: sticky; top: 0; z-index: 30;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 24px;
+      backdrop-filter: blur(18px);
+      background: rgba(248, 251, 255, 0.92);
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+    .lp-hero { padding: 64px 24px 56px; max-width: 760px; margin: 0 auto; text-align: center; }
+    .lp-hero h1 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700; line-height: 1.25; color: var(--text); margin: 0 0 20px;
+    }
+    .lp-sub { font-size: 1.1rem; color: var(--muted); margin: 0 auto 32px; max-width: 600px; line-height: 1.6; }
+    .lp-cta-group { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .lp-micro { font-size: 0.8rem; color: #94a3b8; }
+    .lp-section { padding: 48px 24px; max-width: 900px; margin: 0 auto; }
+    .lp-section h2 {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      font-weight: 700; color: var(--text); margin: 0 0 32px; text-align: center;
+    }
+    .benefits-list {
+      list-style: none; padding: 0; margin: 0;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;
+    }
+    .benefits-list li {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 18px; background: #fff; border-radius: 14px;
+      border: 1px solid var(--border); font-size: 0.94rem; line-height: 1.5;
+    }
+    .benefits-list li::before {
+      content: '✓'; flex-shrink: 0;
+      width: 24px; height: 24px; line-height: 24px;
+      background: var(--brand); color: #fff;
+      border-radius: 50%; font-size: 0.75rem; font-weight: 800;
+      text-align: center; margin-top: 1px;
+    }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+    .step { text-align: center; padding: 24px 16px; }
+    .step-num {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--brand), #38bdf8);
+      color: #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.2rem; margin: 0 auto 16px;
+    }
+    .step h3 { font-size: 1rem; font-weight: 700; margin: 0 0 8px; }
+    .step p { font-size: 0.875rem; color: var(--muted); margin: 0; line-height: 1.5; }
+    .faq-list { display: flex; flex-direction: column; gap: 12px; max-width: 680px; margin: 0 auto; }
+    .faq-item { background: #fff; border-radius: 14px; border: 1px solid var(--border); padding: 20px 24px; }
+    .faq-item h3 { font-size: 0.95rem; font-weight: 700; margin: 0 0 8px; color: var(--text); }
+    .faq-item p { font-size: 0.875rem; color: var(--muted); margin: 0; line-height: 1.6; }
+    .lp-cta-final { background: linear-gradient(135deg, #1d4ed8, #0f766e); color: #fff; padding: 64px 24px; text-align: center; }
+    .lp-cta-final h2 { font-family: 'Fraunces', serif; font-size: clamp(1.5rem, 3.5vw, 2.2rem); font-weight: 700; margin: 0 0 12px; }
+    .lp-cta-final p { font-size: 1rem; opacity: 0.85; margin: 0 0 28px; }
+    .lp-cta-final .button-primary { background: #fff; color: var(--brand); font-weight: 800; font-size: 1.05rem; padding: 0 28px; }
+    .lp-cta-final .lp-micro { color: rgba(255, 255, 255, 0.6); margin-top: 10px; }
+    .lp-footer { background: #0f172a; color: #64748b; text-align: center; padding: 20px 24px; font-size: 0.8rem; }
+    .lp-footer a { color: #94a3b8; text-decoration: none; }
+    .divider { height: 1px; background: var(--border); max-width: 900px; margin: 0 auto; }
+    @media (max-width: 600px) {
+      .lp-hero { padding: 48px 20px 40px; }
+      .button { min-height: 52px; padding: 0 22px; font-size: 1rem; }
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Consultin",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Sistema de gestão para médicos e consultórios no Brasil — agenda, pacientes e financeiro integrados.",
+    "url": "https://consultin.pmatz.com/para-medicos",
+    "offers": { "@type": "Offer", "price": "100", "priceCurrency": "BRL", "description": "A partir de R$ 100/mês — 7 dias grátis" }
+  }
+  </script>
+</head>
+<body>
+  <div class="lp-bar">
+    <a class="brand" href="/" style="text-decoration:none"><span class="brand-mark">C</span><span>Consultin</span></a>
+    <a class="button button-primary" href="/cadastro-clinica?utm_source=google&utm_medium=cpc&utm_campaign=medicos&utm_content=lp-topbar">Cadastrar grátis</a>
+  </div>
+
+  <section class="lp-hero">
+    <span class="eyebrow">Para médicos e consultórios</span>
+    <h1>Sistema para médicos — consultório organizado, agenda e pacientes no mesmo lugar</h1>
+    <p class="lp-sub">Chega de agenda em papel ou planilha. O Consultin dá ao seu consultório uma operação clara — agenda, histórico de pacientes e financeiro integrados, acessível de qualquer dispositivo.</p>
+    <div class="lp-cta-group">
+      <a class="button button-primary" style="font-size:1.05rem;padding:0 28px"
+         href="/cadastro-clinica?utm_source=google&utm_medium=cpc&utm_campaign=medicos&utm_content=lp-hero">
+        Experimentar grátis — 7 dias
+      </a>
+      <span class="lp-micro">Sem cartão de crédito · Cancele quando quiser</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="lp-section">
+    <h2>O que você ganha ao usar o Consultin</h2>
+    <ul class="benefits-list">
+      <li>Agenda online com slots configuráveis por especialidade e duração de consulta</li>
+      <li>Histórico de atendimentos e anotações de cada paciente em um só lugar</li>
+      <li>Lembretes e confirmações automáticas por WhatsApp — reduza faltas e no-shows</li>
+      <li>Financeiro integrado — controle de pagamentos e produção sem planilha</li>
+    </ul>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="lp-section" style="text-align:center">
+    <h2>Como funciona</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Cadastre sua clínica</h3>
+        <p>Crie sua conta em menos de 2 minutos, sem cartão de crédito. 7 dias grátis para explorar.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Configure agenda e equipe</h3>
+        <p>Adicione profissionais, horários e tipos de atendimento. Um assistente guia o processo.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Comece a atender</h3>
+        <p>Agenda, histórico de pacientes e financeiro integrados desde o primeiro dia.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <section class="lp-section">
+    <h2>Dúvidas frequentes</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <h3>É para consultório solo ou só para clínicas com equipe?</h3>
+        <p>Funciona para os dois. Médico solo cadastra apenas ele mesmo como profissional. Consultório com recepção e equipe também é totalmente suportado — com controle de permissões por perfil.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Tem prontuário eletrônico?</h3>
+        <p>Tem registro de atendimentos e histórico clínico por paciente, acessíveis a qualquer hora. Para prontuário com assinatura digital e conformidade CFM, recomendamos validar os requisitos específicos junto ao conselho.</p>
+      </div>
+      <div class="faq-item">
+        <h3>Precisa instalar alguma coisa?</h3>
+        <p>Não. É 100% web — funciona no computador, tablet ou celular, sem instalação ou configuração de servidor.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-cta-final">
+    <h2>Monte seu consultório digital em minutos</h2>
+    <p>Agenda, pacientes e financeiro organizados em uma plataforma feita para o Brasil.</p>
+    <a class="button button-primary"
+       href="/cadastro-clinica?utm_source=google&utm_medium=cpc&utm_campaign=medicos&utm_content=lp-final">
+      Cadastrar grátis agora
+    </a>
+    <div class="lp-micro">7 dias grátis, sem cartão de crédito</div>
+  </section>
+
+  <footer class="lp-footer">
+    <p>©2026 Consultin · <a href="/politica-de-privacidade">Privacidade</a> · <a href="/termos-de-uso">Termos de uso</a></p>
+  </footer>
+</body>
+</html>

@@ -76,6 +76,41 @@
       "source": "/termos-de-uso/",
       "destination": "/termos-de-uso",
       "permanent": true
+    },
+    {
+      "source": "/para-fisioterapeutas/",
+      "destination": "/para-fisioterapeutas",
+      "permanent": true
+    },
+    {
+      "source": "/para-medicos/",
+      "destination": "/para-medicos",
+      "permanent": true
+    },
+    {
+      "source": "/para-nutricionistas/",
+      "destination": "/para-nutricionistas",
+      "permanent": true
+    },
+    {
+      "source": "/para-psicologos/",
+      "destination": "/para-psicologos",
+      "permanent": true
+    },
+    {
+      "source": "/para-dentistas/",
+      "destination": "/para-dentistas",
+      "permanent": true
+    },
+    {
+      "source": "/para-estetica/",
+      "destination": "/para-estetica",
+      "permanent": true
+    },
+    {
+      "source": "/para-clinicas/",
+      "destination": "/para-clinicas",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -142,6 +177,34 @@
     {
       "source": "/exclusao-de-dados",
       "destination": "/exclusao-de-dados.html"
+    },
+    {
+      "source": "/para-fisioterapeutas",
+      "destination": "/para-fisioterapeutas.html"
+    },
+    {
+      "source": "/para-medicos",
+      "destination": "/para-medicos.html"
+    },
+    {
+      "source": "/para-nutricionistas",
+      "destination": "/para-nutricionistas.html"
+    },
+    {
+      "source": "/para-psicologos",
+      "destination": "/para-psicologos.html"
+    },
+    {
+      "source": "/para-dentistas",
+      "destination": "/para-dentistas.html"
+    },
+    {
+      "source": "/para-estetica",
+      "destination": "/para-estetica.html"
+    },
+    {
+      "source": "/para-clinicas",
+      "destination": "/para-clinicas.html"
     },
     {
       "source": "/(.*)",
