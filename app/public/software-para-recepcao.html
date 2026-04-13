@@ -35,8 +35,43 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Consultin",
+        "url": "https://consultin.pmatz.com/software-para-recepcao",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "pt-BR",
+        "areaServed": "BR",
+        "description": "Software para recepção de clínicas brasileiras com agenda, confirmações via WhatsApp e cadastro de pacientes centralizado.",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock",
+          "url": "https://consultin.pmatz.com/cadastro-clinica"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Consultin",
+            "item": "https://consultin.pmatz.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Software para Recepção de Clínica",
+            "item": "https://consultin.pmatz.com/software-para-recepcao"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
       {
         "@type": "Question",
         "name": "O Consultin ajuda a organizar a rotina da recepção?",
@@ -60,6 +95,8 @@
           "@type": "Answer",
           "text": "Sim. Clínicas com múltiplos profissionais ganham mais quando a recepção tem visibilidade centralizada da agenda de toda a equipe em um único lugar."
         }
+      }
+        ]
       }
     ]
   }

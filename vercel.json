@@ -111,6 +111,16 @@
       "source": "/para-clinicas/",
       "destination": "/para-clinicas",
       "permanent": true
+    },
+    {
+      "source": "/prontuario-eletronico/",
+      "destination": "/prontuario-eletronico",
+      "permanent": true
+    },
+    {
+      "source": "/lembrete-de-consulta/",
+      "destination": "/lembrete-de-consulta",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -205,6 +215,14 @@
     {
       "source": "/para-clinicas",
       "destination": "/para-clinicas.html"
+    },
+    {
+      "source": "/prontuario-eletronico",
+      "destination": "/prontuario-eletronico.html"
+    },
+    {
+      "source": "/lembrete-de-consulta",
+      "destination": "/lembrete-de-consulta.html"
     },
     {
       "source": "/(.*)",

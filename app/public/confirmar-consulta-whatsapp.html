@@ -26,8 +26,43 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Consultin",
+        "url": "https://consultin.pmatz.com/confirmar-consulta-whatsapp",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "pt-BR",
+        "areaServed": "BR",
+        "description": "Sistema de confirmação de consultas por WhatsApp para clínicas brasileiras, com lembretes automáticos e redução de faltas.",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock",
+          "url": "https://consultin.pmatz.com/cadastro-clinica"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Consultin",
+            "item": "https://consultin.pmatz.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Confirmar Consulta por WhatsApp",
+            "item": "https://consultin.pmatz.com/confirmar-consulta-whatsapp"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
       {
         "@type": "Question",
         "name": "O Consultin envia confirmação de consulta pelo WhatsApp automaticamente?",
@@ -51,6 +86,8 @@
           "@type": "Answer",
           "text": "Sim. O sistema de confirmação por WhatsApp funciona para clínicas odontológicas, psicologia, fisioterapia, estética e consultórios médicos no geral."
         }
+      }
+        ]
       }
     ]
   }

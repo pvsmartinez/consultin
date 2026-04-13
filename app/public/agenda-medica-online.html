@@ -35,23 +35,60 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
+    "@graph": [
       {
-        "@type": "Question",
-        "name": "Uma agenda médica online ajuda a reduzir faltas?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Ajuda porque melhora visibilidade, confirmação e acompanhamento da rotina, reduzindo esquecimentos e ruído operacional."
+        "@type": "SoftwareApplication",
+        "name": "Consultin",
+        "url": "https://consultin.pmatz.com/agenda-medica-online",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "pt-BR",
+        "areaServed": "BR",
+        "description": "Agenda médica online para clínicas e consultórios brasileiros com visibilidade de encaixes, faltas e ocupação da equipe.",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock",
+          "url": "https://consultin.pmatz.com/cadastro-clinica"
         }
       },
       {
-        "@type": "Question",
-        "name": "Esse tipo de agenda serve para consultório pequeno?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. Consultórios pequenos costumam sentir rápido o ganho de previsibilidade quando a agenda deixa de depender de recados soltos."
-        }
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Consultin",
+            "item": "https://consultin.pmatz.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Agenda Médica Online",
+            "item": "https://consultin.pmatz.com/agenda-medica-online"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Uma agenda médica online ajuda a reduzir faltas?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ajuda porque melhora visibilidade, confirmação e acompanhamento da rotina, reduzindo esquecimentos e ruído operacional."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Esse tipo de agenda serve para consultório pequeno?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim. Consultórios pequenos costumam sentir rápido o ganho de previsibilidade quando a agenda deixa de depender de recados soltos."
+            }
+          }
+        ]
       }
     ]
   }

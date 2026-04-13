@@ -79,6 +79,18 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://consultin.pmatz.com/prontuario-eletronico</loc>
+    <lastmod>2026-04-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://consultin.pmatz.com/lembrete-de-consulta</loc>
+    <lastmod>2026-04-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>
     <loc>https://consultin.pmatz.com/termos-de-uso</loc>
     <lastmod>2026-03-31</lastmod>
     <changefreq>yearly</changefreq>

@@ -35,8 +35,43 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Consultin",
+        "url": "https://consultin.pmatz.com/reducao-de-faltas",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "pt-BR",
+        "areaServed": "BR",
+        "description": "Software para clínicas que reduz faltas com lembretes automáticos e confirmação de consultas via WhatsApp.",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock",
+          "url": "https://consultin.pmatz.com/cadastro-clinica"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Consultin",
+            "item": "https://consultin.pmatz.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Redução de Faltas em Clínicas",
+            "item": "https://consultin.pmatz.com/reducao-de-faltas"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
       {
         "@type": "Question",
         "name": "Como o Consultin ajuda a reduzir faltas?",
@@ -60,6 +95,8 @@
           "@type": "Answer",
           "text": "Sim. O sistema de redução de faltas funciona para odontologia, psicologia, fisioterapia, estética e consultórios médicos em geral."
         }
+      }
+        ]
       }
     ]
   }

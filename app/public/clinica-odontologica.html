@@ -35,23 +35,60 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
+    "@graph": [
       {
-        "@type": "Question",
-        "name": "O Consultin serve para clínica odontológica com mais de um dentista?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. A proposta é dar visibilidade para agenda, encaixes, retornos e rotina operacional de equipes odontológicas em um mesmo sistema."
+        "@type": "SoftwareApplication",
+        "name": "Consultin",
+        "url": "https://consultin.pmatz.com/clinica-odontologica",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "inLanguage": "pt-BR",
+        "areaServed": "BR",
+        "description": "Software para clínica odontológica brasileira com agenda, retornos, pacientes e gestão financeira integrados.",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock",
+          "url": "https://consultin.pmatz.com/cadastro-clinica"
         }
       },
       {
-        "@type": "Question",
-        "name": "Ajuda a organizar retorno e encaixe?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Sim. Esse é um dos cenários em que um fluxo unificado entre recepção, profissionais e agenda faz mais diferença."
-        }
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Consultin",
+            "item": "https://consultin.pmatz.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Clínica Odontológica",
+            "item": "https://consultin.pmatz.com/clinica-odontologica"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "O Consultin serve para clínica odontológica com mais de um dentista?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim. A proposta é dar visibilidade para agenda, encaixes, retornos e rotina operacional de equipes odontológicas em um mesmo sistema."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ajuda a organizar retorno e encaixe?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Sim. Esse é um dos cenários em que um fluxo unificado entre recepção, profissionais e agenda faz mais diferença."
+            }
+          }
+        ]
       }
     ]
   }

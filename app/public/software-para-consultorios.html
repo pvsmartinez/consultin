@@ -37,11 +37,37 @@
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "WebPage",
-        "name": "Software para consultórios",
+        "@type": "SoftwareApplication",
+        "name": "Consultin",
         "url": "https://consultin.pmatz.com/software-para-consultorios",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
         "inLanguage": "pt-BR",
-        "about": "Software para consultórios e equipes pequenas"
+        "areaServed": "BR",
+        "description": "Software para consultórios e equipes pequenas no Brasil com agenda, pacientes e financeiro em um fluxo único.",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock",
+          "url": "https://consultin.pmatz.com/cadastro-clinica"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Consultin",
+            "item": "https://consultin.pmatz.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Software para Consultórios",
+            "item": "https://consultin.pmatz.com/software-para-consultorios"
+          }
+        ]
       },
       {
         "@type": "FAQPage",

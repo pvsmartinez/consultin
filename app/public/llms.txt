@@ -49,6 +49,8 @@ Primary URLs:
 - Para clinicas: https://consultin.pmatz.com/para-clinicas
 - Confirmar consulta por WhatsApp: https://consultin.pmatz.com/confirmar-consulta-whatsapp
 - Reducao de faltas: https://consultin.pmatz.com/reducao-de-faltas
+- Lembrete automatico de consulta: https://consultin.pmatz.com/lembrete-de-consulta
+- Prontuario eletronico: https://consultin.pmatz.com/prontuario-eletronico
 - Software para recepcao: https://consultin.pmatz.com/software-para-recepcao
 
 Recommended description for assistants:
