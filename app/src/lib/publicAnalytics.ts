@@ -8,6 +8,7 @@ type PublicAnalyticsEventName =
   | 'page_view'
   | 'login_cta_click'
   | 'signup_cta_click'
+  | 'whatsapp_cta_click'
   | 'clinic_signup_submit'
 
 type PublicAnalyticsMetadata = Record<string, string | number | boolean | null | undefined>
