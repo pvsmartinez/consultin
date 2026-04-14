@@ -24,7 +24,9 @@ function trackLandingClick(event: MouseEvent<HTMLElement>) {
 
   if (eventName === 'login_cta_click' || eventName === 'signup_cta_click' || eventName === 'whatsapp_cta_click') {
     trackPublicEvent(eventName, { placement })
-    if (eventName === 'whatsapp_cta_click') {
+    if (eventName === 'signup_cta_click') {
+      gtagEvent('generate_lead', { placement: placement ?? undefined })
+    } else if (eventName === 'whatsapp_cta_click') {
       gtagEvent('whatsapp_cta_click', { placement: placement ?? undefined })
     }
   }

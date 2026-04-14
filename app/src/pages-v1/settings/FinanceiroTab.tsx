@@ -75,6 +75,8 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
   const statusInfo = clinic.subscriptionStatus ? SUBSCRIPTION_STATUS_LABELS[clinic.subscriptionStatus] : null
 
   async function onActivate(values: BillingForm) {
+    const price = TIER_PRICES[selectedTier]
+    gtagEvent('begin_checkout', { currency: 'BRL', value: price, items: [{ item_id: `consultin-${selectedTier}`, item_name: `Consultin ${TIER_LABELS[selectedTier]}`, price, quantity: 1 }] })
     try {
       await activate.mutateAsync({
         clinicId:    clinic.id,
@@ -106,7 +108,6 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
           ccv:         values.cardCcv,
         },
       })
-      const price = TIER_PRICES[selectedTier]
       toast.success(`Assinatura ${TIER_LABELS[selectedTier]} ativada! Cobrança de R$\u00a0${price}/mês configurada no cartão.`)
       gtagEvent('purchase', { currency: 'BRL', value: price, items: [{ item_id: `consultin-${selectedTier}`, item_name: `Consultin ${TIER_LABELS[selectedTier]}`, price, quantity: 1 }] })
     } catch (err) {
