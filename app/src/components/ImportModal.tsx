@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, ChangeEvent } from 'react'
 import { UploadSimple, Check, Warning, Sparkle, Robot } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Modal } from '@pvsmartinez/shared/ui'
-import * as XLSX from 'xlsx'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
@@ -55,17 +54,22 @@ function parseFile(file: File): Promise<{ headers: string[]; rows: string[][] }>
     if (file.name.match(/\.(xlsx|xls|ods)$/i)) {
       reader.onload = ev => {
         try {
-          const data = new Uint8Array(ev.target?.result as ArrayBuffer)
-          const workbook = XLSX.read(data, { type: 'array', cellDates: true })
-          const sheet = workbook.Sheets[workbook.SheetNames[0]]
-          const raw = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' })
-          const [headerRow, ...dataRows] = raw as string[][]
-          const headers = (headerRow ?? []).map(h => String(h ?? '').trim()).filter(Boolean)
-          const colCount = headers.length
-          const rows = dataRows
-            .filter(r => r.some(c => String(c ?? '').trim() !== ''))
-            .map(r => headers.map((_, i) => String(r[i] ?? '').trim()))
-          resolve({ headers, rows: rows.slice(0, colCount > 0 ? undefined : 0) })
+          void import('xlsx').then(({ default: _default, ...xlsxModule }) => {
+            const XLSX = Object.keys(xlsxModule).length > 0 ? xlsxModule : _default
+            const data = new Uint8Array(ev.target?.result as ArrayBuffer)
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true })
+            const sheet = workbook.Sheets[workbook.SheetNames[0]]
+            const raw = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' })
+            const [headerRow, ...dataRows] = raw as string[][]
+            const headers = (headerRow ?? []).map(h => String(h ?? '').trim()).filter(Boolean)
+            const colCount = headers.length
+            const rows = dataRows
+              .filter(r => r.some(c => String(c ?? '').trim() !== ''))
+              .map(r => headers.map((_, i) => String(r[i] ?? '').trim()))
+            resolve({ headers, rows: rows.slice(0, colCount > 0 ? undefined : 0) })
+          }).catch(() => {
+            reject(new Error('Não foi possível carregar o leitor de Excel.'))
+          })
         } catch (e) {
           reject(new Error('Não foi possível ler o arquivo Excel. Verifique se está no formato correto.'))
         }

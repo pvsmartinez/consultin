@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { supabase } from '../services/supabase'
+import { publicSupabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 
 export interface PublicBookingSlot {
@@ -35,7 +35,7 @@ export function usePublicBookingSlots(
     enabled: !!slug && !!date,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('public-booking', {
+      const { data, error } = await publicSupabase.functions.invoke('public-booking', {
         body: {
           action: 'slots',
           slug,
@@ -54,7 +54,7 @@ export function usePublicBookingSlots(
 export function useSubmitPublicBooking() {
   return useMutation({
     mutationFn: async (input: SubmitPublicBookingInput) => {
-      const { data, error } = await supabase.functions.invoke('public-booking', {
+      const { data, error } = await publicSupabase.functions.invoke('public-booking', {
         body: {
           action: 'book',
           ...input,

@@ -8,7 +8,7 @@ import { usePublicBookingSlots, useSubmitPublicBooking } from '../hooks/usePubli
 const invokeMock = vi.fn()
 
 vi.mock('../services/supabase', () => ({
-  supabase: {
+  publicSupabase: {
     functions: {
       invoke: (...args: unknown[]) => invokeMock(...args),
     },

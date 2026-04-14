@@ -6,3 +6,13 @@ export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export const supabase = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey)
 
+export const publicSupabase = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
+	clientOptions: {
+		auth: {
+			persistSession: false,
+			autoRefreshToken: false,
+			detectSessionInUrl: false,
+		},
+	},
+})
+

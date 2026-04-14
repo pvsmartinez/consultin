@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../services/supabase'
+import { publicSupabase, supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 
@@ -181,7 +181,7 @@ export function usePublicPage(slug: string | undefined) {
     staleTime: 5 * 60_000,
     enabled: !!slug,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_public_clinic_page', { p_slug: slug! })
+      const { data, error } = await publicSupabase.rpc('get_public_clinic_page', { p_slug: slug! })
       if (error || !data) throw new Error('Página não encontrada')
       return mapPublicPageFull(data as Record<string, unknown>)
     },

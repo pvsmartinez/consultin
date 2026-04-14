@@ -8,8 +8,10 @@ import { usePublicPage } from '../hooks/useClinicPublicPage'
 const rpcMock = vi.fn()
 
 vi.mock('../services/supabase', () => ({
-  supabase: {
+  publicSupabase: {
     rpc: (...args: unknown[]) => rpcMock(...args),
+  },
+  supabase: {
     from: vi.fn(),
   },
 }))

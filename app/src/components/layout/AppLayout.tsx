@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   CalendarBlank,
@@ -14,7 +14,6 @@ import {
   CurrencyDollar,
 } from '@phosphor-icons/react'
 import { AppShell, SideNav, NavItem, Avatar, Button, TopBar, BottomTabBar, TabItem } from '@pvsmartinez/shared/ui'
-import AppointmentModal from '../appointments/AppointmentModal'
 import ErrorBoundary from '../ErrorBoundary'
 import type { UserRole } from '../../types'
 import { USER_ROLE_LABELS } from '../../types'
@@ -22,6 +21,8 @@ import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useClinicNotifications } from '../../hooks/useClinicNotifications'
+
+const AppointmentModal = lazy(() => import('../appointments/AppointmentModal'))
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
   admin:        'text-teal-700 bg-teal-100',
@@ -239,10 +240,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         ))}
       </BottomTabBar>
 
-      <AppointmentModal
-        open={newApptOpen}
-        onClose={() => setNewApptOpen(false)}
-      />
+      {newApptOpen && (
+        <Suspense fallback={null}>
+          <AppointmentModal
+            open={newApptOpen}
+            onClose={() => setNewApptOpen(false)}
+          />
+        </Suspense>
+      )}
     </AppShell>
   )
 }

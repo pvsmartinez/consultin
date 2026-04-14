@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { MagnifyingGlass, Plus, User, UploadSimple, X, Sliders, ArrowRight } from '@phosphor-icons/react'
-import PatientDrawer from '../components/patients/PatientDrawer'
 import { usePatients, PATIENTS_PAGE_SIZE } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
 import { formatDate } from '../utils/date'
 import { SEX_LABELS } from '../types'
-import ImportModal from '../components/ImportModal'
 import { buildSettingsPath } from '../lib/settingsNavigation'
+
+const ImportModal = lazy(() => import('../components/ImportModal'))
+const PatientDrawer = lazy(() => import('../components/patients/PatientDrawer'))
 
 export default function PacientesPage() {
   const navigate = useNavigate()
@@ -231,17 +232,25 @@ export default function PacientesPage() {
         </div>
       )}
 
-      <ImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImported={() => refetch()}
-      />
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportModal
+            open={importOpen}
+            onClose={() => setImportOpen(false)}
+            onImported={() => refetch()}
+          />
+        </Suspense>
+      )}
 
-      <PatientDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSaved={({ id }) => { setDrawerOpen(false); navigate(`/pacientes/${id}`) }}
-      />
+      {drawerOpen && (
+        <Suspense fallback={null}>
+          <PatientDrawer
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            onSaved={({ id }) => { setDrawerOpen(false); navigate(`/pacientes/${id}`) }}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

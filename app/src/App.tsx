@@ -2,20 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
 import { useClinic } from './hooks/useClinic'
-import { useProfessionals } from './hooks/useProfessionals'
-import { usePatients } from './hooks/usePatients'
 import { FullScreenLoader, PageLoader } from './components/ui/PageLoader'
-
-/**
- * Fires background queries the moment staff login completes so that pages
- * open instantly from cache instead of starting a fetch on first mount.
- * Returns nothing — pure side-effect component.
- */
-function DataPrefetcher() {
-  useProfessionals()
-  usePatients()
-  return null
-}
 
 // ─── Eager imports — rendered outside of route transitions ───────────────────
 // These must be sync: they cover auth states that appear before any route shell.
@@ -103,7 +90,6 @@ function App() {
   // ── Staff / admin (sidebar layout) ─────────────────────────────────────────
   return (
     <>
-      <DataPrefetcher />
       <Routes>
         <Route path="*" element={
           <AppLayout>
