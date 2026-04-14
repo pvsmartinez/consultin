@@ -2,6 +2,7 @@ import { useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Seo } from '../components/seo/Seo'
 import { trackPublicEvent } from '../lib/publicAnalytics'
+import { gtagEvent } from '../lib/gtag'
 import { SEO_DEFAULT_IMAGE, SEO_SITE_URL } from '../lib/seo'
 import {
   Stethoscope, CalendarBlank, Users, CurrencyDollar,
@@ -22,9 +23,10 @@ function trackLandingClick(event: MouseEvent<HTMLElement>) {
   const placement = anchor.dataset.analyticsPlacement ?? null
 
   if (eventName === 'login_cta_click' || eventName === 'signup_cta_click' || eventName === 'whatsapp_cta_click') {
-    trackPublicEvent(eventName, {
-      placement,
-    })
+    trackPublicEvent(eventName, { placement })
+    if (eventName === 'whatsapp_cta_click') {
+      gtagEvent('whatsapp_cta_click', { placement: placement ?? undefined })
+    }
   }
 }
 
