@@ -184,7 +184,7 @@ function Hero() {
           <div>
             <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
               <Sparkle size={13} weight="fill" />
-              Plataforma completa para clínicas brasileiras
+              Para clínicas e profissionais liberais de saúde
             </div>
 
             <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-5">
@@ -230,7 +230,7 @@ function Hero() {
               </Link>
               <Link to="/cadastro-clinica?persona=profissional" data-analytics-event="signup_cta_click" data-analytics-placement="persona-professional" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 text-gray-600 hover:text-indigo-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
                 <UserCircle size={18} className="text-indigo-500" />
-                Sou profissional de saúde
+                Sou profissional liberal
               </Link>
               <Link to="/cadastro-clinica?persona=recepcao" data-analytics-event="signup_cta_click" data-analytics-placement="persona-patient" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-gray-600 hover:text-teal-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
                 <Heartbeat size={18} className="text-teal-500" />
