@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Stethoscope, Buildings, CalendarBlank, CurrencyDollar,
   Users, WhatsappLogo, CheckCircle, Heartbeat,
@@ -82,8 +83,12 @@ const slides = [
   },
 ]
 
+const PERSONA_SLIDE: Record<string, number> = { gestor: 0, profissional: 1, recepcao: 2 }
+
 function LeftPanel() {
-  const [active, setActive] = useState(0)
+  const [params] = useSearchParams()
+  const initial = PERSONA_SLIDE[params.get('persona') ?? ''] ?? 0
+  const [active, setActive] = useState(initial)
 
   useEffect(() => {
     const id = setInterval(() => setActive(v => (v + 1) % slides.length), 5000)
