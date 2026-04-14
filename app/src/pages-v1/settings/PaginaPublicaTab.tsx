@@ -231,7 +231,7 @@ export default function PaginaPublicaTab({ clinic }: { clinic: Clinic }) {
                 value={slug}
                 onChange={(e) => setSlug(slugify(e.target.value))}
                 placeholder="minha-clinica"
-                hint="URL final: consultin.app/p/seu-slug"
+                hint="URL final: consultin.pmatz.com/p/seu-slug"
               />
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Cor principal</label>

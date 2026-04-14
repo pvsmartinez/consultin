@@ -12,6 +12,7 @@ import { usePatient, useUpdateAnamnesis } from '../hooks/usePatients'
 import { useClinic } from '../hooks/useClinic'
 import CustomFieldInput from '../components/ui/CustomFieldInput'
 import type { CustomFieldDef } from '../types'
+import { buildSettingsPath } from '../lib/settingsNavigation'
 
 function hasCustomFieldValue(value: unknown) {
   if (value == null) return false
@@ -73,7 +74,7 @@ export default function PatientAnamnesisPage() {
             cada paciente.
           </p>
           <Link
-            to="/configuracoes"
+            to={buildSettingsPath('anamnese')}
             className="inline-flex items-center gap-2 mt-2 text-sm text-[#006970] hover:underline"
           >
             <Gear size={14} />

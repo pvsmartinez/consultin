@@ -7,6 +7,7 @@ import { useDebounce } from '../hooks/useDebounce'
 import { formatDate } from '../utils/date'
 import { SEX_LABELS } from '../types'
 import ImportModal from '../components/ImportModal'
+import { buildSettingsPath } from '../lib/settingsNavigation'
 
 export default function PacientesPage() {
   const navigate = useNavigate()
@@ -49,8 +50,7 @@ export default function PacientesPage() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <Link
-              to="/configuracoes"
-              state={{ tab: 'campos' }}
+              to={buildSettingsPath('campos', 'pacientes')}
               className="flex items-center gap-1.5 border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm px-3 py-2 rounded-lg transition"
               title="Personalizar campos do cadastro de pacientes"
             >
@@ -138,8 +138,7 @@ export default function PacientesPage() {
 
                   {/* Customize fields */}
                   <Link
-                    to="/configuracoes"
-                    state={{ tab: 'campos' }}
+                    to={buildSettingsPath('campos', 'pacientes')}
                     className="group flex flex-col items-start gap-3 p-5 rounded-2xl border-2 border-gray-200 bg-gray-50/60 hover:border-gray-300 hover:bg-gray-50 transition-all"
                   >
                     <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center">

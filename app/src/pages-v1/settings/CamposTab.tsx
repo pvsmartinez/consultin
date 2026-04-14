@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Clinic } from '../../types'
 import { PATIENT_BUILTIN_FIELDS, PROFESSIONAL_BUILTIN_FIELDS } from '../../types'
 import EntityFieldsPanel from '../../components/fields/EntityFieldsPanel'
+import { buildSettingsPath, type SettingsEntity } from '../../lib/settingsNavigation'
 
 type EntityTab = 'pacientes' | 'profissionais'
 
@@ -11,8 +12,20 @@ const ENTITY_LABELS: Record<EntityTab, string> = {
   profissionais:  'Profissionais',
 }
 
-export default function CamposTab({ clinic }: { clinic: Clinic }) {
-  const [entityTab, setEntityTab] = useState<EntityTab>('pacientes')
+export default function CamposTab({
+  clinic,
+  fieldEntity,
+}: {
+  clinic: Clinic
+  fieldEntity?: SettingsEntity
+}) {
+  const [entityTab, setEntityTab] = useState<EntityTab>(fieldEntity ?? 'pacientes')
+
+  useEffect(() => {
+    if (fieldEntity === 'pacientes' || fieldEntity === 'profissionais') {
+      setEntityTab(fieldEntity)
+    }
+  }, [fieldEntity])
 
   return (
     <div className="space-y-5">
@@ -28,10 +41,10 @@ export default function CamposTab({ clinic }: { clinic: Clinic }) {
         </p>
         <p className="text-xs text-gray-400 mt-1.5">
           Para configurar o formulário de anamnese dos pacientes, vá em{' '}
-          <Link to="/configuracoes" className="text-[#006970] hover:underline font-medium">
-            Configurações → Serviços
+          <Link to={buildSettingsPath('anamnese')} className="text-[#006970] hover:underline font-medium">
+            Configurações → Anamnese
           </Link>{' '}
-          e edite o serviço desejado.
+          e edite as perguntas desejadas.
         </p>
       </div>
 

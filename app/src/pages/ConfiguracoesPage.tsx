@@ -21,6 +21,7 @@ import NotificacoesTab from '../pages-v1/settings/NotificacoesTab'
 import UsuariosTab from '../pages-v1/settings/UsuariosTab'
 import AnamnesisTab from '../pages-v1/settings/AnamnesisTab'
 import PaginaPublicaTab from '../pages-v1/settings/PaginaPublicaTab'
+import type { SettingsEntity } from '../lib/settingsNavigation'
 
 // ─── Module cards ─────────────────────────────────────────────────────────────
 
@@ -158,17 +159,23 @@ const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
 
 export default function ConfiguracoesPage() {
   const location = useLocation()
-  const { data: clinic } = useClinic()
+  const { data: clinic, isLoading: clinicLoading } = useClinic()
   const { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, enableModule, disableModule } = useClinicModules()
   const [activeTab, setActiveTab] = useState<Tab>('dados')
+  const [fieldEntity, setFieldEntity] = useState<SettingsEntity>('pacientes')
   const [toggling, setToggling] = useState<ClinicModule | null>(null)
 
-  // Support ?tab=xxx or state.tab navigation from other pages
+  // Support ?tab=xxx&entity=yyy or state.tab navigation from other pages
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const tabParam = params.get('tab') ?? (location.state as { tab?: string } | null)?.tab
+    const entityParam = params.get('entity') ?? (location.state as { entity?: string } | null)?.entity
+
     if (tabParam && TABS.some(t => t.id === tabParam)) {
       setActiveTab(tabParam as Tab)
+    }
+    if (entityParam === 'pacientes' || entityParam === 'profissionais') {
+      setFieldEntity(entityParam)
     }
   }, [location.search, location.state])
 
@@ -198,9 +205,26 @@ export default function ConfiguracoesPage() {
     if (!visibleTabs.some(t => t.id === activeTab)) {
       setActiveTab('dados')
     }
-  }, [modules])
+  }, [activeTab, modules, visibleTabs])
 
   const TabComponent = TAB_CONTENT[activeTab]
+
+  if (clinicLoading) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-400">
+        Carregando configurações...
+      </div>
+    )
+  }
+
+  if (!clinic) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-10 text-center">
+        <p className="text-sm font-medium text-amber-900">Não foi possível carregar a clínica.</p>
+        <p className="text-xs text-amber-700 mt-1">Recarregue a página e tente novamente.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -259,7 +283,7 @@ export default function ConfiguracoesPage() {
 
         {/* Tab content */}
         <div className="p-6">
-          <TabComponent clinic={clinic} />
+          <TabComponent clinic={clinic} fieldEntity={activeTab === 'campos' ? fieldEntity : undefined} />
         </div>
       </section>
     </div>

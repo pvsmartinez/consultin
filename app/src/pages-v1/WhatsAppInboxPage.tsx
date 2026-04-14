@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { WhatsappLogo, Check, Checks, ArrowBendUpRight, User, Robot, Headset, CheckCircle } from '@phosphor-icons/react'
@@ -14,6 +15,7 @@ import {
   subscribeToSessions,
 } from '../services/whatsapp'
 import type { WhatsAppSession, WhatsAppMessage } from '../types'
+import { buildSettingsPath } from '../lib/settingsNavigation'
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
@@ -85,7 +87,9 @@ export default function WhatsAppInboxPage() {
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
         <WhatsappLogo size={40} className="text-gray-300" />
         <p className="text-sm text-gray-500">WhatsApp não está configurado nesta clínica.</p>
-        <a href="/configuracoes" className="text-sm text-green-600 underline">Ir para Configurações → WhatsApp</a>
+        <Link to={buildSettingsPath('whatsapp')} className="text-sm text-green-600 underline">
+          Ir para Configurações → WhatsApp
+        </Link>
       </div>
     )
   }

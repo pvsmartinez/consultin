@@ -21,6 +21,7 @@ import RoomsDrawer from '../components/rooms/RoomsDrawer'
 import UpgradeModal from '../components/billing/UpgradeModal'
 import { useClinicQuota } from '../hooks/useClinicQuota'
 import type { Appointment } from '../types'
+import { buildSettingsPath, type SettingsTab } from '../lib/settingsNavigation'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = typeof DAY_ORDER[number]
@@ -584,10 +585,10 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Extras disponíveis</p>
             <div className="grid grid-cols-2 gap-3">
               {([
-                { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff,    tab: 'usuarios' },
-                { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms,    tab: 'salas' },
-                { key: 'whatsapp'  as const, label: 'WhatsApp',   desc: 'Lembretes automáticos e caixa de mensagens',    icon: WhatsappLogo,   active: hasWhatsApp, tab: 'whatsapp' },
-                { key: 'financial' as const, label: 'Financeiro', desc: 'Cobranças, pagamentos e fluxo de caixa',         icon: CurrencyDollar, active: hasFinancial, tab: 'pagamento' },
+                { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff,    tab: 'usuarios'  as SettingsTab },
+                { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms,    tab: 'salas'     as SettingsTab },
+                { key: 'whatsapp'  as const, label: 'WhatsApp',   desc: 'Lembretes automáticos e caixa de mensagens',    icon: WhatsappLogo,   active: hasWhatsApp, tab: 'whatsapp'  as SettingsTab },
+                { key: 'financial' as const, label: 'Financeiro', desc: 'Cobranças, pagamentos e fluxo de caixa',         icon: CurrencyDollar, active: hasFinancial, tab: 'pagamento' as SettingsTab },
               ]).map(({ key, label, desc, icon: Icon, active, tab }) => (
                 <button
                   key={key}
@@ -615,7 +616,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
                         })
                       }
                       setTogglingModule(null)
-                      navigate('/configuracoes', { state: { tab } })
+                      navigate(buildSettingsPath(tab))
                     }
                   }}
                   className={`text-left p-4 rounded-2xl border transition-all ${

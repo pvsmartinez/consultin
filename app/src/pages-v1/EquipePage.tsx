@@ -22,6 +22,7 @@ import type { ClinicInvite } from '../hooks/useClinic'
 import { useAuthContext } from '../contexts/AuthContext'
 import { USER_ROLE_LABELS, PERMISSION_LABELS, mergedPermissions } from '../types'
 import type { Professional, UserRole, PermissionKey } from '../types'
+import { buildSettingsPath } from '../lib/settingsNavigation'
 
 type Tab = 'profissionais' | 'acesso'
 
@@ -518,8 +519,7 @@ export default function EquipePage() {
           <p className="text-sm text-gray-400 mt-0.5">Gerencie profissionais e acessos ao sistema</p>
         </div>
         <Link
-          to="/configuracoes"
-          state={{ tab: 'campos' }}
+          to={buildSettingsPath('campos', 'profissionais')}
           className="flex items-center gap-1.5 border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm px-3 py-2 rounded-lg transition flex-shrink-0"
           title="Personalizar campos do cadastro de profissionais"
         >

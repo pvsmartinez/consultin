@@ -78,6 +78,11 @@
       "permanent": true
     },
     {
+      "source": "/exclusao-de-dados/",
+      "destination": "/exclusao-de-dados",
+      "permanent": true
+    },
+    {
       "source": "/para-fisioterapeutas/",
       "destination": "/para-fisioterapeutas",
       "permanent": true
