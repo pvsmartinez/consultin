@@ -1,12 +1,22 @@
-import { useState, useRef, ChangeEvent } from 'react'
-import { UploadSimple, Check, Warning } from '@phosphor-icons/react'
+import { useState, useRef, useEffect, ChangeEvent } from 'react'
+import { UploadSimple, Check, Warning, Sparkle, Robot } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Modal } from '@pvsmartinez/shared/ui'
-import { format, parse, isValid } from 'date-fns'
+import * as XLSX from 'xlsx'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
-import type { Database } from '../types/database'
-import { parseCSV } from '../utils/exportCSV'
+import { useClinic } from '../hooks/useClinic'
+import { usePatientImportJob } from '../hooks/usePatientImportJobs'
+import type { CustomFieldDef } from '../types'
+import type { Json } from '../types/database'
+import {
+  autoDetectPatientHeader,
+  buildFallbackCustomFieldSuggestions,
+  slugifyHeader,
+  uniqueCustomFieldKey,
+  type CustomFieldSuggestion,
+  type PatientImportMapping,
+} from '../utils/patientImport'
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 
@@ -34,55 +44,55 @@ const PATIENT_FIELDS: FieldDef[] = [
   { key: 'notes',             label: 'Observações' },
 ]
 
-// ─── Auto-detect header → field key ──────────────────────────────────────────
-
-const AUTO_DETECT: Record<string, string> = {
-  nome: 'name', name: 'name', paciente: 'name',
-  cpf: 'cpf',
-  rg: 'rg',
-  nascimento: 'birth_date', 'data nascimento': 'birth_date', 'data_nascimento': 'birth_date',
-  'data de nascimento': 'birth_date', birthdate: 'birth_date', birth_date: 'birth_date',
-  sexo: 'sex', sex: 'sex', genero: 'sex', gênero: 'sex', gender: 'sex',
-  telefone: 'phone', celular: 'phone', phone: 'phone', whatsapp: 'phone', fone: 'phone',
-  email: 'email', 'e-mail': 'email',
-  endereco: 'address_street', endereço: 'address_street', rua: 'address_street',
-  logradouro: 'address_street', address: 'address_street', street: 'address_street',
-  numero: 'address_number', número: 'address_number', 'nº': 'address_number', num: 'address_number',
-  complemento: 'address_complement',
-  bairro: 'address_neighborhood', neighborhood: 'address_neighborhood',
-  cidade: 'address_city', city: 'address_city', municipio: 'address_city', município: 'address_city',
-  estado: 'address_state', uf: 'address_state', state: 'address_state',
-  cep: 'address_zip', zip: 'address_zip', postal: 'address_zip',
-  observacoes: 'notes', observações: 'notes', obs: 'notes', notes: 'notes', notas: 'notes',
-}
-
-function autoDetect(header: string): string {
-  const normalized = header.toLowerCase().trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove accents
-  return AUTO_DETECT[header.toLowerCase().trim()] ?? AUTO_DETECT[normalized] ?? ''
-}
-
 // ─── Value normalizers ────────────────────────────────────────────────────────
 
-function normalizeSex(v: string): string | null {
-  const s = v.trim().toLowerCase()
-  if (['m', 'masc', 'masculino', 'male'].includes(s)) return 'M'
-  if (['f', 'fem', 'feminino', 'female'].includes(s)) return 'F'
-  if (['o', 'outro', 'other', 'n/a', 'na'].includes(s)) return 'O'
-  return null
-}
+// ─── Parse file to headers + rows ────────────────────────────────────────────
 
-function normalizeDate(v: string): string | null {
-  const s = v.trim()
-  if (!s) return null
-  const formats = ['dd/MM/yyyy', 'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yy']
-  for (const fmt of formats) {
-    try {
-      const d = parse(s, fmt, new Date())
-      if (isValid(d)) return format(d, 'yyyy-MM-dd')
-    } catch { /* try next */ }
-  }
-  return null
+function parseFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    if (file.name.match(/\.(xlsx|xls|ods)$/i)) {
+      reader.onload = ev => {
+        try {
+          const data = new Uint8Array(ev.target?.result as ArrayBuffer)
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true })
+          const sheet = workbook.Sheets[workbook.SheetNames[0]]
+          const raw = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' })
+          const [headerRow, ...dataRows] = raw as string[][]
+          const headers = (headerRow ?? []).map(h => String(h ?? '').trim()).filter(Boolean)
+          const colCount = headers.length
+          const rows = dataRows
+            .filter(r => r.some(c => String(c ?? '').trim() !== ''))
+            .map(r => headers.map((_, i) => String(r[i] ?? '').trim()))
+          resolve({ headers, rows: rows.slice(0, colCount > 0 ? undefined : 0) })
+        } catch (e) {
+          reject(new Error('Não foi possível ler o arquivo Excel. Verifique se está no formato correto.'))
+        }
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      // CSV / TXT
+      reader.onload = ev => {
+        const text = ev.target?.result as string
+        const lines = text.split(/\r?\n/).filter(l => l.trim())
+        if (lines.length === 0) { reject(new Error('Arquivo vazio')); return }
+        // Detect separator (comma, semicolon, tab)
+        const sample = lines[0]
+        const sep = sample.includes('\t') ? '\t' : sample.includes(';') ? ';' : ','
+        const parseRow = (line: string): string[] =>
+          line.split(sep).map(c => c.replace(/^"|"$/g, '').trim())
+        const headers = parseRow(lines[0]).filter(Boolean)
+        const rows = lines.slice(1)
+          .filter(l => l.trim())
+          .map(l => parseRow(l))
+        resolve({ headers, rows })
+      }
+      reader.readAsText(file, 'UTF-8')
+    }
+
+    reader.onerror = () => reject(new Error('Erro ao ler o arquivo'))
+  })
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -93,51 +103,162 @@ interface Props {
   onImported?: (count: number) => void
 }
 
-type Mapping = Record<string, string> // fieldKey → csvHeader
-type PatientInsert = Database['public']['Tables']['patients']['Insert']
-
+type Mapping = PatientImportMapping
+type MappingSource = Record<string, 'auto' | 'ai' | 'manual'>
 export default function ImportModal({ open, onClose, onImported }: Props) {
   const { profile } = useAuthContext()
+  const { data: clinic } = useClinic()
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [headers, setHeaders] = useState<string[]>([])
   const [rows, setRows] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Mapping>({})
-  const [step, setStep] = useState<'upload' | 'map' | 'preview' | 'importing'>('upload')
+  const [mappingSource, setMappingSource] = useState<MappingSource>({})
+  const [customFieldSuggestions, setCustomFieldSuggestions] = useState<CustomFieldSuggestion[]>([])
+  const [aiUsed, setAiUsed] = useState(false)
+  const [step, setStep] = useState<'upload' | 'analyzing' | 'map' | 'preview' | 'importing' | 'processing-job'>('upload')
+  const [importJobId, setImportJobId] = useState<string | null>(null)
   const [errors, setErrors] = useState<string[]>([])
+  const importJobQuery = usePatientImportJob(importJobId)
 
   function resetAll() {
-    setHeaders([]); setRows([]); setMapping({})
+    setSelectedFile(null)
+    setHeaders([]); setRows([]); setMapping({}); setMappingSource({})
+    setCustomFieldSuggestions([])
+    setAiUsed(false)
+    setImportJobId(null)
     setStep('upload'); setErrors([])
     if (fileRef.current) fileRef.current.value = ''
   }
 
   function handleClose() { resetAll(); onClose() }
 
-  function handleFile(e: ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    const job = importJobQuery.data
+    if (!job) return
+
+    if (job.status === 'completed') {
+      const extraSummary = [
+        job.skipped_rows > 0 ? `${job.skipped_rows} puladas` : null,
+        job.failed_rows > 0 ? `${job.failed_rows} com erro` : null,
+      ].filter(Boolean).join(' · ')
+
+      toast.success(
+        extraSummary
+          ? `${job.imported_rows} paciente(s) importado(s) com sucesso. ${extraSummary}`
+          : `${job.imported_rows} paciente(s) importado(s) com sucesso!`,
+      )
+      onImported?.(job.imported_rows)
+      handleClose()
+    }
+
+    if (job.status === 'failed') {
+      toast.error(job.error_message ?? 'A importação falhou.')
+      setStep('preview')
+      setImportJobId(null)
+    }
+  }, [importJobQuery.data, onImported])
+
+  async function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => {
-      const text = ev.target?.result as string
-      const { headers: h, rows: r } = parseCSV(text)
-      if (h.length === 0) { toast.error('Arquivo vazio ou inválido'); return }
-      setHeaders(h)
-      setRows(r)
-      // Auto-detect mapping
-      const m: Mapping = {}
-      PATIENT_FIELDS.forEach(f => {
-        const csvCol = h.find((col: string) => autoDetect(col) === f.key)
-        if (csvCol) m[f.key] = csvCol
-      })
-      setMapping(m)
-      setStep('map')
+    setSelectedFile(file)
+    setStep('analyzing')
+
+    let parsed: { headers: string[]; rows: string[][] }
+    try {
+      parsed = await parseFile(file)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao ler arquivo')
+      setStep('upload')
+      return
     }
-    reader.readAsText(file, 'UTF-8')
+
+    if (parsed.headers.length === 0) {
+      toast.error('Arquivo vazio ou sem cabeçalhos')
+      setStep('upload')
+      return
+    }
+
+    setHeaders(parsed.headers)
+    setRows(parsed.rows)
+
+    // Attempt local auto-detect first
+    const localMapping: Mapping = {}
+    const localSource: MappingSource = {}
+    PATIENT_FIELDS.forEach(f => {
+      const csvCol = parsed.headers.find(col => autoDetectPatientHeader(col) === f.key)
+      if (csvCol) { localMapping[f.key] = csvCol; localSource[f.key] = 'auto' }
+    })
+
+    // Count unmapped columns — if more than 3 unmapped, call AI
+    const mappedCols = new Set(Object.values(localMapping))
+    const unmappedHeaders = parsed.headers.filter(h => !mappedCols.has(h))
+    const needsAi = unmappedHeaders.length >= 3 || !localMapping['name']
+
+    let nextCustomFieldSuggestions: CustomFieldSuggestion[] = []
+
+    if (needsAi) {
+      try {
+        const sampleRows = parsed.rows.slice(0, 5)
+        const { data, error } = await supabase.functions.invoke('import-patients', {
+          body: { headers: parsed.headers, sampleRows }
+        })
+        if (!error && data?.mapping) {
+          const aiMapping: Record<string, string> = data.mapping
+          Object.entries(aiMapping).forEach(([fieldKey, csvHeader]) => {
+            if (!localMapping[fieldKey] && csvHeader && parsed.headers.includes(csvHeader)) {
+              localMapping[fieldKey] = csvHeader
+              localSource[fieldKey] = 'ai'
+            }
+          })
+          if (Array.isArray(data.customFields)) {
+            const existingKeys = new Set((clinic?.customPatientFields ?? []).map(field => field.key))
+            nextCustomFieldSuggestions = (data.customFields as Array<Record<string, unknown>>)
+              .map(field => {
+                const header = typeof field.header === 'string' ? field.header : ''
+                const label = typeof field.label === 'string' ? field.label.trim() : header.trim()
+                const type = typeof field.type === 'string' ? field.type as CustomFieldDef['type'] : 'text'
+                const options = Array.isArray(field.options)
+                  ? field.options.filter((option): option is string => typeof option === 'string' && option.trim().length > 0)
+                  : undefined
+                if (!header || !parsed.headers.includes(header)) return null
+                return {
+                  header,
+                  label: label || header,
+                  key: uniqueCustomFieldKey(slugifyHeader(typeof field.key === 'string' ? field.key : header), existingKeys),
+                  type,
+                  ...(options && options.length > 0 ? { options } : {}),
+                } satisfies CustomFieldSuggestion
+              })
+              .filter((field): field is CustomFieldSuggestion => field !== null)
+          }
+          setAiUsed(true)
+        }
+      } catch {
+        // AI failed — continue with local mapping only
+      }
+    }
+
+    if (nextCustomFieldSuggestions.length === 0) {
+      nextCustomFieldSuggestions = buildFallbackCustomFieldSuggestions(
+        parsed.headers,
+        localMapping,
+        parsed.rows,
+        clinic?.customPatientFields ?? [],
+      )
+    }
+
+    setCustomFieldSuggestions(nextCustomFieldSuggestions)
+    setMapping(localMapping)
+    setMappingSource(localSource)
+    setStep('map')
   }
 
   function handleMappingChange(fieldKey: string, csvHeader: string) {
     setMapping(prev => ({ ...prev, [fieldKey]: csvHeader }))
+    setMappingSource(prev => ({ ...prev, [fieldKey]: 'manual' }))
   }
 
   function validate(): string[] {
@@ -156,106 +277,124 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     setStep('preview')
   }
 
-  // Build the DB row from a CSV row
-  function buildDbRow(csvRow: string[], clinicId: string): PatientInsert | null {
-    const get = (fieldKey: string): string => {
-      const col = mapping[fieldKey]
-      if (!col) return ''
-      const idx = headers.indexOf(col)
-      return idx >= 0 ? (csvRow[idx] ?? '').trim() : ''
-    }
-    const name = get('name')
-    if (!name) return null // skip rows without a name
-    return {
-      clinic_id:            clinicId,
-      name,
-      cpf:                  get('cpf') || null,
-      rg:                   get('rg') || null,
-      birth_date:           normalizeDate(get('birth_date')),
-      sex:                  normalizeSex(get('sex')),
-      phone:                get('phone') || null,
-      email:                get('email') || null,
-      address_street:       get('address_street') || null,
-      address_number:       get('address_number') || null,
-      address_complement:   get('address_complement') || null,
-      address_neighborhood: get('address_neighborhood') || null,
-      address_city:         get('address_city') || null,
-      address_state:        get('address_state') || null,
-      address_zip:          get('address_zip') || null,
-      notes:                get('notes') || null,
-    }
-  }
-
   async function handleImport() {
     setStep('importing')
     const clinicId = profile?.clinicId
     if (!clinicId) { toast.error('Clínica não identificada'); setStep('preview'); return }
-
-    const dbRows = rows
-      .map(r => buildDbRow(r, clinicId))
-      .filter((r): r is PatientInsert => r !== null)
-
-    if (dbRows.length === 0) {
+    if (!selectedFile) {
+      toast.error('Selecione a planilha novamente antes de importar.')
+      setStep('upload')
+      return
+    }
+    if (rows.length === 0) {
       toast.error('Nenhuma linha válida encontrada (coluna Nome vazia em todas as linhas?)')
       setStep('preview')
       return
     }
 
-    // Insert in batches of 200
-    const BATCH = 200
-    let imported = 0
     try {
-      for (let i = 0; i < dbRows.length; i += BATCH) {
-        const batch = dbRows.slice(i, i + BATCH)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await supabase.from('patients').insert(batch)
-        if (error) throw new Error(error.message)
-        imported += batch.length
-      }
-      toast.success(`${imported} paciente(s) importado(s) com sucesso!`)
-      onImported?.(imported)
-      handleClose()
+      const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const storagePath = `${clinicId}/${crypto.randomUUID()}/${safeName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('patient-imports')
+        .upload(storagePath, selectedFile, {
+          upsert: false,
+          contentType: selectedFile.type || undefined,
+        })
+
+      if (uploadError) throw new Error(uploadError.message)
+
+      const { data: job, error: jobError } = await supabase
+        .from('patient_import_jobs')
+        .insert({
+          clinic_id: clinicId,
+          created_by: profile?.id ?? null,
+          status: 'queued',
+          file_name: selectedFile.name,
+          storage_path: storagePath,
+          file_size_bytes: selectedFile.size,
+          total_rows: rows.length,
+          source_headers: headers as Json,
+          mapping: mapping as Json,
+          custom_fields: customFieldSuggestions as Json,
+        })
+        .select('*')
+        .single()
+
+      if (jobError || !job) throw new Error(jobError?.message ?? 'Não consegui criar o job de importação.')
+
+      setImportJobId(job.id)
+      setStep('processing-job')
     } catch (err) {
       toast.error(`Erro na importação: ${err instanceof Error ? err.message : String(err)}`)
       setStep('preview')
     }
   }
 
-  // ── Preview rows (first 5) ──
   const previewRows = rows.slice(0, 5)
   const mappedFields = PATIENT_FIELDS.filter(f => mapping[f.key])
 
   return (
-    <Modal open={open} onClose={handleClose} title="Importar pacientes via CSV" maxWidth="lg">
+    <Modal open={open} onClose={handleClose} title="Importar pacientes (CSV ou Excel)" maxWidth="lg">
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
           {/* ─ Step: Upload ─ */}
           {step === 'upload' && (
-            <div className="flex flex-col items-center gap-4 py-10">
-              <div className="border-2 border-dashed border-gray-300 rounded-[24px] p-10 text-center cursor-pointer hover:border-[#0ea5b0] hover:bg-teal-50/40 transition w-full"
-                onClick={() => fileRef.current?.click()}>
+            <div className="flex flex-col items-center gap-4 py-6">
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-[24px] p-10 text-center cursor-pointer hover:border-[#0ea5b0] hover:bg-teal-50/40 transition w-full"
+                onClick={() => fileRef.current?.click()}
+              >
                 <UploadSimple size={36} className="mx-auto text-[#0ea5b0] mb-3" />
-                <p className="text-sm font-medium text-gray-700">Clique para selecionar um arquivo CSV</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  A primeira linha deve conter os cabeçalhos das colunas
-                </p>
+                <p className="text-sm font-medium text-gray-700">Clique para selecionar seu arquivo</p>
+                <p className="text-xs text-gray-400 mt-1">Excel (.xlsx), CSV ou .txt</p>
               </div>
-              <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
-              <div className="text-xs text-gray-400 bg-[#f8fafb] border border-gray-100 rounded-2xl p-4 w-full">
-                <p className="font-semibold text-gray-600 mb-1">Dica: colunas reconhecidas automaticamente</p>
-                <p>Nome, CPF, RG, Nascimento, Sexo, Telefone, E-mail, Endereço, Cidade, UF, CEP, Observações</p>
-                <p className="mt-1">Aceita exportações do Google Sheets, Excel e de outros sistemas de gestão.</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,.txt,.xlsx,.xls,.ods"
+                className="hidden"
+                onChange={handleFile}
+              />
+              <div className="text-xs text-gray-400 bg-[#f8fafb] border border-gray-100 rounded-2xl p-4 w-full space-y-2">
+                <div className="flex items-center gap-2">
+                  <Robot size={15} className="text-[#0ea5b0] shrink-0" />
+                  <p className="font-semibold text-gray-600">A IA analisa sua planilha automaticamente</p>
+                </div>
+                <p>Se sua planilha tiver colunas com nomes diferentes do padrão, a IA vai tentar identificar o que cada coluna representa — você só confirma antes de importar.</p>
+                <p className="text-gray-500">Formatos: Google Sheets, Excel, exportações de prontuário eletrônico, planilha livre.</p>
               </div>
+            </div>
+          )}
+
+          {/* ─ Step: Analyzing ─ */}
+          {step === 'analyzing' && (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center animate-pulse">
+                <Sparkle size={24} className="text-[#0ea5b0]" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Lendo arquivo e identificando colunas...</p>
+              <p className="text-xs text-gray-400 max-w-xs">
+                A IA vai mapear automaticamente as colunas da sua planilha para os campos do sistema.
+              </p>
             </div>
           )}
 
           {/* ─ Step: Map ─ */}
           {step === 'map' && (
             <>
-              <p className="text-sm text-gray-600">
-                Arquivo carregado: <strong>{headers.length} colunas</strong>, <strong>{rows.length} linhas</strong>.{' '}
-                Vincule cada campo do sistema com a coluna correspondente do CSV.
-              </p>
+              <div className="flex items-start justify-between">
+                <p className="text-sm text-gray-600">
+                  <strong>{headers.length} colunas</strong> · <strong>{rows.length} linhas</strong> encontradas.
+                  Verifique os mapeamentos abaixo e ajuste se necessário.
+                </p>
+                {aiUsed && (
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-[#0ea5b0] bg-teal-50 border border-teal-100 rounded-full px-2.5 py-1 shrink-0 ml-3">
+                    <Robot size={13} /> Mapeado com IA
+                  </span>
+                )}
+              </div>
 
               {errors.length > 0 && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2 text-sm text-red-700">
@@ -267,25 +406,54 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {PATIENT_FIELDS.map(f => (
-                  <div key={f.key} className="flex items-center gap-2">
-                    <label className="text-xs text-gray-600 w-36 shrink-0">
-                      {f.label}
-                      {f.required && <span className="text-red-500 ml-0.5">*</span>}
-                    </label>
-                    <select
-                      value={mapping[f.key] ?? ''}
-                      onChange={e => handleMappingChange(f.key, e.target.value)}
-                      className="flex-1 border border-gray-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                    >
-                      <option value="">— ignorar —</option>
-                      {headers.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                {PATIENT_FIELDS.map(f => {
+                  const src = mappingSource[f.key]
+                  return (
+                    <div key={f.key} className="flex items-center gap-2">
+                      <label className="text-xs text-gray-600 w-36 shrink-0 flex items-center gap-1">
+                        {f.label}
+                        {f.required && <span className="text-red-500">*</span>}
+                        {src === 'ai' && (
+                          <span title="Sugerido pela IA">
+                            <Sparkle size={11} className="text-[#0ea5b0]" />
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={mapping[f.key] ?? ''}
+                        onChange={e => handleMappingChange(f.key, e.target.value)}
+                        className={`flex-1 border rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] ${
+                          src === 'ai' ? 'border-teal-200 bg-teal-50/40' : 'border-gray-200'
+                        }`}
+                      >
+                        <option value="">— ignorar —</option>
+                        {headers.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
               </div>
+
+              {customFieldSuggestions.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
+                    Campos personalizados que serão criados
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {customFieldSuggestions.map(field => (
+                      <span
+                        key={field.key}
+                        className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs text-amber-800"
+                      >
+                        {field.label}
+                        <span className="text-amber-500">· {field.type}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -331,21 +499,76 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
               {rows.length > 5 && (
                 <p className="text-xs text-gray-400">… e mais {rows.length - 5} linhas</p>
               )}
+              {customFieldSuggestions.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  {customFieldSuggestions.length} coluna(s) extra serão importadas como campos personalizados da clínica.
+                </p>
+              )}
             </>
+          )}
+
+          {step === 'processing-job' && (
+            <div className="space-y-4 py-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center mx-auto animate-pulse">
+                <Robot size={28} className="text-[#0ea5b0]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-700">
+                  {importJobQuery.data?.status === 'queued'
+                    ? 'Job criado. Colocando a importação na fila...'
+                    : 'Importando pacientes em segundo plano...'}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  O backend está lendo a planilha, criando campos personalizados e populando a base.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-[#f8fafb] px-4 py-4 max-w-md mx-auto">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                  <span>Progresso</span>
+                  <span>{importJobQuery.data?.processed_rows ?? 0} / {importJobQuery.data?.total_rows ?? rows.length}</span>
+                </div>
+                <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#0ea5b0] to-[#006970] transition-all"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(((importJobQuery.data?.processed_rows ?? 0) / Math.max(importJobQuery.data?.total_rows ?? rows.length, 1)) * 100),
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3 mt-4 text-left">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Importadas</p>
+                    <p className="text-sm font-semibold text-gray-800">{importJobQuery.data?.imported_rows ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Puladas</p>
+                    <p className="text-sm font-semibold text-gray-800">{importJobQuery.data?.skipped_rows ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Erros</p>
+                    <p className="text-sm font-semibold text-gray-800">{importJobQuery.data?.failed_rows ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100">
           <button
-            onClick={step === 'upload' ? handleClose : () => {
+            onClick={step === 'upload' || step === 'processing-job' ? handleClose : () => {
               if (step === 'preview') { setStep('map'); setErrors([]) }
               else if (step === 'map') { setStep('upload'); resetAll() }
             }}
             className="text-sm text-gray-500 hover:text-gray-700"
-            disabled={step === 'importing'}
+            disabled={step === 'importing' || step === 'analyzing'}
           >
-            {step === 'upload' ? 'Cancelar' : '← Voltar'}
+            {step === 'upload' || step === 'processing-job' ? 'Fechar' : '← Voltar'}
           </button>
 
           <div className="flex gap-2">
@@ -370,7 +593,12 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
             )}
             {step === 'importing' && (
               <button disabled className="bg-teal-300 text-white text-sm font-medium px-5 py-2.5 rounded-xl opacity-60">
-                Importando...
+                Enviando job...
+              </button>
+            )}
+            {step === 'processing-job' && (
+              <button disabled className="bg-teal-300 text-white text-sm font-medium px-5 py-2.5 rounded-xl opacity-60">
+                Processando no backend...
               </button>
             )}
           </div>
@@ -378,3 +606,5 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     </Modal>
   )
 }
+
+

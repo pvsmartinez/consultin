@@ -49,6 +49,8 @@ export interface Clinic {
   whatsappVerifyToken: string | null
   waRemindersd1: boolean
   waRemindersd0: boolean
+  waReminderD1Text: string | null
+  waReminderD0Text: string | null
   waProfessionalAgenda: boolean
   waAttendantInbox: boolean
   waAiModel: string
@@ -145,12 +147,18 @@ export interface Professional {
   councilId: string | null     // CRM / CRO / CREFITO etc.
   phone: string | null
   email: string | null
+  photoUrl: string | null
+  bio: string | null
   active: boolean
   customFields: Record<string, unknown>
   createdAt: string
 }
 
-export type ProfessionalInput = Omit<Professional, 'id' | 'clinicId' | 'createdAt'> & { userId?: string | null }
+export type ProfessionalInput = Omit<Professional, 'id' | 'clinicId' | 'createdAt' | 'photoUrl' | 'bio'> & {
+  userId?: string | null
+  photoUrl?: string | null
+  bio?: string | null
+}
 
 // Junction: one user ↔ one clinic (professionals can work at multiple clinics)
 export interface UserClinicMembership {

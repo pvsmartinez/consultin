@@ -192,17 +192,17 @@ export function usePatient(id: string) {
  * Also exposes an `updatePatient` mutation that keeps the React Query cache in sync.
  */
 export function useMyPatient() {
-  const { session } = useAuthContext()
+  const { session, profile } = useAuthContext()
   const qc = useQueryClient()
 
   const query = useQuery({
-    queryKey: QK.patients.my(session?.user.id),
-    enabled: !!session?.user.id,
+    queryKey: QK.patients.my(session?.user.id, profile?.clinicId),
+    enabled: !!session?.user.id && !!profile?.clinicId,
     queryFn: async (): Promise<Patient | null> => {
       const userId = session!.user.id
       const email  = session!.user.email
 
-      // Single query: fetch by user_id OR email in one roundtrip
+      // Current clinic only: same account, local patient context.
       const orFilter = email
         ? `user_id.eq.${userId},email.eq.${email}`
         : `user_id.eq.${userId}`
@@ -210,16 +210,15 @@ export function useMyPatient() {
         .from('patients')
         .select('*')
         .or(orFilter)
-        .limit(2)
+        .eq('clinic_id', profile?.clinicId ?? '')
+        .limit(1)
       if (error) throw new Error(error.message)
       if (!data?.length) return null
 
-      // Prefer the row directly linked by user_id
-      const byUserId = data.find(r => (r as Record<string, unknown>).user_id === userId)
-      const row = (byUserId ?? data[0]) as Record<string, unknown>
+      const row = data[0] as Record<string, unknown>
 
-      // If matched only by email, backfill user_id so future lookups hit the index (fire-and-forget)
-      if (!byUserId) {
+      // If matched only by email, backfill user_id so future lookups hit the index.
+      if ((row.user_id as string | null) !== userId) {
         void supabase
           .from('patients')
           .update({ user_id: userId })
@@ -245,7 +244,7 @@ export function useMyPatient() {
       return mapPatient(data as Record<string, unknown>)
     },
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: QK.patients.my(session?.user.id) })
+      qc.invalidateQueries({ queryKey: QK.patients.my(session?.user.id, profile?.clinicId) })
       qc.invalidateQueries({ queryKey: QK.patients.all() })
       qc.invalidateQueries({ queryKey: QK.patients.detail(id) })
     },
@@ -260,6 +259,111 @@ export function useMyPatient() {
         : Promise.reject(new Error('No patient linked to this account')),
     updating: updateMut.isPending,
   }
+}
+
+export interface MyPatientClinic {
+  clinicId: string
+  clinicName: string
+  city: string | null
+  state: string | null
+  patientId: string
+  patientName: string
+  nextAppointmentAt: string | null
+  isCurrent: boolean
+}
+
+export function useMyPatientClinics() {
+  const { session, profile } = useAuthContext()
+
+  return useQuery<MyPatientClinic[]>({
+    queryKey: QK.patients.clinics(session?.user.id, profile?.clinicId),
+    enabled: !!session?.user.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const userId = session!.user.id
+      const email = session!.user.email
+      const orFilter = email
+        ? `user_id.eq.${userId},email.eq.${email}`
+        : `user_id.eq.${userId}`
+
+      const { data: patientRows, error: patientError } = await supabase
+        .from('patients')
+        .select(PATIENT_LIST_COLS)
+        .or(orFilter)
+        .order('created_at', { ascending: false })
+
+      if (patientError) throw new Error(patientError.message)
+
+      const normalized = new Map<string, Patient>()
+      for (const raw of (patientRows ?? []) as unknown[]) {
+        const patient = mapPatient(raw as Record<string, unknown>)
+        const current = normalized.get(patient.clinicId)
+        const isDirect = patient.userId === userId
+
+        if (!current || (isDirect && current.userId !== userId)) {
+          normalized.set(patient.clinicId, patient)
+        }
+
+        if (patient.userId !== userId) {
+          void supabase.from('patients').update({ user_id: userId }).eq('id', patient.id)
+        }
+      }
+
+      const patients = Array.from(normalized.values())
+      if (patients.length === 0) return []
+
+      const clinicIds = patients.map((patient) => patient.clinicId)
+      const patientIds = patients.map((patient) => patient.id)
+
+      const [{ data: clinicsData, error: clinicsError }, { data: apptData, error: apptError }] = await Promise.all([
+        supabase
+          .from('clinics')
+          .select('id, name, city, state')
+          .in('id', clinicIds),
+        supabase
+          .from('appointments')
+          .select('patient_id, starts_at, status')
+          .in('patient_id', patientIds)
+          .in('status', ['scheduled', 'confirmed'])
+          .gte('starts_at', new Date().toISOString())
+          .order('starts_at', { ascending: true }),
+      ])
+
+      if (clinicsError) throw new Error(clinicsError.message)
+      if (apptError) throw new Error(apptError.message)
+
+      const clinicMap = new Map(
+        ((clinicsData ?? []) as Array<Record<string, unknown>>).map((clinic) => [clinic.id as string, clinic]),
+      )
+      const nextApptByPatientId = new Map<string, string>()
+      for (const appt of (apptData ?? []) as Array<Record<string, unknown>>) {
+        const patientId = appt.patient_id as string
+        if (!nextApptByPatientId.has(patientId)) {
+          nextApptByPatientId.set(patientId, appt.starts_at as string)
+        }
+      }
+
+      return patients
+        .map((patient) => {
+          const clinic = clinicMap.get(patient.clinicId)
+          return {
+            clinicId: patient.clinicId,
+            clinicName: (clinic?.name as string) ?? 'Clínica',
+            city: (clinic?.city as string) ?? null,
+            state: (clinic?.state as string) ?? null,
+            patientId: patient.id,
+            patientName: patient.name,
+            nextAppointmentAt: nextApptByPatientId.get(patient.id) ?? null,
+            isCurrent: patient.clinicId === profile?.clinicId,
+          }
+        })
+        .sort((left, right) => {
+          if (left.isCurrent && !right.isCurrent) return -1
+          if (!left.isCurrent && right.isCurrent) return 1
+          return left.clinicName.localeCompare(right.clinicName)
+        })
+    },
+  })
 }
 
 // ─── Anamnesis ────────────────────────────────────────────────────────────────

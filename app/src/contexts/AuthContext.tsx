@@ -20,6 +20,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>
   hasPermission: (key: string) => boolean
   refreshProfile: () => Promise<void>
+  switchClinicContext: (clinicId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -283,6 +284,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const switchClinicContext = async (clinicId: string) => {
+    if (!session?.user.id || !profile || clinicId === profile.clinicId) return
+
+    const { data, error } = await supabase.rpc('switch_patient_clinic', {
+      target_clinic_id: clinicId,
+    })
+    if (error) throw error
+    if (!data) throw new Error('Perfil não retornado ao trocar de clínica')
+
+    const next = profileFromRow(data as unknown as Record<string, unknown>)
+    setProfile(next)
+    setCachedProfile(next)
+    qc.clear()
+    qc.setQueryData(QK.patients.clinics(session.user.id, next.clinicId), undefined)
+  }
+
   return (
     <AuthContext.Provider value={{
       session, profile, role: profile ? primaryRole(profile.roles) : null, loading,
@@ -290,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       recoveryMode, clearRecoveryMode,
       signOut, hasPermission,
       refreshProfile,
+      switchClinicContext,
     }}>
       {children}
     </AuthContext.Provider>

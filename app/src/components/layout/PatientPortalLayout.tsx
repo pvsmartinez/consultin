@@ -1,7 +1,8 @@
 import { NavLink, Navigate } from 'react-router-dom'
-import { Stethoscope, SignOut, CalendarBlank, User, CalendarPlus, Phone, MapPin } from '@phosphor-icons/react'
+import { Stethoscope, SignOut, CalendarBlank, User, CalendarPlus, Phone, MapPin, Buildings } from '@phosphor-icons/react'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
+import { useMyPatientClinics } from '../../hooks/usePatients'
 
 interface PatientPortalLayoutProps {
   children: React.ReactNode
@@ -14,6 +15,8 @@ interface PatientPortalLayoutProps {
 export default function PatientPortalLayout({ children }: PatientPortalLayoutProps) {
   const { role, profile, signOut, loading } = useAuthContext()
   const { data: clinic } = useClinic()
+  const { data: patientClinics = [] } = useMyPatientClinics()
+  const hasMultipleClinics = patientClinics.length > 1
 
   if (loading) return null
   if (!role) return <Navigate to="/login" replace />
@@ -61,6 +64,18 @@ export default function PatientPortalLayout({ children }: PatientPortalLayoutPro
           >
             <User size={14} /> <span className="hidden sm:inline">Meu Perfil</span>
           </NavLink>
+          {hasMultipleClinics && (
+            <NavLink
+              to="/minhas-clinicas"
+              className={({ isActive }) =>
+                `flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition ${
+                  isActive ? 'text-blue-600 font-medium bg-blue-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`
+              }
+            >
+              <Buildings size={14} /> <span className="hidden sm:inline">Trocar clínica</span>
+            </NavLink>
+          )}
           <span className="text-xs text-gray-400 hidden sm:inline mx-1">{profile?.name?.split(' ')[0]}</span>
           <button
             onClick={signOut}

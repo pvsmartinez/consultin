@@ -625,6 +625,17 @@ async function processInbound(
         .ilike('name', `%${searchName}%`)
         .limit(5)
       if (!foundPatients || foundPatients.length === 0) {
+        const { count: totalPatients } = await supabase
+          .from('patients')
+          .select('id', { count: 'exact', head: true })
+          .eq('clinic_id', clinic.id)
+
+        if ((totalPatients ?? 0) === 0) {
+          await sendReply(clinic.id, session.id, fromPhone,
+            'Ainda não há pacientes cadastrados nessa clínica. Se você já tiver uma planilha ou exportação de outro sistema, envie pelo painel de Pacientes para importar a base inteira. Se preferir, posso continuar com um cadastro manual aqui pelo WhatsApp.')
+          break
+        }
+
         await sendReply(clinic.id, session.id, fromPhone,
           `Nenhum paciente encontrado com o nome "${searchName}". Verifique o nome e tente novamente.`)
         break

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   CalendarBlank,
+  ChartBar,
   Users,
   UsersFour,
   Buildings,
@@ -52,7 +53,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // Base: Agenda + Pacientes always visible
   // Conditional: Equipe, Salas, WhatsApp driven by active modules + permissions
   // Settings always visible to admins
-  const navItems = [
+  const operationalItems = [
     { to: '/agenda',         icon: CalendarBlank,   label: 'Agenda',       show: true },
     { to: '/pacientes',      icon: Users,           label: 'Pacientes',    show: hasPermission('canViewPatients') },
     { to: '/equipe',         icon: UsersFour,       label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
@@ -61,10 +62,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { to: '/whatsapp',       icon: WhatsappLogo,    label: 'Mensagens',    show: hasWhatsApp && hasPermission('canViewWhatsApp') },
   ].filter(item => item.show)
 
+  const adminItems = [
+    { to: '/relatorios',     icon: ChartBar,        label: 'Relatórios',   show: hasFinancial && hasPermission('canViewFinancial') },
+  ].filter(item => item.show)
+
   const settingsItem = { to: '/configuracoes', icon: Gear, label: 'Configurações', show: hasPermission('canManageSettings') }
 
   // Top 4 visible items for bottom tab bar (mobile)
-  const bottomItems = [...navItems, ...(settingsItem.show ? [settingsItem] : [])].slice(0, 4)
+  const bottomItems = [...operationalItems, ...(settingsItem.show ? [settingsItem] : [])].slice(0, 4)
 
   // ── Sidebar header ─────────────────────────────────────────────────────────
   const sideNavHeader = (
@@ -181,13 +186,32 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Sidebar */}
       <SideNav header={sideNavHeader} footer={sideNavFooter}>
-        {navItems.map(({ to, icon, label }) => (
+        {operationalItems.map(({ to, icon, label }) => (
           <NavItem
             key={to}
             to={to}
             icon={icon}
             label={isProfessional && to === '/agenda' ? 'Minha Agenda' : label}
             badge={to === '/whatsapp' ? notifBadge : undefined}
+          />
+        ))}
+
+        {adminItems.length > 0 && (
+          <div className="px-4 pt-4 pb-2">
+            <div className="border-t border-gray-200 pt-4">
+              <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-400">
+                Administrativo
+              </p>
+            </div>
+          </div>
+        )}
+
+        {adminItems.map(({ to, icon, label }) => (
+          <NavItem
+            key={to}
+            to={to}
+            icon={icon}
+            label={label}
           />
         ))}
       </SideNav>

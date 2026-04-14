@@ -35,8 +35,10 @@ jobs:
         run: |
           supabase functions deploy admin-stats --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy admin-users --project-ref nxztzehgnkdmluogxehi
+          supabase functions deploy public-booking --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy send-clinic-invite --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy track-public-analytics --project-ref nxztzehgnkdmluogxehi
+          supabase functions deploy whatsapp-ai-agent --project-ref nxztzehgnkdmluogxehi
 
   # Vercel deploys automatically via GitHub integration on the same push.
   # No explicit step needed — it runs in parallel with this job.

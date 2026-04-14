@@ -60,6 +60,8 @@ export function useProfessionals() {
           council_id:    input.councilId,
           phone:         input.phone,
           email:         input.email,
+          photo_url:     input.photoUrl,
+          bio:           input.bio,
           active:        input.active,
           custom_fields: (input.customFields ?? {}) as Json,
         })

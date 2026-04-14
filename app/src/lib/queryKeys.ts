@@ -35,10 +35,18 @@ export const QK = {
     all:          ()                              => ['patients']                          as const,
     list:         (clinicId: string | null | undefined, search: string, page: number)  => ['patients', clinicId, search, page]           as const,
     detail:       (id: string)                    => ['patient', id]                      as const,
-    my:           (userId: string | undefined)    => ['my-patient', userId]               as const,
+    my:           (userId: string | undefined, clinicId?: string | null) => ['my-patient', userId, clinicId] as const,
+    clinics:      (userId: string | undefined, clinicId: string | null | undefined) => ['my-patient-clinics', userId, clinicId] as const,
     appointments: (patientId: string)             => ['patient-appointments', patientId]  as const,
     records:      (patientId: string)             => ['patient_records', patientId]       as const,
     files:        (patientId: string)             => ['patient-files', patientId]         as const,
+  },
+
+  // ── Patient imports ──────────────────────────────────────────
+  patientImports: {
+    all:    ()                                   => ['patient-imports']             as const,
+    list:   (clinicId: string | null | undefined) => ['patient-imports', clinicId]   as const,
+    detail: (jobId: string | null | undefined)    => ['patient-import-job', jobId]   as const,
   },
 
   // ── Clinic ────────────────────────────────────────────────────
@@ -88,6 +96,7 @@ export const QK = {
     all:           ()                                              => ['financial']                             as const,
     monthly:       (clinicId: string | null | undefined, monthStart: string)                            => ['financial', clinicId, monthStart]                as const,
     report:        (clinicId: string | null | undefined, monthStart: string, profId: string)            => ['report', clinicId, monthStart, profId]           as const,
+    adminSummary:  (clinicId: string | null | undefined, referenceDate: string, profId?: string)        => ['financial-admin-summary', clinicId, referenceDate, profId ?? 'all'] as const,
     apptPayments:  (apptId: string | undefined)                    => ['appt-payments', apptId]                as const,
     clinicPayments:(clinicId: string | undefined, start?: string)  => start ? ['clinic-appt-payments', clinicId, start] as const : ['clinic-appt-payments', clinicId] as const,
     profEarnings:  (profId: string, month: string)                 => ['prof-earnings', profId, month]         as const,
@@ -111,6 +120,17 @@ export const QK = {
   // ── Clinic quota ──────────────────────────────────────────────
   quota: {
     monthly: (clinicId: string | null | undefined, month: string) => ['clinic-quota', clinicId, month] as const,
+  },
+
+  // ── Public page ───────────────────────────────────────────────
+  publicPage: {
+    own:    (clinicId: string | null | undefined) => ['clinic-public-page', clinicId]    as const,
+    bySlug: (slug: string | undefined)            => ['clinic-public-page-slug', slug]   as const,
+  },
+
+  publicBooking: {
+    slots: (slug: string | undefined, date: string, professionalId: string, serviceTypeId: string) =>
+      ['public-booking-slots', slug, date, professionalId, serviceTypeId] as const,
   },
 
   // ── Super-admin ───────────────────────────────────────────────

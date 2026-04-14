@@ -52,9 +52,17 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
   const [phoneId,      setPhoneId]      = useState(clinic.whatsappPhoneNumberId ?? '')
   const [phoneDisplay, setPhoneDisplay] = useState(clinic.whatsappPhoneDisplay ?? '')
   const [wabaId,       setWabaId]       = useState(clinic.whatsappWabaId ?? '')
-  const [aiModel,      setAiModel]      = useState(clinic.waAiModel ?? 'google/gemini-2.0-flash-exp:free')
-  const [customPrompt, setCustomPrompt] = useState(clinic.waAiCustomPrompt ?? '')
-  const [saving,       setSaving]       = useState(false)
+  const [aiModel,         setAiModel]         = useState(clinic.waAiModel ?? 'google/gemini-2.0-flash-exp:free')
+  const [customPrompt,    setCustomPrompt]    = useState(clinic.waAiCustomPrompt ?? '')
+  const [reminderD1Text,  setReminderD1Text]  = useState(
+    clinic.waReminderD1Text ??
+    'Olá, {{nome}}! 👋 Lembramos que você tem uma consulta amanhã, {{data}}, às {{hora}}, com {{profissional}}. Para confirmar, responda *SIM*. Para cancelar, responda *NÃO*.'
+  )
+  const [reminderD0Text,  setReminderD0Text]  = useState(
+    clinic.waReminderD0Text ??
+    'Bom dia, {{nome}}! 😊 Sua consulta de hoje é às {{hora}} com {{profissional}}. Te esperamos!'
+  )
+  const [saving,           setSaving]          = useState(false)
   const [connecting,   setConnecting]   = useState(false)
   const [showManual,   setShowManual]   = useState(false)
   const capturedSignup = useRef<{ wabaId: string; phoneNumberId: string } | null>(null)
@@ -239,6 +247,46 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
             )
           })}
         </div>
+
+        {/* Reminder message templates */}
+        {(clinic.waRemindersd1 || clinic.waRemindersd0) && (
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-700">Mensagem de lembrete</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Personalize o texto enviado ao paciente. Variáveis disponíveis:{' '}
+                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{nome}}'}</code>{' '}
+                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{data}}'}</code>{' '}
+                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{hora}}'}</code>{' '}
+                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{profissional}}'}</code>
+              </p>
+            </div>
+            {clinic.waRemindersd1 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-600">Lembrete D-1 (véspera)</label>
+                <textarea
+                  value={reminderD1Text}
+                  onChange={e => setReminderD1Text(e.target.value)}
+                  onBlur={() => update.mutateAsync({ waReminderD1Text: reminderD1Text || null })}
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                />
+              </div>
+            )}
+            {clinic.waRemindersd0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-600">Lembrete D-0 (dia da consulta)</label>
+                <textarea
+                  value={reminderD0Text}
+                  onChange={e => setReminderD0Text(e.target.value)}
+                  onBlur={() => update.mutateAsync({ waReminderD0Text: reminderD0Text || null })}
+                  rows={2}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Feature toggles — Para a equipe */}
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">

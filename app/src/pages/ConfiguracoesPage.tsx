@@ -4,6 +4,7 @@ import {
   Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo,
   Stethoscope, Bell, ClipboardText, UsersThree, Buildings, UsersFour, ToggleRight, ToggleLeft,
   CheckCircle,
+  GlobeHemisphereWest,
 } from '@phosphor-icons/react'
 import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
@@ -19,6 +20,7 @@ import WhatsAppTab from '../pages-v1/settings/WhatsAppTab'
 import NotificacoesTab from '../pages-v1/settings/NotificacoesTab'
 import UsuariosTab from '../pages-v1/settings/UsuariosTab'
 import AnamnesisTab from '../pages-v1/settings/AnamnesisTab'
+import PaginaPublicaTab from '../pages-v1/settings/PaginaPublicaTab'
 
 // ─── Module cards ─────────────────────────────────────────────────────────────
 
@@ -112,7 +114,7 @@ function ModuleCard({
 
 // ─── Settings tabs ────────────────────────────────────────────────────────────
 
-type Tab = 'dados' | 'agenda' | 'servicos' | 'anamnese' | 'campos' | 'disponibilidade' | 'salas' | 'pagamento' | 'whatsapp' | 'notificacoes' | 'usuarios'
+type Tab = 'dados' | 'agenda' | 'servicos' | 'anamnese' | 'campos' | 'disponibilidade' | 'salas' | 'pagamento' | 'whatsapp' | 'notificacoes' | 'usuarios' | 'pagina-publica'
 
 interface TabDef {
   id: Tab
@@ -132,6 +134,7 @@ const TABS: TabDef[] = [
   { id: 'campos',          label: 'Formulários',       icon: Sliders },
   { id: 'anamnese',        label: 'Anamnese',          icon: ClipboardText },
   { id: 'usuarios',        label: 'Usuários e acesso', icon: UsersThree },
+  { id: 'pagina-publica',  label: 'Página pública',    icon: GlobeHemisphereWest },
   { id: 'whatsapp',        label: 'WhatsApp',          icon: WhatsappLogo, moduleRequired: 'whatsapp' },
 ]
 
@@ -147,6 +150,7 @@ const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
   pagamento:       PagamentoTab,
   campos:          CamposTab,
   usuarios:        UsuariosTab,
+  'pagina-publica': PaginaPublicaTab,
   whatsapp:        WhatsAppTab,
 }
 

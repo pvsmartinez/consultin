@@ -74,20 +74,27 @@ serve(async (req) => {
   const clinicIds = [...new Set(appointments.map((a) => a.clinic_id))]
   const { data: clinics } = await supabase
     .from('clinics')
-    .select('id, whatsapp_enabled, wa_reminders_d1, wa_reminders_d0, whatsapp_phone_number_id')
+    .select('id, whatsapp_enabled, wa_reminders_d1, wa_reminders_d0, whatsapp_phone_number_id, wa_reminder_d1_text, wa_reminder_d0_text')
     .in('id', clinicIds)
     .eq('whatsapp_enabled', true)
     .eq(type === 'd1' ? 'wa_reminders_d1' : 'wa_reminders_d0', true)
 
-  const enabledClinics = new Set((clinics ?? []).map((c) => c.id))
+  const enabledClinicMap = new Map(
+    (clinics ?? []).map((c) => [c.id, c as {
+      id: string
+      wa_reminder_d1_text: string | null
+      wa_reminder_d0_text: string | null
+    }])
+  )
 
   let sent = 0
   let skipped = 0
   const errors: string[] = []
 
   for (const appt of appointments) {
-    if (!enabledClinics.has(appt.clinic_id)) { skipped++; continue }
+    if (!enabledClinicMap.has(appt.clinic_id)) { skipped++; continue }
 
+    const clinicRow = enabledClinicMap.get(appt.clinic_id)!
     const patient = appt.patient as { id: string; name: string; phone: string } | null
     if (!patient?.phone) { skipped++; continue }
 
@@ -104,40 +111,79 @@ serve(async (req) => {
 
     if (existing) { skipped++; continue }
 
-    // ── Build template parameters ───────────────────────────────────────────
+    // ── Build message ───────────────────────────────────────────────────────
     const apptTimeBrt = toZonedTime(new Date(appt.starts_at), TZ)
     const dateStr     = format(apptTimeBrt, "dd/MM/yyyy")
     const timeStr     = format(apptTimeBrt, "HH:mm")
     const profName    = (appt.professional as { name: string })?.name ?? 'o profissional'
 
-    // Fetch the template name from DB (clinic can customise)
-    const { data: tplRow } = await supabase
-      .from('whatsapp_templates')
-      .select('meta_template_name')
-      .eq('clinic_id', appt.clinic_id)
-      .eq('template_key', notifType)
-      .eq('enabled', true)
-      .maybeSingle()
-
-    if (!tplRow) { skipped++; continue }
+    const customText = type === 'd1'
+      ? clinicRow.wa_reminder_d1_text
+      : clinicRow.wa_reminder_d0_text
 
     // ── Dispatch via whatsapp-send ──────────────────────────────────────────
     const phoneE164 = normalizePhone(patient.phone)
     if (!phoneE164) { skipped++; continue }
 
-    const templateComponents =
-      type === 'd1'
-        ? [{ type: 'body', parameters: [
-              { type: 'text', text: patient.name },
-              { type: 'text', text: dateStr },
-              { type: 'text', text: timeStr },
-              { type: 'text', text: profName },
-            ]}]
-        : [{ type: 'body', parameters: [
-              { type: 'text', text: patient.name },
-              { type: 'text', text: timeStr },
-              { type: 'text', text: profName },
-            ]}]
+    let sendPayload: Record<string, unknown>
+
+    if (customText) {
+      // Custom free-text template: interpolate variables and send as plain text.
+      // Works when the patient has an active 24-hour session; this is the common case
+      // for reminder recipients who already confirmed/chatted with the clinic.
+      const messageText = customText
+        .replace(/\{\{nome\}\}/g, patient.name)
+        .replace(/\{\{data\}\}/g, dateStr)
+        .replace(/\{\{hora\}\}/g, timeStr)
+        .replace(/\{\{profissional\}\}/g, profName)
+
+      sendPayload = {
+        clinicId:  appt.clinic_id,
+        sessionId: null,
+        sentBy:    'system',
+        to:        phoneE164,
+        type:      'text',
+        text:      { body: messageText },
+      }
+    } else {
+      // No custom text — fall back to Meta template registered in whatsapp_templates.
+      const { data: tplRow } = await supabase
+        .from('whatsapp_templates')
+        .select('meta_template_name')
+        .eq('clinic_id', appt.clinic_id)
+        .eq('template_key', notifType)
+        .eq('enabled', true)
+        .maybeSingle()
+
+      if (!tplRow) { skipped++; continue }
+
+      const templateComponents =
+        type === 'd1'
+          ? [{ type: 'body', parameters: [
+                { type: 'text', text: patient.name },
+                { type: 'text', text: dateStr },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: profName },
+              ]}]
+          : [{ type: 'body', parameters: [
+                { type: 'text', text: patient.name },
+                { type: 'text', text: timeStr },
+                { type: 'text', text: profName },
+              ]}]
+
+      sendPayload = {
+        clinicId:  appt.clinic_id,
+        sessionId: null,
+        sentBy:    'system',
+        to:        phoneE164,
+        type:      'template',
+        template: {
+          name:       tplRow.meta_template_name,
+          language:   { code: 'pt_BR' },
+          components: templateComponents,
+        },
+      }
+    }
 
     try {
       const sendRes = await fetch(`${SELF_URL}/functions/v1/whatsapp-send`, {
@@ -146,18 +192,7 @@ serve(async (req) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${SUPABASE_SRK}`,
         },
-        body: JSON.stringify({
-          clinicId:  appt.clinic_id,
-          sessionId: null,
-          sentBy:    'system',
-          to:        phoneE164,
-          type:      'template',
-          template: {
-            name:     tplRow.meta_template_name,
-            language: { code: 'pt_BR' },
-            components: templateComponents,
-          },
-        }),
+        body: JSON.stringify(sendPayload),
       })
 
       const sendBody = await sendRes.json()

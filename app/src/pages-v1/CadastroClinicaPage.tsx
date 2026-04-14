@@ -16,11 +16,11 @@ import { gtagEvent } from '../lib/gtag'
 import { Seo } from '../components/seo/Seo'
 
 const schema = z.object({
-  clinicName:      z.string().min(2, 'Nome da clínica obrigatório'),
+  clinicName:      z.string().min(2, 'Nome obrigatório'),
   cnpj:            z.string().optional(),
   phone:           z.string().optional(),
   email:           z.string().email('E-mail inválido'),
-  responsibleName: z.string().min(2, 'Nome do responsável obrigatório'),
+  responsibleName: z.string().optional(),
   message:         z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
@@ -167,6 +167,7 @@ function LeftPanel() {
 export default function CadastroClinicaPage() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [isSolo, setIsSolo] = useState(false)
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -178,12 +179,13 @@ export default function CadastroClinicaPage() {
       // Submit via Edge Function (service role insert + Telegram notification)
       const { error } = await supabase.functions.invoke('submit-clinic-signup', {
         body: {
-          clinicName:      values.clinicName,
-          responsibleName: values.responsibleName,
-          email:           values.email,
-          cnpj:            values.cnpj    || undefined,
-          phone:           values.phone   || undefined,
-          message:         values.message || undefined,
+          clinicName:          values.clinicName,
+          responsibleName:     isSolo ? values.clinicName : (values.responsibleName || values.clinicName),
+          email:               values.email,
+          cnpj:                values.cnpj    || undefined,
+          phone:               values.phone   || undefined,
+          message:             values.message || undefined,
+          isSoloPractitioner:  isSolo,
         },
       })
 
@@ -225,7 +227,7 @@ export default function CadastroClinicaPage() {
               <span className="text-base font-bold text-gray-900">Consultin</span>
             </div>
 
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Cadastre sua clínica</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Criar sua conta</h1>
             <p className="text-sm text-gray-500 mb-6">
               Preencha os dados abaixo. Nossa equipe revisará e entrará em contato em breve.
             </p>
@@ -252,23 +254,41 @@ export default function CadastroClinicaPage() {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {/* Clinic name */}
-              <Field label="Nome da clínica *" error={errors.clinicName?.message}>
+              {/* Solo / Clinic toggle */}
+              <div className="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsSolo(false)}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${!isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Tenho uma clínica
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSolo(true)}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Profissional liberal
+                </button>
+              </div>
+
+              {/* Clinic / professional name */}
+              <Field label={isSolo ? 'Seu nome profissional *' : 'Nome da clínica *'} error={errors.clinicName?.message}>
                 <input
                   {...register('clinicName')}
-                  placeholder="Ex: Clínica Saúde & Vida"
+                  placeholder={isSolo ? 'Ex: Dra. Ana Costa' : 'Ex: Clínica Saúde & Vida'}
                   className={inputClass(!!errors.clinicName)}
                 />
               </Field>
 
-              {/* CNPJ */}
-              <Field label="CNPJ">
+              {/* CNPJ / CPF */}
+              <Field label={isSolo ? 'CPF (opcional)' : 'CNPJ'}>
                 <Controller control={control} name="cnpj" render={({ field }) => (
                   <IMaskInput
-                    mask="00.000.000/0000-00"
+                    mask={isSolo ? '000.000.000-00' : '00.000.000/0000-00'}
                     value={field.value ?? ''}
                     onAccept={(val: string) => field.onChange(val)}
-                    placeholder="00.000.000/0001-00"
+                    placeholder={isSolo ? '000.000.000-00' : '00.000.000/0001-00'}
                     className={inputClass(false)}
                   />
                 )} />
@@ -297,14 +317,16 @@ export default function CadastroClinicaPage() {
                 )} />
               </Field>
 
-              {/* Responsible name */}
-              <Field label="Seu nome completo *" error={errors.responsibleName?.message}>
-                <input
-                  {...register('responsibleName')}
-                  placeholder="Nome do responsável pela clínica"
-                  className={inputClass(!!errors.responsibleName)}
-                />
-              </Field>
+              {/* Responsible name — hidden for solo (clinicName IS the person) */}
+              {!isSolo && (
+                <Field label="Nome do responsável *" error={errors.responsibleName?.message}>
+                  <input
+                    {...register('responsibleName')}
+                    placeholder="Nome do responsável pela clínica"
+                    className={inputClass(!!errors.responsibleName)}
+                  />
+                </Field>
+              )}
 
               {/* Message */}
               <Field label="Mensagem (opcional)">

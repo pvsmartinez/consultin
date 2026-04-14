@@ -9,7 +9,7 @@ import {
 } from '@phosphor-icons/react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { useReportData } from '../hooks/useRelatorios'
+import { useAdministrativeSnapshots, useReportData } from '../hooks/useRelatorios'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { formatBRL, formatBRLReais } from '../utils/currency'
 import { APPOINTMENT_STATUS_LABELS, SEX_LABELS } from '../types'
@@ -62,9 +62,10 @@ type RawRow = Record<string, unknown>
 interface RelatoriosPageProps {
   /** When provided, the parent controls the month and the internal selector is hidden. */
   month?: Date
+  hideHeader?: boolean
 }
 
-export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPageProps = {}) {
+export default function RelatoriosPage({ month: controlledMonth, hideHeader = false }: RelatoriosPageProps = {}) {
   const { profile } = useAuthContext()
   const clinicId = profile?.clinicId
   const [internalMonth, setInternalMonth] = useState(new Date())
@@ -76,6 +77,7 @@ export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPag
   const [exportingFinance, setExportingFinance] = useState(false)
 
   const { data = [], isLoading } = useReportData(month, professionalId)
+  const { data: adminSnapshot, isLoading: loadingAdmin } = useAdministrativeSnapshots(month, professionalId)
   const { data: allProfessionals = [] } = useProfessionals()
   const professionals = allProfessionals.filter(p => p.active)
 
@@ -114,7 +116,7 @@ export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPag
   // Totals
   const totalCharged = (data as RawRow[]).reduce((s, r) => s + ((r.charge_amount_cents as number) ?? 0), 0)
   const totalReceived = (data as RawRow[]).reduce((s, r) => s + ((r.paid_amount_cents as number) ?? 0), 0)
-  const totalCount = (data as RawRow[]).filter(r => r.status !== 'cancelled').length
+  const completedCount = (data as RawRow[]).filter(r => r.status === 'completed').length
 
   const handleExport = () => {
     const rows = (data as RawRow[]).map(r => ({
@@ -125,7 +127,7 @@ export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPag
       charge: formatBRL((r.charge_amount_cents as number) ?? null),
       paid: formatBRL((r.paid_amount_cents as number) ?? null),
     }))
-    exportPDF(monthLabel, rows, { count: totalCount, charged: totalCharged, received: totalReceived })
+    exportPDF(monthLabel, rows, { count: completedCount, charged: totalCharged, received: totalReceived })
   }
 
   // ── Build appointment export rows ──
@@ -244,8 +246,8 @@ export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPag
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-xl font-semibold text-gray-800">Relatórios</h1>
+      <div className={`flex flex-wrap items-center justify-between gap-3 ${hideHeader ? 'mb-4' : 'mb-6'}`}>
+        {!hideHeader && <h1 className="text-xl font-semibold text-gray-800">Relatórios</h1>}
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Month selector — hidden when parent controls the month */}
@@ -304,16 +306,62 @@ export default function RelatoriosPage({ month: controlledMonth }: RelatoriosPag
         <p className="text-center text-gray-400 text-sm py-20">Carregando...</p>
       ) : (
         <div className="space-y-6">
+          <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Painel rápido
+                </h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  Mesma lógica usada pelo bot administrativo no WhatsApp.
+                  {professionalId ? ' Painel filtrado para o profissional selecionado.' : ''}
+                </p>
+              </div>
+            </div>
+
+            {loadingAdmin || !adminSnapshot ? (
+              <p className="text-sm text-slate-400">Carregando painel rápido...</p>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                {[adminSnapshot.today, adminSnapshot.week, adminSnapshot.month].map(period => (
+                  <div key={period.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">
+                      {period.label}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <MiniStat label="Consultas" value={String(period.totalAppointments)} />
+                      <MiniStat label="Pacientes únicos" value={String(period.uniquePatients)} />
+                      <MiniStat label="Novos pacientes" value={String(period.newPatients)} />
+                      <MiniStat label="Concluídas" value={String(period.completedCount)} />
+                    </div>
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600 space-y-1">
+                      <p>Cobrado: <strong className="text-slate-800">{formatBRL(period.totalChargedCents)}</strong></p>
+                      <p>Recebido: <strong className="text-slate-800">{formatBRL(period.totalPaidCents)}</strong></p>
+                      <p>
+                        Profissional destaque:{' '}
+                        <strong className="text-slate-800">
+                          {period.topProfessionalName
+                            ? `${period.topProfessionalName} (${period.topProfessionalCount})`
+                            : 'Sem destaque ainda'}
+                        </strong>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: 'Consultas realizadas', value: String(totalCount) },
+              { label: 'Consultas concluídas', value: String(completedCount) },
               { label: 'Status distribu.',     value: `${statusBreakdown.length} tipos` },
               { label: 'Total cobrado',        value: formatBRL(totalCharged) },
               { label: 'Total recebido',       value: formatBRL(totalReceived) },
             ].map(c => (
-              <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">{c.label}</p>
+              <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">{c.label}</p>
                 <p className="text-lg font-semibold text-gray-800">{c.value}</p>
               </div>
             ))}
@@ -408,6 +456,15 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <h2 className="text-sm font-semibold text-gray-600 mb-4">{title}</h2>
       {children}
+    </div>
+  )
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+      <p className="text-[11px] uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="text-base font-semibold text-slate-800 mt-0.5">{value}</p>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { MagnifyingGlass, Plus, User, UploadSimple, X, Sliders } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus, User, UploadSimple, X, Sliders, ArrowRight } from '@phosphor-icons/react'
 import PatientDrawer from '../components/patients/PatientDrawer'
 import { usePatients, PATIENTS_PAGE_SIZE } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
@@ -106,18 +106,68 @@ export default function PacientesPage() {
             {search ? (
               <p className="text-sm text-gray-400">Nenhum paciente encontrado para <strong>"{search}"</strong>.</p>
             ) : (
-              <>
-                <p className="text-4xl">🧑‍⚕️</p>
-                <p className="text-sm font-medium text-gray-600">Nenhum paciente cadastrado ainda</p>
-                <p className="text-xs text-gray-400 max-w-xs">Adicione o primeiro paciente ou use o botão + Nova consulta na Agenda — o cadastro rápido já cria o paciente na hora.</p>
-                <button
-                  onClick={() => setDrawerOpen(true)}
-                  className="mt-1 flex items-center gap-2 text-white text-xs font-medium px-4 py-2 rounded-lg transition-all active:scale-95"
-                  style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
-                >
-                  <Plus size={14} /> Novo paciente
-                </button>
-              </>
+              <div className="w-full max-w-2xl mx-auto py-4">
+                <div className="text-center mb-8">
+                  <p className="text-4xl mb-3">🧑‍⚕️</p>
+                  <h2 className="text-lg font-semibold text-gray-800">Nenhum paciente cadastrado ainda</h2>
+                  <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">
+                    Cadastre o primeiro paciente manualmente ou importe sua base existente de uma planilha.
+                  </p>
+                </div>
+
+                {/* Two main options */}
+                <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                  {/* Import */}
+                  <button
+                    onClick={() => setImportOpen(true)}
+                    className="group flex flex-col items-start gap-3 p-5 rounded-2xl border-2 border-teal-200 bg-teal-50/60 hover:border-[#0ea5b0] hover:bg-teal-50 transition-all text-left"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#0ea5b0] flex items-center justify-center">
+                      <UploadSimple size={20} className="text-white" weight="bold" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">Importar de planilha</p>
+                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                        Sobe seu Excel ou CSV com os pacientes que já tem. A IA analisa a planilha e faz o mapeamento automático.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-medium text-[#0ea5b0] group-hover:gap-2 transition-all">
+                      Importar agora <ArrowRight size={13} />
+                    </div>
+                  </button>
+
+                  {/* Customize fields */}
+                  <Link
+                    to="/configuracoes"
+                    state={{ tab: 'campos' }}
+                    className="group flex flex-col items-start gap-3 p-5 rounded-2xl border-2 border-gray-200 bg-gray-50/60 hover:border-gray-300 hover:bg-gray-50 transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center">
+                      <Sliders size={20} className="text-gray-600" weight="bold" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">Personalizar campos</p>
+                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                        Configure quais dados sua clínica precisa registrar — convênio, alergias, prontuário, campos personalizados.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-medium text-gray-500 group-hover:gap-2 transition-all">
+                      Configurar campos <ArrowRight size={13} />
+                    </div>
+                  </Link>
+                </div>
+
+                {/* Secondary: manual */}
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 mb-2">Ou cadastre um paciente de forma manual</p>
+                  <button
+                    onClick={() => setDrawerOpen(true)}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-[#0ea5b0] hover:text-[#006970] transition-colors"
+                  >
+                    <Plus size={15} /> Novo paciente
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         ) : (

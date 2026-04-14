@@ -48,6 +48,8 @@ function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record
     ...(defined(input.whatsappVerifyToken)    && { whatsapp_verify_token:      input.whatsappVerifyToken }),
     ...(defined(input.waRemindersd1)          && { wa_reminders_d1:            input.waRemindersd1 }),
     ...(defined(input.waRemindersd0)          && { wa_reminders_d0:            input.waRemindersd0 }),
+    ...(defined(input.waReminderD1Text)       && { wa_reminder_d1_text:        input.waReminderD1Text }),
+    ...(defined(input.waReminderD0Text)       && { wa_reminder_d0_text:        input.waReminderD0Text }),
     ...(defined(input.waProfessionalAgenda)   && { wa_professional_agenda:     input.waProfessionalAgenda }),
     ...(defined(input.waAttendantInbox)       && { wa_attendant_inbox:         input.waAttendantInbox }),
     ...(defined(input.waAiModel)              && { wa_ai_model:                input.waAiModel }),

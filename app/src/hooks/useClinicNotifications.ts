@@ -30,6 +30,7 @@ const TOAST_LABELS: Record<string, string> = {
   wa_escalated:           '💬 Novo atendimento humano solicitado',
   appointment_cancelled:  '❌ Consulta cancelada pelo paciente',
   appointment_confirmed:  '✅ Consulta confirmada pelo paciente',
+  public_booking_created: '📅 Novo agendamento pelo site',
 }
 
 export function useClinicNotifications(navigate?: NavigateFn) {
@@ -79,11 +80,16 @@ export function useClinicNotifications(navigate?: NavigateFn) {
     for (const row of newItems) {
       const label = TOAST_LABELS[row.type] ?? '🔔 Nova notificação'
       const patientName = (row.data as Record<string, unknown>)?.patientName as string | undefined
+      const isPublicBooking = row.type === 'public_booking_created'
       toast.info(patientName ? `${label} — ${patientName}` : label, {
         duration: 8_000,
         action: {
-          label:   'Ver mensagens',
-          onClick: () => { if (navigate) navigate('/whatsapp'); else window.location.href = '/whatsapp' },
+          label:   isPublicBooking ? 'Ver agenda' : 'Ver mensagens',
+          onClick: () => {
+            const href = isPublicBooking ? '/agenda' : '/whatsapp'
+            if (navigate) navigate(href)
+            else window.location.href = href
+          },
         },
       })
     }

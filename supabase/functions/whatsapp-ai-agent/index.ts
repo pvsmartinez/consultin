@@ -76,6 +76,11 @@ interface ClinicRow {
   billing_override_enabled: boolean | null
 }
 
+interface ClinicPublicPageContext {
+  slug: string
+  show_booking: boolean
+}
+
 interface SlotOption {
   professionalId:   string
   professionalName: string
@@ -100,11 +105,19 @@ serve(async (req) => {
   const { clinicId, sessionId, actorType, message, history } = body
 
   // ── Fetch clinic context ─────────────────────────────────────────────────
-  const { data: clinic } = await supabase
-    .from('clinics')
-    .select('name, phone, address, city, state, wa_ai_model, working_hours, slot_duration_minutes, wa_ai_custom_prompt, wa_ai_allow_schedule, wa_ai_allow_confirm, wa_ai_allow_cancel, subscription_tier, subscription_status, trial_ends_at, billing_override_enabled')
-    .eq('id', clinicId)
-    .single()
+  const [{ data: clinic }, { data: publicPage }] = await Promise.all([
+    supabase
+      .from('clinics')
+      .select('name, phone, address, city, state, wa_ai_model, working_hours, slot_duration_minutes, wa_ai_custom_prompt, wa_ai_allow_schedule, wa_ai_allow_confirm, wa_ai_allow_cancel, subscription_tier, subscription_status, trial_ends_at, billing_override_enabled')
+      .eq('id', clinicId)
+      .single(),
+    supabase
+      .from('clinic_public_page')
+      .select('slug, show_booking')
+      .eq('clinic_id', clinicId)
+      .eq('published', true)
+      .maybeSingle(),
+  ])
 
   if (!clinic) return jsonError('Clinic not found', 404)
 
@@ -112,9 +125,9 @@ serve(async (req) => {
   const isStaff = actorType === 'professional' || actorType === 'admin' || actorType === 'receptionist'
 
   if (isStaff) {
-    return handleStaffMessage(supabase, body, clinic as ClinicRow, sessionId)
+    return handleStaffMessage(supabase, body, clinic as ClinicRow, sessionId, (publicPage as ClinicPublicPageContext | null) ?? null)
   } else {
-    return handlePatientMessage(supabase, body, clinic as ClinicRow, sessionId)
+    return handlePatientMessage(supabase, body, clinic as ClinicRow, sessionId, (publicPage as ClinicPublicPageContext | null) ?? null)
   }
 })
 
@@ -125,6 +138,7 @@ async function handlePatientMessage(
   body:     AgentRequest,
   clinic:   ClinicRow,
   sessionId: string,
+  publicPage: ClinicPublicPageContext | null,
 ) {
   const { clinicId, patientId, message, history, buttonReplyId } = body
 
@@ -250,7 +264,7 @@ async function handlePatientMessage(
         ).join('\n')
       : '- Nenhuma consulta agendada.',
     buildQuotaNotice(clinic),
-    buildPatientLinks(),
+    buildPatientLinks(publicPage),
     `\nAções disponíveis (retorne APENAS um desses JSONs):`,
     allowedActions,
     `\nRegras:`,
@@ -267,6 +281,7 @@ async function handleStaffMessage(
   body:       AgentRequest,
   clinic:     ClinicRow,
   sessionId:  string,
+  publicPage: ClinicPublicPageContext | null,
 ) {
   const { clinicId, professionalId, actorType, message, history, buttonReplyId } = body
 
@@ -438,7 +453,7 @@ async function handleStaffMessage(
     slotsText,
     profsText,
     buildQuotaNotice(clinic),
-    buildStaffLinks(),
+    buildStaffLinks(publicPage),
     `\nAções disponíveis (retorne APENAS um desses JSONs):`,
     allowedActions,
     `\nRegras:`,
@@ -454,7 +469,7 @@ async function handleStaffMessage(
  * Site shortcut links to inject into the staff system prompt.
  * The AI will share these contextually when the user asks to view/manage something.
  */
-function buildStaffLinks(): string {
+function buildStaffLinks(publicPage: ClinicPublicPageContext | null): string {
   return [
     '\n=== ATALHOS DO SITE ===',
     'Quando o usuário quiser ver ou gerenciar algo no site, envie o link direto (junto com a resposta):',
@@ -466,20 +481,25 @@ function buildStaffLinks(): string {
     `- Financeiro: ${SITE_URL}/financeiro`,
     `- Configurações: ${SITE_URL}/configuracoes`,
     `- Assinatura/plano: ${SITE_URL}/assinatura`,
-  ].join('\n')
+    publicPage ? `- Página pública da clínica: ${SITE_URL}/p/${publicPage.slug}` : null,
+    publicPage?.show_booking ? `- Link direto de agendamento público: ${SITE_URL}/p/${publicPage.slug}/agendar` : null,
+    'Se o usuário pedir o site da clínica, o link de divulgação, a página pública ou o link para pacientes agendarem, priorize esses links públicos quando existirem.',
+  ].filter(Boolean).join('\n')
 }
 
 /**
  * Site shortcut links to inject into the patient system prompt.
  */
-function buildPatientLinks(): string {
+function buildPatientLinks(publicPage: ClinicPublicPageContext | null): string {
   return [
     '\n=== ATALHOS DO SITE ===',
     'Quando relevante, envie o link direto para o paciente acessar no site:',
     `- Minhas consultas: ${SITE_URL}/minhas-consultas`,
     `- Agendar consulta: ${SITE_URL}/agendar`,
     `- Meu perfil: ${SITE_URL}/meu-perfil`,
-  ].join('\n')
+    publicPage ? `- Página oficial da clínica: ${SITE_URL}/p/${publicPage.slug}` : null,
+    publicPage?.show_booking ? `- Agendar sem login pela página da clínica: ${SITE_URL}/p/${publicPage.slug}/agendar` : null,
+  ].filter(Boolean).join('\n')
 }
 
 /**

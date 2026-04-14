@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
 import { useClinic } from './hooks/useClinic'
 import { useProfessionals } from './hooks/useProfessionals'
@@ -34,8 +34,10 @@ const PatientRoutes     = lazy(() => import('./routes/PatientRoutes'))
 const StaffRoutes       = lazy(() => import('./routes/StaffRoutes'))
 
 function App() {
+  const location = useLocation()
   const { session, profile, role, isSuperAdmin, loading, recoveryMode } = useAuthContext()
   const { data: clinic } = useClinic()
+  const isPublicProfileRoute = location.pathname.startsWith('/p/')
 
   // ── Auth loading ────────────────────────────────────────────────────────────
   if (loading) return <FullScreenLoader />
@@ -43,6 +45,16 @@ function App() {
   // ── Password-reset flow (email link) ───────────────────────────────────────
   // Must intercept before route rendering so the hash token is consumed first.
   if (recoveryMode) return <NovaSenhaPage />
+
+  if (isPublicProfileRoute) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<FullScreenLoader />}>
+          <PublicRoutes />
+        </Suspense>
+      </ErrorBoundary>
+    )
+  }
 
   // ── Unauthenticated ─────────────────────────────────────────────────────────
   if (!session) {

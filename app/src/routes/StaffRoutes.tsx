@@ -13,6 +13,7 @@ const ConfiguracoesPage   = lazy(() => import('../pages/ConfiguracoesPage'))
 const PatientDetailPage        = lazy(() => import('../pages/PatientDetailPage'))
 const EquipePage               = lazy(() => import('../pages/EquipePage'))
 const FinanceiroPage           = lazy(() => import('../pages/FinanceiroPage'))
+const RelatoriosPage           = lazy(() => import('../pages/RelatoriosPage'))
 const WhatsAppInboxPage        = lazy(() => import('../pages/WhatsAppInboxPage'))
 const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidadePage'))
 const MinhaContaPage           = lazy(() => import('../pages/MinhaContaPage'))
@@ -81,7 +82,11 @@ export default function StaffRoutes() {
           <RequireAuth permission="canViewFinancial"><FinanceiroPage /></RequireAuth>
         </RequireModule>
       } />
-      <Route path="/relatorios" element={<Navigate to="/financeiro" replace />} />
+      <Route path="/relatorios" element={
+        <RequireModule module="financial">
+          <RequireAuth permission="canViewFinancial"><RelatoriosPage /></RequireAuth>
+        </RequireModule>
+      } />
 
       {/* Configurações */}
       <Route path="/configuracoes" element={

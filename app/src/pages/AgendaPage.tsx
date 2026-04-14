@@ -659,6 +659,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           resources={resources}
           allDaySlot={false}
           nowIndicator
+          navLinks
           editable={!isPersonalView}
           selectable={!isPersonalView}
           selectMirror

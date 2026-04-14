@@ -224,14 +224,21 @@ interface AgendaItem {
   chargeCents:      number | null
 }
 
-interface DailyFinancial {
+interface PeriodFinancialSnapshot {
+  label:             string
   scheduled:         number
   confirmed:         number
   completed:         number
   cancelled:         number
   totalChargedCents: number
   totalPaidCents:    number
+  uniquePatients:    number
+  newPatients:       number
+  topProfessionalName: string | null
+  topProfessionalCount: number
 }
+
+const FINANCIAL_PAGE_SIZE = 1000
 
 interface TeamMemberInfo {
   userId: string
@@ -257,11 +264,75 @@ interface ClinicSnapshot {
   tomorrowLabel:    string
   todayAgenda:      AgendaItem[]
   tomorrowAgenda:   AgendaItem[]
-  financial:        DailyFinancial | null
+  financial:        PeriodFinancialSnapshot | null
+  weekFinancial:    PeriodFinancialSnapshot | null
+  monthFinancial:   PeriodFinancialSnapshot | null
   team:             TeamMemberInfo[]
   serviceTypes:     ServiceTypeInfo[]
   rooms:            RoomInfo[]
   myProfessionalId: string | null
+}
+
+function buildDeterministicAdminReply(
+  messageText: string,
+  snapshot: ClinicSnapshot | null,
+  permissions: Record<string, boolean>,
+): string | null {
+  if (!snapshot || !permissions.canViewFinancial) return null
+
+  const text = messageText.toLowerCase()
+  const wantsMonth = /(m[eê]s|mensal|este m[eê]s)/i.test(text)
+  const wantsWeek = /(semana|semanal|essa semana|esta semana)/i.test(text)
+  const wantsToday = /(hoje|de hoje|do dia|dia de hoje)/i.test(text)
+
+  const period = wantsMonth
+    ? snapshot.monthFinancial
+    : wantsWeek
+      ? snapshot.weekFinancial
+      : wantsToday
+        ? snapshot.financial
+        : null
+
+  if (/(quem.*mais atendeu|quem atendeu mais|profissional destaque|profissional.*mais consultas|mais atendeu)/i.test(text)) {
+    if (!period) return 'Ainda não tenho dados suficientes desse período para apontar um profissional destaque.'
+    if (!period.topProfessionalName) return 'Ainda não tenho atendimentos suficientes nesse período para apontar um profissional destaque.'
+    return `${wantsMonth ? 'No mês' : wantsWeek ? 'Na semana' : 'Hoje'}, quem mais atendeu foi ${period.topProfessionalName} com ${period.topProfessionalCount} atendimento${period.topProfessionalCount > 1 ? 's' : ''}.`
+  }
+
+  if (/(pacientes novos|novos pacientes|quantos pacientes novos|qtd de pacientes novos)/i.test(text)) {
+    if (!period) return 'Ainda não tenho esse dado consolidado para esse período.'
+    return `${wantsMonth ? 'No mês' : wantsWeek ? 'Na semana' : 'Hoje'}, vocês tiveram ${period.newPatients} paciente${period.newPatients === 1 ? '' : 's'} novo${period.newPatients === 1 ? '' : 's'}.`
+  }
+
+  if (/(faturamento|receita|cobrado|recebido|quanto entrou|quanto faturou|quanto recebeu)/i.test(text)) {
+    if (!period) return null
+    const periodLabel = wantsMonth ? 'No mês' : wantsWeek ? 'Na semana' : 'Hoje'
+    return [
+      `${periodLabel}, o resumo financeiro é:`,
+      `• Cobrado: ${formatCentsBRL(period.totalChargedCents)}`,
+      `• Recebido: ${formatCentsBRL(period.totalPaidCents)}`,
+      `• Consultas concluídas: ${period.completed}`,
+      `• Canceladas/faltas: ${period.cancelled}`,
+    ].join('\n')
+  }
+
+  if (/(resumo.*(m[eê]s|semana|hoje)|como foi.*(m[eê]s|semana)|fechamento.*(m[eê]s|semana))/i.test(text)) {
+    if (!period) return null
+    const extra = `\n• Novos pacientes: ${period.newPatients}`
+    const topProfessional = period.topProfessionalName
+      ? `\n• Profissional destaque: ${period.topProfessionalName} (${period.topProfessionalCount})`
+      : ''
+    return [
+      `${wantsMonth ? 'Resumo do mês' : wantsWeek ? 'Resumo da semana' : 'Resumo de hoje'}:`,
+      `• Consultas: ${period.scheduled + period.confirmed + period.completed + period.cancelled}`,
+      `• Concluídas: ${period.completed}`,
+      `• Pacientes únicos: ${period.uniquePatients}`,
+      `• Cobrado: ${formatCentsBRL(period.totalChargedCents)}`,
+      `• Recebido: ${formatCentsBRL(period.totalPaidCents)}`,
+    ].join('\n') + extra + topProfessional
+  }
+
+  return null
 }
 
 interface StaffRequest {
@@ -721,6 +792,17 @@ serve(async (req) => {
     sendPlatformTypingIndicator(body.waMessageId)
   }
 
+    const deterministicReply = buildDeterministicAdminReply(messageText, snapshot, userPermissions)
+    if (deterministicReply) {
+      await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
+        platform_user_id: user.id,
+        role:             'assistant',
+        content:          deterministicReply,
+      })
+      await sendWA(fromPhone, deterministicReply)
+      return new Response('OK', { status: 200 })
+    }
+
   // ── Progress message for slow actions ────────────────────────────────────
   // Shown before the AI reply arrives; only for actions with meaningful latency
   const PROGRESS_MSG: Partial<Record<ActionName, string>> = {
@@ -946,7 +1028,27 @@ function buildSystemPrompt(
       const f = snapshot.financial
       ctx.push(
         `💰 FINANCEIRO HOJE: Agendado:${f.scheduled} | Confirmado:${f.confirmed} | Concluído:${f.completed} | Cancelado:${f.cancelled}`,
-        `   Cobrado: ${formatCentsBRL(f.totalChargedCents)} | Recebido: ${formatCentsBRL(f.totalPaidCents)}`,
+        `   Cobrado: ${formatCentsBRL(f.totalChargedCents)} | Recebido: ${formatCentsBRL(f.totalPaidCents)} | Pacientes: ${f.uniquePatients}`,
+        ``,
+      )
+    }
+
+    if (P.canViewFinancial && snapshot.weekFinancial) {
+      const f = snapshot.weekFinancial
+      ctx.push(
+        `📊 RESUMO DA SEMANA (${f.label}): Consultas:${f.scheduled + f.confirmed + f.completed + f.cancelled} | Concluídas:${f.completed} | Canceladas:${f.cancelled}`,
+        `   Cobrado: ${formatCentsBRL(f.totalChargedCents)} | Recebido: ${formatCentsBRL(f.totalPaidCents)} | Pacientes únicos: ${f.uniquePatients} | Novos pacientes: ${f.newPatients}`,
+        f.topProfessionalName ? `   Profissional destaque: ${f.topProfessionalName} (${f.topProfessionalCount} atend.)` : `   Profissional destaque: sem dados ainda`,
+        ``,
+      )
+    }
+
+    if (P.canViewFinancial && snapshot.monthFinancial) {
+      const f = snapshot.monthFinancial
+      ctx.push(
+        `🗓 RESUMO DO MÊS (${f.label}): Consultas:${f.scheduled + f.confirmed + f.completed + f.cancelled} | Concluídas:${f.completed} | Canceladas:${f.cancelled}`,
+        `   Cobrado: ${formatCentsBRL(f.totalChargedCents)} | Recebido: ${formatCentsBRL(f.totalPaidCents)} | Pacientes únicos: ${f.uniquePatients} | Novos pacientes: ${f.newPatients}`,
+        f.topProfessionalName ? `   Profissional destaque: ${f.topProfessionalName} (${f.topProfessionalCount} atend.)` : `   Profissional destaque: sem dados ainda`,
         ``,
       )
     }
@@ -1038,7 +1140,7 @@ function buildSystemPrompt(
       P.canManageAgenda ? `• Agenda: confirmar [nome/nº], concluir, cancelar, remarcar, agendar nova consulta` : '',
       P.canViewPatients ? `• Pacientes: buscar por nome/CPF` : '',
       P.canManagePatients ? `• Pacientes: cadastrar novo paciente` : '',
-      P.canViewFinancial ? `• Financeiro: resumo do dia (já está no contexto acima)` : '',
+      P.canViewFinancial ? `• Financeiro: resumo do dia, da semana e do mês, com novos pacientes e profissional destaque` : '',
       hasAdmin ? `• Equipe: aprovar/reprovar solicitações (use IDs de SOLICITAÇÕES PENDENTES), convidar diretamente, ajustar permissões` : '',
       hasAdmin ? `• Bot: configurar personalidade e permissões do bot da clínica` : '',
       P.canManageProfessionals ? `• Profissionais: adicionar/editar profissionais, serviços, salas` : '',
@@ -1746,6 +1848,21 @@ async function loadClinicSnapshot(
   const fmt = (d: Date) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
   const todayLabel    = fmt(brtNow)
   const tomorrowLabel = fmt(new Date(brtNow.getTime() + 24 * 60 * 60 * 1000))
+  const monthLabel    = `${String(brtNow.getUTCMonth() + 1).padStart(2, '0')}/${brtNow.getUTCFullYear()}`
+
+  const weekStart = new Date(brtNow)
+  weekStart.setUTCDate(brtNow.getUTCDate() - ((brtNow.getUTCDay() + 6) % 7))
+  weekStart.setUTCHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
+  weekEnd.setUTCHours(23, 59, 59, 999)
+
+  const monthStart = new Date(Date.UTC(brtNow.getUTCFullYear(), brtNow.getUTCMonth(), 1, 0, 0, 0, 0))
+  const monthEnd = new Date(Date.UTC(brtNow.getUTCFullYear(), brtNow.getUTCMonth() + 1, 0, 23, 59, 59, 999))
+  const todayStart = new Date(brtNow)
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const todayEnd = new Date(brtNow)
+  todayEnd.setUTCHours(23, 59, 59, 999)
 
   // Find my professional row (for professional role: filter agenda to own appointments)
   let myProfessionalId: string | null = null
@@ -1790,19 +1907,92 @@ async function loadClinicSnapshot(
     loadAgenda(tomorrowStr),
   ])
 
-  // Financial summary: today
-  let financial: DailyFinancial | null = null
-  const allToday = todayAgenda
-  if (allToday.length > 0) {
-    financial = {
-      scheduled:         allToday.filter(a => a.status === 'scheduled').length,
-      confirmed:         allToday.filter(a => a.status === 'confirmed').length,
-      completed:         allToday.filter(a => a.status === 'completed').length,
-      cancelled:         allToday.filter(a => ['cancelled', 'no_show'].includes(a.status)).length,
-      totalChargedCents: allToday.reduce((s, a) => s + (a.chargeCents ?? 0), 0),
-      totalPaidCents:    0, // TODO: integrate with payments table if available
+  const loadFinancialSnapshot = async (
+    startIso: string,
+    endIso: string,
+    label: string,
+  ): Promise<PeriodFinancialSnapshot | null> => {
+    const rows: Array<{
+      status: string
+      charge_amount_cents: number | null
+      paid_amount_cents: number | null
+      patient_id: string | null
+      patient: { id: string; created_at: string | null } | null
+      professional: { id: string; name: string } | null
+    }> = []
+
+    for (let page = 0; ; page += 1) {
+      let query = supabase
+        .from(T.APPOINTMENTS)
+        .select('status, charge_amount_cents, paid_amount_cents, patient_id, patient:patients(id, created_at), professional:professionals(id, name)')
+        .eq('clinic_id', clinicId)
+        .gte('starts_at', startIso)
+        .lte('starts_at', endIso)
+        .order('starts_at', { ascending: true })
+        .range(page * FINANCIAL_PAGE_SIZE, ((page + 1) * FINANCIAL_PAGE_SIZE) - 1)
+      if (myProfessionalId) query = query.eq('professional_id', myProfessionalId)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const batch = (data ?? []) as typeof rows
+      rows.push(...batch)
+
+      if (batch.length < FINANCIAL_PAGE_SIZE) break
+    }
+
+    let newPatientsCount = 0
+    if (myProfessionalId) {
+      newPatientsCount = new Set(
+        rows
+          .filter(row => {
+            const createdAt = row.patient?.created_at
+            return !!createdAt && createdAt >= startIso && createdAt <= endIso
+          })
+          .map(row => row.patient_id)
+          .filter(Boolean),
+      ).size
+    } else {
+      const { count } = await supabase
+        .from(T.PATIENTS)
+        .select('id', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
+      newPatientsCount = count ?? 0
+    }
+
+    const professionalCounts = new Map<string, { name: string; count: number }>()
+    for (const row of rows) {
+      if (!row.professional?.id) continue
+      const current = professionalCounts.get(row.professional.id)
+      professionalCounts.set(row.professional.id, {
+        name: row.professional.name,
+        count: (current?.count ?? 0) + 1,
+      })
+    }
+    const topProfessional = [...professionalCounts.values()].sort((a, b) => b.count - a.count)[0] ?? null
+
+    return {
+      label,
+      scheduled:         rows.filter(r => r.status === 'scheduled').length,
+      confirmed:         rows.filter(r => r.status === 'confirmed').length,
+      completed:         rows.filter(r => r.status === 'completed').length,
+      cancelled:         rows.filter(r => ['cancelled', 'no_show'].includes(r.status)).length,
+      totalChargedCents: rows.reduce((sum, row) => sum + (row.charge_amount_cents ?? 0), 0),
+      totalPaidCents:    rows.reduce((sum, row) => sum + (row.paid_amount_cents ?? 0), 0),
+      uniquePatients:    new Set(rows.map(row => row.patient_id).filter(Boolean)).size,
+      newPatients:       newPatientsCount ?? 0,
+      topProfessionalName: topProfessional?.name ?? null,
+      topProfessionalCount: topProfessional?.count ?? 0,
     }
   }
+
+  const [financial, weekFinancial, monthFinancial] = await Promise.all([
+    loadFinancialSnapshot(todayStart.toISOString(), todayEnd.toISOString(), todayLabel),
+    loadFinancialSnapshot(weekStart.toISOString(), weekEnd.toISOString(), `${fmt(weekStart)} a ${fmt(weekEnd)}`),
+    loadFinancialSnapshot(monthStart.toISOString(), monthEnd.toISOString(), monthLabel),
+  ])
 
   // Team (admins only)
   let team: TeamMemberInfo[] = []
@@ -1847,7 +2037,19 @@ async function loadClinicSnapshot(
     name: r.name,
   }))
 
-  return { todayLabel, tomorrowLabel, todayAgenda, tomorrowAgenda, financial, team, serviceTypes, rooms, myProfessionalId }
+  return {
+    todayLabel,
+    tomorrowLabel,
+    todayAgenda,
+    tomorrowAgenda,
+    financial,
+    weekFinancial,
+    monthFinancial,
+    team,
+    serviceTypes,
+    rooms,
+    myProfessionalId,
+  }
 }
 
 // ─── computeAvailableSlots ────────────────────────────────────────────────────
