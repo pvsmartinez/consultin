@@ -21,7 +21,7 @@ function trackLandingClick(event: MouseEvent<HTMLElement>) {
   const eventName = anchor.dataset.analyticsEvent
   const placement = anchor.dataset.analyticsPlacement ?? null
 
-  if (eventName === 'login_cta_click' || eventName === 'signup_cta_click') {
+  if (eventName === 'login_cta_click' || eventName === 'signup_cta_click' || eventName === 'whatsapp_cta_click') {
     trackPublicEvent(eventName, {
       placement,
     })
@@ -44,6 +44,10 @@ const homeFaqs = [
   {
     question: 'Preciso instalar alguma coisa?',
     answer: 'Não. A operação principal roda no navegador, com acesso simples para gestores, recepção e profissionais da clínica.',
+  },
+  {
+    question: 'Posso cadastrar minha clínica pelo WhatsApp?',
+    answer: 'Sim. Nosso assistente no WhatsApp cria sua conta, configura a clínica e envia o link de acesso em menos de 2 minutos — sem precisar preencher nenhum formulário.',
   },
 ]
 
@@ -206,12 +210,15 @@ function Hero() {
                 Começar gratuitamente
                 <ArrowRight size={16} weight="bold" />
               </Link>
-              <Link to="/login"
-                data-analytics-event="login_cta_click"
-                data-analytics-placement="hero-secondary"
-                className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 font-medium px-6 py-3.5 rounded-xl transition text-sm">
-                Já tenho conta
-              </Link>
+              <a href={WA_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-analytics-event="whatsapp_cta_click"
+                data-analytics-placement="hero-whatsapp"
+                className="inline-flex items-center gap-2 border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 font-medium px-6 py-3.5 rounded-xl transition text-sm">
+                <WhatsappLogo size={18} weight="fill" />
+                Cadastrar pelo WhatsApp
+              </a>
             </div>
 
             {/* Profile type selector */}
@@ -473,6 +480,83 @@ function HowItWorks() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── WhatsApp Onboarding ────────────────────────────────────────────────────
+const WA_LINK = 'https://wa.me/5511936213029?text=Oi%2C+quero+cadastrar+minha+cl%C3%ADnica+no+Consultin'
+
+function WhatsAppOnboarding() {
+  const steps = [
+    {
+      step: '01',
+      title: 'Mande uma mensagem',
+      desc: 'Envie "Oi" para o nosso assistente no WhatsApp. Sem formulário, sem senha — só uma conversa.',
+    },
+    {
+      step: '02',
+      title: 'Assistente configura tudo',
+      desc: 'Nosso agente de IA pergunta o nome da clínica, especialidade e cria sua conta em segundos.',
+    },
+    {
+      step: '03',
+      title: 'Acesse o painel',
+      desc: 'Você recebe o link de acesso direto para o Consultin. Clínica pronta para operar.',
+    },
+  ]
+
+  return (
+    <section id="whatsapp-onboarding" className="py-20 bg-green-50">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+            <WhatsappLogo size={13} weight="fill" />
+            Mais fácil do que você imagina
+          </div>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+            Cadastre sua clínica{' '}
+            <span className="text-green-600">pelo WhatsApp</span>
+          </h2>
+          <p className="text-gray-500 max-w-xl mx-auto">
+            Prefere não preencher formulário? Nosso assistente cria tudo pra você numa conversa simples.
+            Em menos de 2 minutos sua clínica já está no ar.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          {steps.map((s, i) => (
+            <div key={s.step} className="relative">
+              {i < steps.length - 1 && (
+                <div className="hidden md:block absolute top-6 left-[calc(100%_-_16px)] w-8 border-t-2 border-dashed border-green-200 z-0" />
+              )}
+              <div className="relative z-10 bg-white rounded-2xl p-7 border border-green-100 shadow-sm text-center hover:shadow-lg transition">
+                <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <WhatsappLogo size={28} weight="duotone" className="text-green-600" />
+                </div>
+                <div className="text-xs font-bold text-green-400 tracking-widest mb-2">{s.step}</div>
+                <h3 className="text-base font-bold text-gray-900 mb-2">{s.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col items-center gap-3">
+          <a
+            href={WA_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-analytics-event="whatsapp_cta_click"
+            data-analytics-placement="wa-section-cta"
+            className="inline-flex items-center gap-3 bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-green-200 transition text-base"
+          >
+            <WhatsappLogo size={22} weight="fill" />
+            Começar pelo WhatsApp
+          </a>
+          <p className="text-xs text-gray-400">Grátis por 7 dias · Sem cartão de crédito</p>
         </div>
       </div>
     </section>
@@ -861,12 +945,15 @@ function FinalCTA() {
             Cadastrar minha clínica
             <ArrowRight size={16} weight="bold" />
           </Link>
-          <Link to="/login"
-            data-analytics-event="login_cta_click"
-            data-analytics-placement="final-cta"
+          <a href={WA_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-analytics-event="whatsapp_cta_click"
+            data-analytics-placement="final-cta-whatsapp"
             className="inline-flex items-center gap-2 border-2 border-white/40 text-white hover:bg-white/10 font-medium px-8 py-4 rounded-xl transition text-sm">
-            Fazer login
-          </Link>
+            <WhatsappLogo size={18} weight="fill" />
+            Começar pelo WhatsApp
+          </a>
         </div>
       </div>
     </section>
@@ -952,6 +1039,7 @@ export default function LandingPage() {
           <Hero />
           <Features />
           <HowItWorks />
+          <WhatsAppOnboarding />
           <Pricing />
           <Specialties />
           <UseCaseSection />
