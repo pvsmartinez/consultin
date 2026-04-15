@@ -41,6 +41,10 @@ interface ClinicRow {
   asaas_subscription_id: string | null
 }
 
+interface ClinicManageRow {
+  asaas_subscription_id: string | null
+}
+
 interface PublicSiteEventRow {
   created_at: string
   event_name: string
@@ -162,7 +166,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'GET' && pathname === '/clinics') {
     const { data, error } = await client
       .from('clinics')
-      .select('id, name, subscription_tier, subscription_status, payments_enabled, trial_ends_at, created_at')
+      .select('id, name, subscription_tier, subscription_status, payments_enabled, trial_ends_at, created_at, asaas_subscription_id')
       .order('created_at', { ascending: false })
     if (error) return err(error.message, 500)
     return json(data ?? [])
@@ -173,13 +177,49 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'PATCH' && patchMatch) {
     const clinicId = patchMatch[1]
     const body = await req.json().catch(() => null)
+    const action = body?.action as string | undefined
     const tier = body?.tier as string | undefined
+
+    const { data: clinic, error: clinicError } = await client
+      .from('clinics')
+      .select('asaas_subscription_id')
+      .eq('id', clinicId)
+      .single<ClinicManageRow>()
+
+    if (clinicError) return err(clinicError.message, 500)
+
+    if (action === 'revoke_manual') {
+      if (clinic?.asaas_subscription_id) {
+        return err('Nao e possivel revogar uma assinatura paga por aqui. Cancele via Asaas/app.', 400)
+      }
+
+      const { error } = await client
+        .from('clinics')
+        .update({
+          subscription_tier: 'trial',
+          subscription_status: 'INACTIVE',
+          payments_enabled: false,
+        })
+        .eq('id', clinicId)
+
+      if (error) return err(error.message, 500)
+      return json({ ok: true })
+    }
+
     if (!tier || !(VALID_TIERS as readonly string[]).includes(tier)) {
       return err(`tier must be one of: ${VALID_TIERS.join(', ')}`, 400)
     }
 
     const update: Record<string, unknown> = { subscription_tier: tier as SubscriptionTier }
-    if (tier !== 'trial') {
+
+    if (tier === 'trial') {
+      if (clinic?.asaas_subscription_id) {
+        return err('Nao e possivel alterar assinatura paga para trial por aqui. Cancele via Asaas/app.', 400)
+      }
+
+      update.subscription_status = 'INACTIVE'
+      update.payments_enabled    = false
+    } else {
       update.subscription_status = 'ACTIVE'
       update.payments_enabled    = true
     }
