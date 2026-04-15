@@ -38,6 +38,7 @@ interface ClinicRow {
   payments_enabled: boolean
   trial_ends_at: string | null
   created_at: string
+  asaas_subscription_id: string | null
 }
 
 interface PublicSiteEventRow {
@@ -195,7 +196,7 @@ Deno.serve(async (req: Request) => {
     // Clínicas por status de assinatura
     client
       .from('clinics')
-      .select('id, name, subscription_status, subscription_tier, payments_enabled, trial_ends_at, created_at'),
+      .select('id, name, subscription_status, subscription_tier, payments_enabled, trial_ends_at, created_at, asaas_subscription_id'),
 
     // Total de usuários (user_profiles)
     client
@@ -235,6 +236,9 @@ Deno.serve(async (req: Request) => {
   const totalClinics     = clinics.length
   const activeClinics    = clinics.filter((c) => c.subscription_status === 'ACTIVE').length
   const overdueClinics   = clinics.filter((c) => c.subscription_status === 'OVERDUE').length
+  const manualActiveClinics = clinics.filter(
+    (c) => c.subscription_status === 'ACTIVE' && !c.asaas_subscription_id
+  ).length
   const mrrCentavos      = clinics.reduce((sum, c) => {
     if (c.subscription_status !== 'ACTIVE') return sum
     return sum + (MRR_BY_TIER[c.subscription_tier ?? ''] ?? 0)
@@ -247,6 +251,7 @@ Deno.serve(async (req: Request) => {
       total:   totalClinics,
       active:  activeClinics,
       overdue: overdueClinics,
+      manual:  manualActiveClinics,
       recent:  recentClinicsResult.data ?? [],
     },
     users:              { total: totalUsers },
