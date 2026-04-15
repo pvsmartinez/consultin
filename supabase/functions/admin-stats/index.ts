@@ -240,7 +240,7 @@ Deno.serve(async (req: Request) => {
     (c) => c.subscription_status === 'ACTIVE' && !c.asaas_subscription_id
   ).length
   const mrrCentavos      = clinics.reduce((sum, c) => {
-    if (c.subscription_status !== 'ACTIVE') return sum
+    if (c.subscription_status !== 'ACTIVE' || !c.asaas_subscription_id) return sum
     return sum + (MRR_BY_TIER[c.subscription_tier ?? ''] ?? 0)
   }, 0)
   const pendingSignups   = pendingSignupsResult.count ?? 0
