@@ -2,12 +2,10 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle, Envelope, CalendarBlank, ArrowRight, Stethoscope } from '@phosphor-icons/react'
 import { Seo } from '../components/seo/Seo'
-import { gtagEvent } from '../lib/gtag'
 
 export default function BemVindoPage() {
   useEffect(() => {
-    // Conversão rastreada via GA4 importado no Google Ads (conta AW-8115111041, evento: sign_up)
-    gtagEvent('sign_up', { method: 'clinic_form' })
+    // sign_up already fired in CadastroClinicaPage.onSubmit — do not duplicate here
   }, [])
 
   return (

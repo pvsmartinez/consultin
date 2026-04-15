@@ -30,6 +30,16 @@ const CORS = {
 const VALID_TIERS = ['trial', 'basic', 'professional', 'unlimited'] as const
 type SubscriptionTier = typeof VALID_TIERS[number]
 
+interface ClinicRow {
+  id: string
+  name: string
+  subscription_status: string | null
+  subscription_tier: string | null
+  payments_enabled: boolean
+  trial_ends_at: string | null
+  created_at: string
+}
+
 interface PublicSiteEventRow {
   created_at: string
   event_name: string
@@ -53,7 +63,11 @@ function assertAdmin(req: Request): true | Response {
   return true
 }
 
-const MRR_PER_ACTIVE_CLINIC = 10000 // R$100,00 em centavos
+const MRR_BY_TIER: Record<string, number> = {
+  basic:        10000, // R$100
+  professional: 20000, // R$200
+  unlimited:    30000, // R$300
+}
 
 async function listPublicAnalytics(client: ReturnType<typeof createClient>): Promise<{
   since_7d: string
@@ -63,6 +77,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
   signup_page_views_7d: number
   login_cta_clicks_7d: number
   signup_cta_clicks_7d: number
+  whatsapp_cta_clicks_7d: number
   clinic_signup_submits_30d: number
   top_pages_30d: Array<{ path: string; views: number }>
 }> {
@@ -88,6 +103,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
   let loginCtaClicks7d = 0
   let signupCtaClicks7d = 0
   let clinicSignupSubmits30d = 0
+  let whatsappCtaClicks7d = 0
 
   for (const row of rows) {
     const createdAt = new Date(row.created_at).getTime()
@@ -105,6 +121,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
 
     if (row.event_name === 'login_cta_click' && in7d) loginCtaClicks7d += 1
     if (row.event_name === 'signup_cta_click' && in7d) signupCtaClicks7d += 1
+    if (row.event_name === 'whatsapp_cta_click' && in7d) whatsappCtaClicks7d += 1
     if (row.event_name === 'clinic_signup_submit') clinicSignupSubmits30d += 1
   }
 
@@ -121,6 +138,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
     signup_page_views_7d: signupPageViews7d,
     login_cta_clicks_7d: loginCtaClicks7d,
     signup_cta_clicks_7d: signupCtaClicks7d,
+    whatsapp_cta_clicks_7d: whatsappCtaClicks7d,
     clinic_signup_submits_30d: clinicSignupSubmits30d,
     top_pages_30d: topPages,
   }
@@ -173,11 +191,11 @@ Deno.serve(async (req: Request) => {
   // ── GET / (stats) ─────────────────────────────────────────────────────────
   if (req.method !== 'GET') return err('Method not allowed', 405)
 
-  const [clinicsResult, usersResult, recentClinicsResult, publicAnalyticsResult] = await Promise.all([
+  const [clinicsResult, usersResult, recentClinicsResult, publicAnalyticsResult, pendingSignupsResult, trialsResult] = await Promise.all([
     // Clínicas por status de assinatura
     client
       .from('clinics')
-      .select('id, name, subscription_status, payments_enabled, created_at'),
+      .select('id, name, subscription_status, subscription_tier, payments_enabled, trial_ends_at, created_at'),
 
     // Total de usuários (user_profiles)
     client
@@ -192,18 +210,37 @@ Deno.serve(async (req: Request) => {
       .limit(5),
 
     listPublicAnalytics(client),
+
+    // Solicitações de cadastro pendentes
+    client
+      .from('clinic_signup_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+
+    // Trials expirando nos próximos 7 dias
+    client
+      .from('clinics')
+      .select('id', { count: 'exact', head: true })
+      .eq('subscription_tier', 'trial')
+      .gte('trial_ends_at', new Date().toISOString())
+      .lte('trial_ends_at', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
   ])
 
   if (clinicsResult.error) return err(clinicsResult.error.message, 500)
   if (usersResult.error)   return err(usersResult.error.message, 500)
 
-  const clinics    = clinicsResult.data ?? []
+  const clinics    = (clinicsResult.data ?? []) as ClinicRow[]
   const totalUsers = usersResult.count ?? 0
 
-  const totalClinics   = clinics.length
-  const activeClinics  = clinics.filter((c) => c.subscription_status === 'ACTIVE').length
-  const overdueClinics = clinics.filter((c) => c.subscription_status === 'OVERDUE').length
-  const mrrCentavos    = activeClinics * MRR_PER_ACTIVE_CLINIC
+  const totalClinics     = clinics.length
+  const activeClinics    = clinics.filter((c) => c.subscription_status === 'ACTIVE').length
+  const overdueClinics   = clinics.filter((c) => c.subscription_status === 'OVERDUE').length
+  const mrrCentavos      = clinics.reduce((sum, c) => {
+    if (c.subscription_status !== 'ACTIVE') return sum
+    return sum + (MRR_BY_TIER[c.subscription_tier ?? ''] ?? 0)
+  }, 0)
+  const pendingSignups   = pendingSignupsResult.count ?? 0
+  const trialsExpiring7d = trialsResult.count ?? 0
 
   return json({
     clinics: {
@@ -212,8 +249,10 @@ Deno.serve(async (req: Request) => {
       overdue: overdueClinics,
       recent:  recentClinicsResult.data ?? [],
     },
-    users:            { total: totalUsers },
-    public_analytics: publicAnalyticsResult,
-    mrr_centavos: mrrCentavos,
+    users:              { total: totalUsers },
+    public_analytics:   publicAnalyticsResult,
+    mrr_centavos:       mrrCentavos,
+    pending_signups:    pendingSignups,
+    trials_expiring_7d: trialsExpiring7d,
   })
 })
