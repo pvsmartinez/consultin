@@ -202,8 +202,8 @@ export default function CadastroClinicaPage() {
   return (
     <>
       <Seo
-        title="Cadastro de clínica | Consultin"
-        description="Peça acesso ao Consultin e comece a organizar agenda, pacientes, prontuário, financeiro e atendimento da sua clínica no Brasil."
+        title="Criar conta | Consultin"
+        description="Crie sua conta no Consultin e comece agora a organizar agenda, pacientes, prontuário e financeiro da sua clínica ou consultório."
         canonicalPath="/cadastro-clinica"
         keywords={[
           'cadastro de clínica',
@@ -229,7 +229,7 @@ export default function CadastroClinicaPage() {
 
             <h1 className="text-xl font-bold text-gray-900 mb-1">Criar sua conta</h1>
             <p className="text-sm text-gray-500 mb-6">
-              Preencha os dados abaixo. Nossa equipe revisará e entrará em contato em breve.
+              Preencha os dados abaixo e acesse na hora — sem esperar aprovação.
             </p>
 
             {/* WhatsApp shortcut */}
@@ -348,7 +348,7 @@ export default function CadastroClinicaPage() {
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
-                {isSubmitting ? 'Enviando solicitação...' : 'Enviar solicitação'}
+                {isSubmitting ? 'Criando sua conta...' : 'Criar conta grátis'}
               </button>
             </form>
 

@@ -30,7 +30,7 @@ export default function PublicNotFoundPage() {
               to="/cadastro-clinica"
               className="inline-flex items-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
             >
-              Solicitar acesso
+              Criar conta grátis
             </Link>
           </div>
         </div>

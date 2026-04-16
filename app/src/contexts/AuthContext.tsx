@@ -199,8 +199,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       settle()
       setSession(session)
 
-      // Intercept password-reset flow — show change-password screen immediately
-      if (event === 'PASSWORD_RECOVERY') {
+      // Intercept password-reset AND invite flows — show change-password screen immediately.
+      // PASSWORD_RECOVERY: forgot-password link.
+      // SIGNED_IN + type=invite in URL hash: new user clicking their invite email.
+      const urlHash = typeof window !== 'undefined' ? window.location.hash : ''
+      const isInviteLink = urlHash.includes('type=invite')
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isInviteLink)) {
         setRecoveryMode(true)
         setLoading(false)
         return

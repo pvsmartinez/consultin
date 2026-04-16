@@ -6,6 +6,9 @@ import { useAuthContext } from '../contexts/AuthContext'
 export default function NovaSenhaPage() {
   const { clearRecoveryMode } = useAuthContext()
 
+  // Detect if this is from an invite link (first access) or a password reset
+  const isInvite = typeof window !== 'undefined' && window.location.hash.includes('type=invite')
+
   const [password, setPassword]       = useState('')
   const [confirm, setConfirm]         = useState('')
   const [showPwd, setShowPwd]         = useState(false)
@@ -87,8 +90,14 @@ export default function NovaSenhaPage() {
           <span className="text-lg font-semibold text-gray-800">Consultin</span>
         </div>
 
-        <h1 className="text-lg font-semibold text-gray-800 mb-1">Criar nova senha</h1>
-        <p className="text-sm text-gray-400 mb-6">Escolha uma senha segura para sua conta.</p>
+        <h1 className="text-lg font-semibold text-gray-800 mb-1">
+          {isInvite ? 'Bem-vindo! Crie sua senha' : 'Criar nova senha'}
+        </h1>
+        <p className="text-sm text-gray-400 mb-6">
+          {isInvite
+            ? 'Defina uma senha para acessar sua conta.'
+            : 'Escolha uma senha segura para sua conta.'}
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* New password */}

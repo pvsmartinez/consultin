@@ -11,8 +11,8 @@ export default function BemVindoPage() {
   return (
     <>
       <Seo
-        title="Solicitação enviada | Consultin"
-        description="Solicitação de acesso recebida. Em breve você receberá o convite por e-mail."
+        title="Cadastro realizado | Consultin"
+        description="Sua clínica foi cadastrada. Verifique seu e-mail para criar sua senha e acessar a plataforma."
         canonicalPath="/bem-vindo"
       />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col">
@@ -38,11 +38,11 @@ export default function BemVindoPage() {
               </div>
 
               <h1 className="text-2xl font-extrabold text-gray-900 mb-3">
-                Solicitação enviada!
+                Clínica cadastrada!
               </h1>
               <p className="text-gray-500 leading-relaxed mb-2">
-                Recebemos os dados da sua clínica. Nossa equipe revisará sua solicitação
-                e você receberá o convite de acesso por e-mail em breve.
+                Sua clínica foi criada com sucesso. Enviamos um e-mail de convite
+                com o link para você criar sua senha e acessar a plataforma.
               </p>
               <p className="text-sm text-gray-400 mb-8">
                 Seu período de <strong className="text-gray-600">7 dias grátis</strong> começa
