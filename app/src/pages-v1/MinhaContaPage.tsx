@@ -42,7 +42,7 @@ function PasswordInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
         />
         <button
           type="button"
@@ -196,7 +196,7 @@ export default function MinhaContaPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+            className={`px-4 py-2.5 text-sm rounded-lg transition-colors ${
               tab === t.id
                 ? 'bg-white text-gray-800 shadow-sm font-medium'
                 : 'text-gray-500 hover:text-gray-700'
@@ -250,7 +250,7 @@ export default function MinhaContaPage() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
 
@@ -261,7 +261,7 @@ export default function MinhaContaPage() {
                 type="email"
                 value={session.user.email ?? ''}
                 readOnly
-                className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 cursor-default"
+                className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2.5 text-base text-gray-500 cursor-default"
               />
               <p className="text-xs text-gray-400 mt-1">O e-mail não pode ser alterado por aqui.</p>
             </div>

@@ -52,7 +52,7 @@ export default function PatientAnamnesisPage() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate(`/pacientes/${id}`)}
-          className="text-gray-400 hover:text-gray-600 transition"
+          className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
         >
           <ArrowLeft size={20} />
         </button>
@@ -145,7 +145,7 @@ function PatientAnamnesisForm({
         <button
           type="submit"
           disabled={saving}
-          className="px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+          className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
           style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
         >
           {saving ? 'Salvando...' : 'Salvar anamnese'}
@@ -153,7 +153,7 @@ function PatientAnamnesisForm({
         <button
           type="button"
           onClick={() => navigate(patientReturnPath)}
-          className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+          className="px-4 py-2.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
         >
           Cancelar
         </button>

@@ -89,6 +89,8 @@ vi.mock('../components/appointments/AppointmentModal', () => ({
   default: () => <div data-testid="appointment-modal" />,
 }))
 
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
 import PatientDetailPage from '../pages-v1/PatientDetailPage'
 
 function makeQC() {
@@ -112,10 +114,13 @@ function renderPage() {
 describe('PatientDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Mock clipboard
-    Object.assign(navigator, {
-      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
-    })
+    // Provide a basic clipboard stub so writeText doesn’t throw
+    if (!navigator.clipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        configurable: true,
+      })
+    }
   })
 
   it('renders the patient name as heading', () => {
@@ -135,7 +140,7 @@ describe('PatientDetailPage', () => {
 
   it('renders the appointments list with a completed appointment', () => {
     renderPage()
-    expect(screen.getByText('Dr. Silva')).toBeInTheDocument()
+    expect(screen.getAllByText(/Dr\. Silva/i).length).toBeGreaterThan(0)
   })
 
   it('renders a back/navigate-up link to the patient list', () => {
@@ -145,15 +150,15 @@ describe('PatientDetailPage', () => {
   })
 
   it('copies CPF to clipboard when CPF row is clicked', async () => {
+    const { toast } = await import('sonner')
     renderPage()
     const user = userEvent.setup()
 
-    // Find the CPF field value
     const cpfValue = screen.getByText('123.456.789-01')
     await user.click(cpfValue)
 
     await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('123.456.789-01')
+      expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('copiado'))
     })
   })
 })

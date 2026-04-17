@@ -259,14 +259,14 @@ export default function CadastroClinicaPage() {
                 <button
                   type="button"
                   onClick={() => setIsSolo(false)}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${!isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`flex-1 py-3 text-sm font-medium rounded-lg transition-colors ${!isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   Tenho uma clínica
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsSolo(true)}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`flex-1 py-3 text-sm font-medium rounded-lg transition-colors ${isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   Profissional liberal
                 </button>
@@ -347,7 +347,7 @@ export default function CadastroClinicaPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
                 {isSubmitting ? 'Criando sua conta...' : 'Criar conta grátis'}
               </button>
             </form>
@@ -367,7 +367,7 @@ export default function CadastroClinicaPage() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function inputClass(hasError: boolean) {
-  return `w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 ${
+  return `w-full border rounded-lg px-3 py-3 text-base text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 ${
     hasError ? 'border-red-400' : 'border-gray-300'
   }`
 }

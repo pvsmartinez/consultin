@@ -44,7 +44,7 @@ export default function FinanceiroPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMonth(m => subMonths(m, 1))}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
+              className="p-2.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
             >
               <CaretLeft size={16} />
             </button>
@@ -71,7 +71,7 @@ export default function FinanceiroPage() {
             />
             <button
               onClick={() => setMonth(m => addMonths(m, 1))}
-              className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
+              className="p-2.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
             >
               <CaretRight size={16} />
             </button>

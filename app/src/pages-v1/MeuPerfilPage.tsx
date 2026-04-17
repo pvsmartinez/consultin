@@ -60,7 +60,7 @@ export default function MeuPerfilPage() {
               value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
               required
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -71,7 +71,7 @@ export default function MeuPerfilPage() {
               value={form.cpf}
               onAccept={(val: string) => setForm(p => ({ ...p, cpf: val }))}
               placeholder="000.000.000-00"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -82,7 +82,7 @@ export default function MeuPerfilPage() {
               value={form.phone}
               onAccept={(val: string) => setForm(p => ({ ...p, phone: val }))}
               placeholder="(11) 99999-9999"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 
@@ -92,7 +92,7 @@ export default function MeuPerfilPage() {
               type="email"
               value={form.email}
               onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             />
           </div>
 

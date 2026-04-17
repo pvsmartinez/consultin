@@ -96,7 +96,7 @@ export default function WhatsAppInboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="flex h-[calc(100dvh-64px)] bg-white rounded-2xl border border-gray-200 overflow-hidden">
       {/* Session list */}
       <aside className={`${sidebarOpen ? 'flex' : 'hidden'} sm:flex w-full sm:w-72 flex-shrink-0 border-r border-gray-100 flex-col absolute sm:relative inset-0 sm:inset-auto z-10 bg-white rounded-2xl sm:rounded-none`}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
@@ -281,7 +281,8 @@ function ChatPanel({
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onBack}
-            className="sm:hidden p-1.5 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0"
+            className="sm:hidden p-2.5 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0 text-lg leading-none"
+            aria-label="Voltar"
           >
             ‹
           </button>
@@ -306,16 +307,16 @@ function ChatPanel({
             <button
               onClick={() => { setSending('escalate'); onEscalate().finally(() => setSending('')) }}
               disabled={!!sending}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-50 disabled:opacity-50">
-              <Headset size={13} />
+              className="flex items-center gap-1.5 px-3 py-2.5 text-xs text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-50 disabled:opacity-50">
+              <Headset size={14} />
               {sending === 'escalate' ? 'Atribuindo...' : 'Assumir'}
             </button>
           )}
           <button
             onClick={() => { setSending('resolve'); onResolve().finally(() => setSending('')) }}
             disabled={!!sending}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-green-700 border border-green-200 rounded-lg hover:bg-green-50 disabled:opacity-50">
-            <CheckCircle size={13} />
+            className="flex items-center gap-1.5 px-3 py-2.5 text-xs text-green-700 border border-green-200 rounded-lg hover:bg-green-50 disabled:opacity-50">
+            <CheckCircle size={14} />
             {sending === 'resolve' ? 'Resolvendo...' : 'Resolver'}
           </button>
         </div>
@@ -347,7 +348,7 @@ function ChatPanel({
             }}
             placeholder="Digite uma mensagem... (Enter para enviar)"
             rows={2}
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-300"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-base resize-none focus:outline-none focus:ring-2 focus:ring-green-300"
           />
           <button
             onClick={handleSend}

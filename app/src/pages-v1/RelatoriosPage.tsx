@@ -258,7 +258,7 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
                 const [y, m] = e.target.value.split('-').map(Number)
                 setMonth(new Date(y, m - 1, 1))
               }}
-              className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
             >
               {Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i)).map(d => (
                 <option key={format(d, 'yyyy-MM')} value={format(d, 'yyyy-MM')}>
@@ -272,7 +272,7 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
           <select
             value={professionalId}
             onChange={e => setProfessionalId(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+            className="border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           >
             <option value="">Todos os profissionais</option>
             {professionals.map(p => (
@@ -284,7 +284,7 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
           <button
             onClick={handleExport}
             disabled={isLoading || data.length === 0}
-            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
           >
             <FilePdf size={16} />
             PDF
@@ -294,7 +294,7 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
           <button
             onClick={handleExportCSV}
             disabled={isLoading || data.length === 0}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
           >
             <FileCsv size={16} />
             CSV Consultas
@@ -501,7 +501,7 @@ function ExportCard({
       <button
         onClick={onClick}
         disabled={loading}
-        className={`flex items-center justify-center gap-2 text-white text-sm font-medium py-1.5 rounded-lg transition disabled:opacity-50 ${btnColors[color]}`}
+        className={`flex items-center justify-center gap-2 text-white text-sm font-medium py-2.5 rounded-lg transition disabled:opacity-50 ${btnColors[color]}`}
       >
         <FileCsv size={15} />
         {loading ? 'Exportando...' : 'Exportar CSV'}

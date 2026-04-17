@@ -85,12 +85,12 @@ export default function PacientesPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nome, CPF ou telefone..."
-            className="w-full border border-gray-200 bg-[#f8fafb] rounded-2xl pl-11 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+            className="w-full border border-gray-200 bg-[#f8fafb] rounded-2xl pl-11 pr-10 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X size={14} />
             </button>

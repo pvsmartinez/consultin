@@ -136,7 +136,7 @@ export default function PublicBookingPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f8f8] text-gray-900">
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-5xl px-4 py-10 pb-24 sm:px-6 lg:px-8 lg:pb-10">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: page.primaryColor }}>
@@ -179,7 +179,7 @@ export default function PublicBookingPage() {
                       setSelectedDate(e.target.value)
                       setSelectedSlotIndex(null)
                     }}
-                    className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800"
+                    className="rounded-xl border border-gray-200 px-3 py-3 text-base text-gray-800"
                   />
                 </div>
 
@@ -192,7 +192,7 @@ export default function PublicBookingPage() {
                         setSelectedProfessionalId(e.target.value)
                         setSelectedSlotIndex(null)
                       }}
-                      className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800"
+                      className="rounded-xl border border-gray-200 px-3 py-3 text-base text-gray-800"
                     >
                       <option value="">Primeiro disponível</option>
                       {page.professionals.map((professional) => (
@@ -212,7 +212,7 @@ export default function PublicBookingPage() {
                       setSelectedServiceTypeId(e.target.value)
                       setSelectedSlotIndex(null)
                     }}
-                    className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800"
+                    className="rounded-xl border border-gray-200 px-3 py-3 text-base text-gray-800"
                   >
                     <option value="">Consulta padrão</option>
                     {page.services.map((service) => (
@@ -301,6 +301,23 @@ export default function PublicBookingPage() {
               </p>
             </section>
           </aside>
+        </div>
+
+        {/* Mobile sticky submit bar — visible only below lg breakpoint */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3">
+          <button
+            type="submit"
+            form="public-booking-form"
+            disabled={submitBooking.isPending || !selectedSlot || !patientName.trim() || !patientPhone.trim()}
+            className="w-full rounded-2xl px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: page.primaryColor }}
+          >
+            {submitBooking.isPending
+              ? 'Agendando...'
+              : selectedSlot
+                ? `Confirmar — ${selectedSlot.displayDate} às ${selectedSlot.displayTime}`
+                : 'Confirmar agendamento'}
+          </button>
         </div>
       </main>
     </div>

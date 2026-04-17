@@ -122,11 +122,10 @@ describe('NovaSenhaPage', () => {
 
   describe('successful submission', () => {
     it('shows success state and calls clearRecoveryMode after a delay', async () => {
-      vi.useFakeTimers()
       mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: 'u1' } } } })
       mockUpdateUser.mockResolvedValueOnce({ error: null })
       renderPageWithHash('')
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) })
+      const user = userEvent.setup()
 
       await user.type(screen.getAllByPlaceholderText(/mínimo 6 caracteres/i)[0], 'senha123')
       await user.type(screen.getByPlaceholderText(/repita a senha/i), 'senha123')
@@ -135,11 +134,11 @@ describe('NovaSenhaPage', () => {
       await waitFor(() => {
         expect(screen.getByText(/senha atualizada/i)).toBeInTheDocument()
       })
-
-      vi.advanceTimersByTime(3000)
-      expect(mockClearRecoveryMode).toHaveBeenCalled()
-      vi.useRealTimers()
-    })
+      // clearRecoveryMode fires after 2500ms — wait for it with real timers
+      await waitFor(() => {
+        expect(mockClearRecoveryMode).toHaveBeenCalled()
+      }, { timeout: 4000 })
+    }, 10000)
 
     it('calls supabase.auth.updateUser with the new password', async () => {
       mockGetSession.mockResolvedValueOnce({ data: { session: { user: { id: 'u1' } } } })
@@ -169,7 +168,7 @@ describe('NovaSenhaPage', () => {
       await user.click(screen.getByRole('button', { name: /salvar nova senha/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/não foi possível atualizar/i)).toBeInTheDocument()
+        expect(screen.queryAllByText(/não foi possível atualizar/i).length).toBeGreaterThan(0)
       })
     })
   })

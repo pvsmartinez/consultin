@@ -163,11 +163,11 @@ function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-3">
-          <a href="#funcionalidades" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Funcionalidades</a>
-          <a href="#como-funciona" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Como funciona</a>
-          <a href="#precos" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Preços</a>
-          <a href="#especialidades" className="block text-sm text-gray-600 py-2" onClick={() => setMenuOpen(false)}>Especialidades</a>
+        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
+          <a href="#funcionalidades" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Funcionalidades</a>
+          <a href="#como-funciona" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Como funciona</a>
+          <a href="#precos" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Preços</a>
+          <a href="#especialidades" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Especialidades</a>
           <div className="flex gap-2 pt-2">
             <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center border border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg">Entrar</Link>
             <Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center bg-blue-600 text-white font-medium px-4 py-2.5 rounded-lg">Cadastrar</Link>

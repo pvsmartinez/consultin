@@ -78,6 +78,7 @@ import RelatoriosPage from '../pages-v1/RelatoriosPage'
 
 const MOCK_ROW = {
   id: 'appt-1',
+  starts_at: '2025-05-10T10:00:00Z',
   startsAt: '2025-05-10T10:00:00Z',
   endsAt:   '2025-05-10T10:30:00Z',
   status:   'completed',
@@ -122,7 +123,7 @@ describe('RelatoriosPage', () => {
   })
 
   it('renders report rows when data is available', () => {
-    vi.mocked(useReportData).mockReturnValueOnce({
+    vi.mocked(useReportData).mockReturnValue({
       data: [MOCK_ROW],
       isLoading: false,
     } as ReturnType<typeof useReportData>)
@@ -145,7 +146,7 @@ describe('RelatoriosPage', () => {
       isLoading: false,
     } as ReturnType<typeof useReportData>)
     renderPage()
-    expect(screen.queryByText(/pdf|csv|exportar/i)).not.toBeNull()
+    expect(screen.queryAllByText(/pdf|csv|exportar/i).length).toBeGreaterThan(0)
   })
 
   it('renders empty state text when no appointments', () => {

@@ -9,7 +9,7 @@
  *  - Server error is shown when edge function fails
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -85,10 +85,11 @@ describe('CadastroClinicaPage', () => {
 
     await user.type(screen.getByPlaceholderText('Ex: Clínica Saúde & Vida'), 'Minha Clínica')
     await user.type(screen.getByPlaceholderText('contato@suaclinica.com'), 'not-an-email')
-    await user.click(screen.getByRole('button', { name: /criar conta grátis/i }))
+    // fireEvent.submit bypasses jsdom’s type="email" constraint validation
+    fireEvent.submit(document.querySelector('form')!)
 
     await waitFor(() => {
-      expect(screen.getByText(/e-mail inválido/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/e-mail inválido/i).length).toBeGreaterThan(0)
     })
     expect(mockInvoke).not.toHaveBeenCalled()
   })

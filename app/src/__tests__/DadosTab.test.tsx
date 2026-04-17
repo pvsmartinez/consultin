@@ -60,10 +60,10 @@ describe('DadosTab', () => {
     setup()
     const emailInput = screen.getByDisplayValue('clinic@test.com')
     fireEvent.change(emailInput, { target: { value: 'not-an-email' } })
-    const saveBtn = screen.getByRole('button', { name: /salvar/i })
-    fireEvent.click(saveBtn)
+    // fireEvent.submit bypasses jsdom’s type="email" constraint validation
+    fireEvent.submit(document.querySelector('form')!)
     await waitFor(() => {
-      expect(screen.getByText(/e-mail inválido/i)).toBeDefined()
+      expect(screen.getAllByText(/e-mail inválido/i).length).toBeGreaterThan(0)
     })
   })
 

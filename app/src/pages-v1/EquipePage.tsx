@@ -120,7 +120,7 @@ function ProfissionaisTab() {
           <button
             onClick={handleAddSelfAsProfessional}
             disabled={createProfessional.isPending}
-            className="ml-4 shrink-0 px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 disabled:opacity-60">
+            className="ml-4 shrink-0 px-3 py-2.5 bg-amber-600 text-white text-xs font-medium rounded-lg hover:bg-amber-700 disabled:opacity-60">
             Me adicionar
           </button>
         </div>
@@ -129,11 +129,11 @@ function ProfissionaisTab() {
         <p className="text-sm text-gray-400">{professionals.length} cadastrado{professionals.length !== 1 ? 's' : ''}</p>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowInviteForm(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 border border-teal-200 text-[#006970] text-sm rounded-xl hover:bg-teal-50 transition-colors">
+            className="flex items-center gap-2 px-4 py-2.5 border border-teal-200 text-[#006970] text-sm rounded-xl hover:bg-teal-50 transition-colors">
             <Envelope size={16} /> Convidar
           </button>
           <button onClick={() => { setEditing(null); setModalOpen(true) }}
-            className="flex items-center gap-2 px-4 py-2 text-white text-sm rounded-xl transition-all active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl transition-all active:scale-[0.98]"
             style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
             <Plus size={16} /> Novo profissional
           </button>
@@ -149,13 +149,13 @@ function ProfissionaisTab() {
                 <label className="block text-xs text-gray-500 mb-1">E-mail *</label>
                 <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                   placeholder="profissional@clinica.com"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Nome (opcional)</label>
                 <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
                   placeholder="Dr. João Silva"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
               </div>
             </div>
             <div>
@@ -174,12 +174,12 @@ function ProfissionaisTab() {
             </div>
             <div className="flex gap-2">
               <button type="submit" disabled={createInvite.isPending}
-                className="px-4 py-2 text-white text-sm rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+                className="px-4 py-2.5 text-white text-sm rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
                 style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                 {createInvite.isPending ? 'Enviando…' : 'Criar convite'}
               </button>
               <button type="button" onClick={() => setShowInviteForm(false)}
-                className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                className="px-3 py-2.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Cancelar</button>
             </div>
           </form>
         </div>

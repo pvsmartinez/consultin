@@ -59,7 +59,7 @@ describe('AnamnesisTab', () => {
 
   it('adds a new field and saves', async () => {
     setup([])
-    const labelInput = screen.getByPlaceholderText(/nome da pergunta/i)
+    const labelInput = screen.getByPlaceholderText(/alguma alergia|pergunta/i)
     fireEvent.change(labelInput, { target: { value: 'Pressão alta?' } })
     const addBtn = screen.getByRole('button', { name: /adicionar/i })
     fireEvent.click(addBtn)

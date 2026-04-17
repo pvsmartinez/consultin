@@ -100,7 +100,8 @@ export default function PatientDetailPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/pacientes')}
-            className="text-gray-400 hover:text-gray-600 transition mt-1"
+            className="p-2 text-gray-400 hover:text-gray-600 transition rounded-lg hover:bg-gray-100 mt-0.5"
+            aria-label="Voltar para Pacientes"
           >
             <ArrowLeft size={20} />
           </button>
@@ -116,7 +117,7 @@ export default function PatientDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setScheduling(true)}
-            className="flex items-center gap-2 text-sm text-white px-3 py-1.5 rounded-xl transition-all active:scale-[0.98]"
+            className="flex items-center gap-2 text-sm text-white px-4 py-2.5 rounded-xl transition-all active:scale-[0.98]"
             style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             <CalendarPlus size={15} />
@@ -124,14 +125,14 @@ export default function PatientDetailPage() {
           </button>
           <button
             onClick={() => setEditDrawerOpen(true)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
+            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-4 py-2.5 rounded-lg transition"
           >
             <PencilSimple size={15} />
             Editar
           </button>
           <Link
             to={`/pacientes/${patient.id}/anamnese`}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition"
+            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 border border-gray-200 px-4 py-2.5 rounded-lg transition"
           >
             <ClipboardText size={15} />
             Anamnese
@@ -145,7 +146,7 @@ export default function PatientDetailPage() {
           <>
             <a
               href={`tel:${patient.phone}`}
-              className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+              className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:bg-gray-50 transition"
             >
               <Phone size={15} className="text-green-500" />
               {patient.phone}
@@ -154,7 +155,7 @@ export default function PatientDetailPage() {
               href={(() => { const d = patient.phone.replace(/\D/g, ''); return `https://wa.me/${d.startsWith('55') ? d : '55' + d}` })()}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition"
+              className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 hover:bg-green-100 transition"
               title="Abrir WhatsApp"
             >
               <WhatsappLogo size={15} weight="fill" className="text-green-500" />
@@ -165,7 +166,7 @@ export default function PatientDetailPage() {
         {patient.email && (
           <a
             href={`mailto:${patient.email}`}
-            className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+            className="flex items-center gap-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:bg-gray-50 transition"
           >
             <Envelope size={15} className="text-[#0ea5b0]" />
             {patient.email}
