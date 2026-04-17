@@ -39,6 +39,8 @@ interface ClinicRow {
   trial_ends_at: string | null
   created_at: string
   asaas_subscription_id: string | null
+  patients_30d?: number
+  appointments_30d?: number
 }
 
 interface ClinicManageRow {
@@ -164,12 +166,42 @@ Deno.serve(async (req: Request) => {
 
   // ── GET /clinics ──────────────────────────────────────────────────────────
   if (req.method === 'GET' && pathname === '/clinics') {
-    const { data, error } = await client
-      .from('clinics')
-      .select('id, name, subscription_tier, subscription_status, payments_enabled, trial_ends_at, created_at, asaas_subscription_id')
-      .order('created_at', { ascending: false })
-    if (error) return err(error.message, 500)
-    return json(data ?? [])
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    const [clinicsResult, patientsResult, appointmentsResult] = await Promise.all([
+      client
+        .from('clinics')
+        .select('id, name, subscription_tier, subscription_status, payments_enabled, trial_ends_at, created_at, asaas_subscription_id')
+        .order('created_at', { ascending: false }),
+      client
+        .from('patients')
+        .select('clinic_id')
+        .gte('created_at', since30d),
+      client
+        .from('appointments')
+        .select('clinic_id')
+        .gte('starts_at', since30d),
+    ])
+
+    if (clinicsResult.error) return err(clinicsResult.error.message, 500)
+
+    // Aggregate counts by clinic_id
+    const patients30d: Record<string, number> = {}
+    for (const row of (patientsResult.data ?? [])) {
+      patients30d[row.clinic_id] = (patients30d[row.clinic_id] ?? 0) + 1
+    }
+    const appointments30d: Record<string, number> = {}
+    for (const row of (appointmentsResult.data ?? [])) {
+      appointments30d[row.clinic_id] = (appointments30d[row.clinic_id] ?? 0) + 1
+    }
+
+    const clinics = (clinicsResult.data ?? []).map((c: ClinicRow) => ({
+      ...c,
+      patients_30d:     patients30d[c.id] ?? 0,
+      appointments_30d: appointments30d[c.id] ?? 0,
+    }))
+
+    return json(clinics)
   }
 
   // ── PATCH /clinics/:id ────────────────────────────────────────────────────

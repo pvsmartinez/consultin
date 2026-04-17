@@ -12,8 +12,11 @@ import {
   Plus,
   CreditCard,
   CurrencyDollar,
+  List,
+  X,
 } from '@phosphor-icons/react'
 import { AppShell, SideNav, NavItem, Avatar, Button, TopBar, BottomTabBar, TabItem } from '@pvsmartinez/shared/ui'
+import { toast } from 'sonner'
 import ErrorBoundary from '../ErrorBoundary'
 import type { UserRole } from '../../types'
 import { USER_ROLE_LABELS } from '../../types'
@@ -21,6 +24,7 @@ import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useClinicNotifications } from '../../hooks/useClinicNotifications'
+import { isEmailVerificationPending, sendEmailVerificationLink } from '../../lib/emailVerification'
 
 const AppointmentModal = lazy(() => import('../appointments/AppointmentModal'))
 
@@ -36,7 +40,7 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { signOut, hasPermission, profile, role } = useAuthContext()
+  const { signOut, hasPermission, profile, role, session } = useAuthContext()
   const { data: clinic } = useClinic()
   const { hasRooms, hasStaff, hasWhatsApp, hasFinancial } = useClinicModules()
   const navigate = useNavigate()
@@ -47,8 +51,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const canSchedule = role === 'admin' || role === 'receptionist'
   const canSeeNotifications = role === 'admin' || role === 'receptionist'
   const notifBadge = canSeeNotifications ? unreadCount : 0
+  const emailVerificationPending = isEmailVerificationPending(session)
 
   const [newApptOpen, setNewApptOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sendingVerification, setSendingVerification] = useState(false)
+
+  async function handleResendVerification() {
+    if (!session?.user.email || sendingVerification) return
+    setSendingVerification(true)
+    try {
+      const { error } = await sendEmailVerificationLink(session.user.email)
+      if (error) throw error
+      toast.success('E-mail de validação reenviado.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao reenviar e-mail de validação.')
+    } finally {
+      setSendingVerification(false)
+    }
+  }
 
   // ── Build navigation ───────────────────────────────────────────────────────
   // Base: Agenda + Pacientes always visible
@@ -71,6 +92,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   // Top 4 visible items for bottom tab bar (mobile)
   const bottomItems = [...operationalItems, ...(settingsItem.show ? [settingsItem] : [])].slice(0, 4)
+  const mobileMenuItems = [...operationalItems, ...adminItems, ...(settingsItem.show ? [settingsItem] : [])]
+
+  function handleMobileNavigate(to: string) {
+    navigate(to)
+    setMobileMenuOpen(false)
+  }
 
   // ── Sidebar header ─────────────────────────────────────────────────────────
   const sideNavHeader = (
@@ -172,16 +199,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         }
         right={
-          canSchedule ? (
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus size={12} weight="bold" />}
-              onClick={() => setNewApptOpen(true)}
+          <div className="flex items-center gap-2">
+            {canSchedule && (
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus size={12} weight="bold" />}
+                onClick={() => setNewApptOpen(true)}
+              >
+                Nova
+              </Button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Abrir menu"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0]"
             >
-              Nova
-            </Button>
-          ) : undefined
+              <List size={18} />
+            </button>
+          </div>
         }
       />
 
@@ -218,9 +256,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </SideNav>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+          {emailVerificationPending && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:px-5 md:py-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Falta só validar seu e-mail</p>
+                  <p className="mt-1 text-sm text-amber-800">
+                    Você já pode usar o Consultin normalmente. Para confirmar que esse e-mail é seu,
+                    clique no link que enviamos para <strong>{session?.user.email}</strong>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={sendingVerification}
+                  className="inline-flex items-center justify-center rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-amber-300"
+                >
+                  {sendingVerification ? 'Reenviando...' : 'Reenviar e-mail'}
+                </button>
+              </div>
+            </div>
+          )}
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
@@ -239,6 +298,97 @@ export default function AppLayout({ children }: AppLayoutProps) {
           />
         ))}
       </BottomTabBar>
+
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[70] md:hidden">
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            className="absolute inset-0 bg-slate-950/35 backdrop-blur-[1px]"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          <div className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">Menu</p>
+                {clinic?.name && (
+                  <p className="mt-1 truncate text-xs text-gray-500">{clinic.name}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Fechar menu"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="space-y-1">
+                {mobileMenuItems.map(({ to, icon, label }) => (
+                  <button
+                    key={to}
+                    type="button"
+                    onClick={() => handleMobileNavigate(to)}
+                    className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm transition-colors ${
+                      location.pathname.startsWith(to)
+                        ? 'bg-teal-50 text-[#006970]'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {icon({ size: 20, weight: 'duotone' })}
+                    <span className="flex-1">{isProfessional && to === '/agenda' ? 'Minha Agenda' : label}</span>
+                    {to === '/whatsapp' && notifBadge > 0 && (
+                      <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        {notifBadge > 99 ? '99+' : notifBadge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-6 border-t border-gray-100 pt-4">
+                {profile && (
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNavigate('/minha-conta')}
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <Avatar src={profile.avatarUrl} name={profile.name} size={32} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-gray-900">{profile.name}</p>
+                      <p className="truncate text-xs text-gray-500">Minha conta</p>
+                    </div>
+                  </button>
+                )}
+
+                {role === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNavigate('/assinatura')}
+                    className="mt-1 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <CreditCard size={18} />
+                    <span>Meu plano</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="mt-1 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+                >
+                  <SignOut size={18} />
+                  <span>Sair</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {newApptOpen && (
         <Suspense fallback={null}>

@@ -16,9 +16,11 @@ import userEvent from '@testing-library/user-event'
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockClearRecoveryMode = vi.fn()
+const mockRefreshProfile = vi.fn().mockResolvedValue(undefined)
 vi.mock('../contexts/AuthContext', () => ({
   useAuthContext: () => ({
     clearRecoveryMode: mockClearRecoveryMode,
+    refreshProfile: mockRefreshProfile,
   }),
 }))
 
@@ -49,6 +51,7 @@ function renderPageWithHash(hash = '') {
 describe('NovaSenhaPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRefreshProfile.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -134,6 +137,7 @@ describe('NovaSenhaPage', () => {
       await waitFor(() => {
         expect(screen.getByText(/senha atualizada/i)).toBeInTheDocument()
       })
+      expect(mockRefreshProfile).toHaveBeenCalled()
       // clearRecoveryMode fires after 2500ms — wait for it with real timers
       await waitFor(() => {
         expect(mockClearRecoveryMode).toHaveBeenCalled()

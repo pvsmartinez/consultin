@@ -1,11 +1,11 @@
 /**
  * Edge Function: submit-clinic-signup
  *
- * Public endpoint (verify_jwt = false). Creates the clinic + invites the user
- * immediately — no approval step, no signup request table.
+ * Public endpoint (verify_jwt = false). Creates the clinic + auth user
+ * immediately — no approval step, no email gate before first access.
  *
  * POST /submit-clinic-signup
- *   body: { clinicName, responsibleName, email, cnpj?, phone?, message?, isSoloPractitioner? }
+ *   body: { clinicName, responsibleName, email, password, cnpj?, phone?, message?, isSoloPractitioner? }
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -15,8 +15,6 @@ const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const TELEGRAM_BOT_TOKEN        = Deno.env.get('TELEGRAM_BOT_TOKEN')!
 const TELEGRAM_PEDRO_CHAT_ID    = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID')!
-const SITE_URL                  = Deno.env.get('SITE_URL') ?? 'https://app.consultin.com.br'
-
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -42,6 +40,7 @@ serve(async (req: Request) => {
     clinicName: string
     responsibleName: string
     email: string
+    password: string
     cnpj?: string
     phone?: string
     message?: string
@@ -54,55 +53,38 @@ serve(async (req: Request) => {
     return json({ error: 'Invalid JSON' }, 400)
   }
 
-  const { clinicName, responsibleName, email } = body
-  if (!clinicName?.trim() || !responsibleName?.trim() || !email?.trim()) {
-    return json({ error: 'clinicName, responsibleName e email são obrigatórios' }, 400)
+  const { clinicName, responsibleName, email, password } = body
+  if (!clinicName?.trim() || !responsibleName?.trim() || !email?.trim() || !password?.trim()) {
+    return json({ error: 'clinicName, responsibleName, email e password são obrigatórios' }, 400)
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: 'E-mail inválido' }, 400)
   }
+  if (password.trim().length < 8) {
+    return json({ error: 'A senha deve ter pelo menos 8 caracteres.' }, 400)
+  }
 
   const cleanEmail = email.trim().toLowerCase()
+  const cleanPassword = password.trim()
 
-  // ─── 0. Guard + get userId: invite first, create clinic only if safe ───────
-  // Sending the invite BEFORE creating the clinic serves two purposes:
-  //   a) If the user already has an account and a clinic, we return 409 immediately
-  //      without creating orphaned data.
-  //   b) On double-submit, the second call fails here (invite already sent) and
-  //      never reaches clinic creation, avoiding duplicate clinics.
-  let userId: string
-  const { data: inviteResult, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    cleanEmail,
-    {
-      data: { name: responsibleName.trim() },
-      redirectTo: `${SITE_URL}/nova-senha`,
-    },
-  )
+  // ─── 0. Create auth user first to block duplicate clinics on double-submit ──
+  const { data: createdUserData, error: createUserError } = await admin.auth.admin.createUser({
+    email: cleanEmail,
+    password: cleanPassword,
+    email_confirm: true,
+    user_metadata: { name: responsibleName.trim() },
+  })
 
-  if (inviteError) {
-    // User already exists in auth.users — find their ID via listUsers.
-    // (supabase-js admin API has no getUserByEmail; listUsers is the standard approach.)
-    const { data: { users: allUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const found = allUsers?.find(u => u.email === cleanEmail) ?? null
-    if (!found) {
-      console.error('Invite error and user not found:', inviteError)
-      return json({ error: 'Erro ao criar acesso. Tente novamente.' }, 500)
-    }
-    // If the user already has a clinic profile, block the signup
-    const { data: existingProfile } = await admin
-      .from('user_profiles')
-      .select('id')
-      .eq('id', found.id)
-      .maybeSingle()
-    if (existingProfile) {
+  if (createUserError || !createdUserData.user) {
+    const duplicateEmail = /already|registered|exists|duplicate/i.test(createUserError?.message ?? '')
+    if (duplicateEmail) {
       return json({ error: 'Este e-mail já possui uma conta. Faça login para acessar.' }, 409)
     }
-    // User exists in auth but has no profile — link them to the new clinic
-    userId = found.id
-  } else {
-    if (!inviteResult?.user) return json({ error: 'Erro ao criar acesso.' }, 500)
-    userId = inviteResult.user.id
+    console.error('User creation error:', createUserError)
+    return json({ error: 'Erro ao criar acesso. Tente novamente.' }, 500)
   }
+
+  const userId = createdUserData.user.id
 
   // ─── 1. Create clinic ──────────────────────────────────────────────────────
   const { data: clinic, error: clinicError } = await admin
@@ -118,6 +100,11 @@ serve(async (req: Request) => {
 
   if (clinicError || !clinic) {
     console.error('Clinic creation error:', clinicError)
+    try {
+      await admin.auth.admin.deleteUser(userId)
+    } catch (rollbackError) {
+      console.error('User rollback failed after clinic error:', rollbackError)
+    }
     return json({ error: 'Erro ao criar clínica. Tente novamente.' }, 500)
   }
 
@@ -134,6 +121,16 @@ serve(async (req: Request) => {
 
   if (profileError) {
     console.error('Profile upsert error:', profileError)
+    try {
+      await admin.from('clinics').delete().eq('id', clinicId)
+    } catch (clinicRollbackError) {
+      console.error('Clinic rollback failed after profile error:', clinicRollbackError)
+    }
+    try {
+      await admin.auth.admin.deleteUser(userId)
+    } catch (userRollbackError) {
+      console.error('User rollback failed after profile error:', userRollbackError)
+    }
     return json({ error: 'Erro ao configurar perfil. Tente novamente.' }, 500)
   }
 

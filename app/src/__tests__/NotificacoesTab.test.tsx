@@ -3,9 +3,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { makeQueryClient, MOCK_ADMIN_PROFILE } from './testUtils'
 
-const mockEq = vi.fn(() => Promise.resolve({ error: null }))
-const mockUpdate = vi.fn(() => ({ eq: mockEq }))
-const mockFrom = vi.fn(() => ({ update: mockUpdate }))
+const { mockUpdate, mockFrom } = vi.hoisted(() => {
+  const mockEq = vi.fn(() => Promise.resolve({ error: null }))
+  const mockUpdate = vi.fn(() => ({ eq: mockEq }))
+  const mockFrom = vi.fn(() => ({ update: mockUpdate }))
+
+  return { mockUpdate, mockFrom }
+})
+
 vi.mock('../services/supabase', () => ({
   supabase: { from: mockFrom },
 }))

@@ -7,6 +7,7 @@ const LandingPage         = lazy(() => import('../pages-v1/LandingPage'))
 const LoginPage           = lazy(() => import('../pages-v1/LoginPage'))
 const CadastroClinicaPage = lazy(() => import('../pages-v1/CadastroClinicaPage'))
 const BemVindoPage        = lazy(() => import('../pages-v1/BemVindoPage'))
+const EmailVerificationPage = lazy(() => import('../pages-v1/EmailVerificationPage'))
 const ClinicPublicPage    = lazy(() => import('../pages-v1/ClinicPublicPage'))
 const PublicBookingPage   = lazy(() => import('../pages-v1/PublicBookingPage'))
 const PublicNotFoundPage  = lazy(() => import('../pages-v1/PublicNotFoundPage'))
@@ -20,6 +21,7 @@ export default function PublicRoutes() {
         <Route path="/login"             element={<LoginPage />} />
         <Route path="/cadastro-clinica"  element={<CadastroClinicaPage />} />
         <Route path="/bem-vindo"         element={<BemVindoPage />} />
+        <Route path="/email-verificado"  element={<EmailVerificationPage />} />
         <Route path="/p/:slug/agendar"   element={<PublicBookingPage />} />
         <Route path="/p/:slug"           element={<ClinicPublicPage />} />
         <Route path="*"                  element={<PublicNotFoundPage />} />

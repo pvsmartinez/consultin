@@ -19,10 +19,17 @@ vi.mock('../hooks/useClinic', () => ({
   useClinic: vi.fn(),
 }))
 
-const mockFetchActiveSessions = vi.fn()
-const mockFetchMessages = vi.fn()
-const mockSubscribeToSessions = vi.fn(() => () => {})
-const mockSubscribeToSession  = vi.fn(() => () => {})
+const {
+  mockFetchActiveSessions,
+  mockFetchMessages,
+  mockSubscribeToSessions,
+  mockSubscribeToSession,
+} = vi.hoisted(() => ({
+  mockFetchActiveSessions: vi.fn(),
+  mockFetchMessages: vi.fn(),
+  mockSubscribeToSessions: vi.fn(() => () => {}),
+  mockSubscribeToSession: vi.fn(() => () => {}),
+}))
 
 vi.mock('../services/whatsapp', () => ({
   fetchActiveSessions:  mockFetchActiveSessions,

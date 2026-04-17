@@ -11,6 +11,7 @@ import OnboardingPage   from './pages-v1/OnboardingPage'   // !profile gate
 import AppLayout        from './components/layout/AppLayout'
 import PatientPortalLayout from './components/layout/PatientPortalLayout'
 import ErrorBoundary    from './components/ErrorBoundary'
+import { EMAIL_VERIFICATION_PATH } from './lib/emailVerification'
 
 // ─── Lazy route bundles ───────────────────────────────────────────────────────
 // Each import() becomes a separate JS chunk — only fetched when that "world"
@@ -25,6 +26,7 @@ function App() {
   const { session, profile, role, isSuperAdmin, loading, recoveryMode } = useAuthContext()
   const { data: clinic } = useClinic()
   const isPublicProfileRoute = location.pathname.startsWith('/p/')
+  const isStandalonePublicRoute = isPublicProfileRoute || location.pathname === EMAIL_VERIFICATION_PATH
 
   // ── Auth loading ────────────────────────────────────────────────────────────
   if (loading) return <FullScreenLoader />
@@ -33,7 +35,7 @@ function App() {
   // Must intercept before route rendering so the hash token is consumed first.
   if (recoveryMode) return <NovaSenhaPage />
 
-  if (isPublicProfileRoute) {
+  if (isStandalonePublicRoute) {
     return (
       <ErrorBoundary>
         <Suspense fallback={<FullScreenLoader />}>

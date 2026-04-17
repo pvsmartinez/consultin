@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Stethoscope, Buildings, CalendarBlank, CurrencyDollar,
   Users, WhatsappLogo, CheckCircle, Heartbeat,
-  ArrowRight, UserCircle,
+  ArrowRight, UserCircle, Eye, EyeSlash,
 } from '@phosphor-icons/react'
 import { z } from 'zod'
 import { useForm, Controller } from 'react-hook-form'
@@ -13,6 +13,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
 import { gtagEvent } from '../lib/gtag'
+import { sendEmailVerificationLink } from '../lib/emailVerification'
 import { Seo } from '../components/seo/Seo'
 
 const schema = z.object({
@@ -20,8 +21,13 @@ const schema = z.object({
   cnpj:            z.string().optional(),
   phone:           z.string().optional(),
   email:           z.string().email('E-mail inválido'),
+  password:        z.string().min(8, 'A senha deve ter pelo menos 8 caracteres'),
+  confirmPassword: z.string().min(1, 'Confirme sua senha'),
   responsibleName: z.string().optional(),
   message:         z.string().optional(),
+}).refine(values => values.password === values.confirmPassword, {
+  message: 'As senhas não coincidem',
+  path: ['confirmPassword'],
 })
 type FormValues = z.infer<typeof schema>
 
@@ -169,6 +175,7 @@ export default function CadastroClinicaPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [emailAlreadyExists, setEmailAlreadyExists] = useState(false)
   const [isSolo, setIsSolo] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -184,6 +191,7 @@ export default function CadastroClinicaPage() {
           clinicName:          values.clinicName,
           responsibleName:     isSolo ? values.clinicName : (values.responsibleName || values.clinicName),
           email:               values.email,
+          password:            values.password,
           cnpj:                values.cnpj    || undefined,
           phone:               values.phone   || undefined,
           message:             values.message || undefined,
@@ -202,9 +210,22 @@ export default function CadastroClinicaPage() {
         throw new Error(msg)
       }
 
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email:    values.email.trim().toLowerCase(),
+        password: values.password,
+      })
+      if (signInError) {
+        throw new Error('Conta criada, mas não foi possível entrar automaticamente. Faça login com seu e-mail e senha.')
+      }
+
+      const { error: verificationError } = await sendEmailVerificationLink(values.email.trim().toLowerCase())
+      if (verificationError) {
+        console.error('Email verification send failed:', verificationError)
+      }
+
       trackPublicEvent('clinic_signup_submit')
       gtagEvent('sign_up', { method: 'clinic_form' })
-      navigate('/bem-vindo')
+      navigate('/', { replace: true })
     } catch (e: unknown) {
       setServerError((e as Error).message ?? 'Erro ao enviar solicitação. Tente novamente.')
     }
@@ -240,7 +261,7 @@ export default function CadastroClinicaPage() {
 
             <h1 className="text-xl font-bold text-gray-900 mb-1">Criar sua conta</h1>
             <p className="text-sm text-gray-500 mb-6">
-              Preencha os dados abaixo e acesse na hora — sem esperar aprovação.
+              Preencha os dados, escolha sua senha e acesse na hora.
             </p>
 
             {/* WhatsApp shortcut */}
@@ -310,8 +331,39 @@ export default function CadastroClinicaPage() {
                 <input
                   {...register('email')}
                   type="email"
+                  autoComplete="email"
                   placeholder="contato@suaclinica.com"
                   className={inputClass(!!errors.email)}
+                />
+              </Field>
+
+              <Field label="Senha *" error={errors.password?.message}>
+                <div className="relative">
+                  <input
+                    {...register('password')}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 8 caracteres"
+                    className={`${inputClass(!!errors.password)} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(current => !current)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </Field>
+
+              <Field label="Confirmar senha *" error={errors.confirmPassword?.message}>
+                <input
+                  {...register('confirmPassword')}
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Repita sua senha"
+                  className={inputClass(!!errors.confirmPassword)}
                 />
               </Field>
 
@@ -369,8 +421,12 @@ export default function CadastroClinicaPage() {
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
-                {isSubmitting ? 'Criando sua conta...' : 'Criar conta grátis'}
+                {isSubmitting ? 'Criando sua conta...' : 'Criar conta e entrar'}
               </button>
+
+              <p className="text-xs text-center text-gray-500 leading-relaxed">
+                Você entra agora e pode validar seu e-mail depois, sem travar o primeiro acesso.
+              </p>
             </form>
 
             <p className="mt-4 text-center text-sm text-gray-500">
