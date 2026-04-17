@@ -120,7 +120,7 @@ const scenarios = [
   {
     name: 'rich_membership_second_pass_with_match',
     message: 'Trabalho na Clínica Sorriso, sou Ana Lima, recepcionista, ana@clinica.com',
-    toolResult: 'Clinics similar to "Clínica Sorriso":\n  1. "Clínica Sorriso" (id:clinic-1)\n\nAsk if one is theirs. YES → join code flow. NO → create new clinic.',
+    toolResult: 'Clinics similar to "Clínica Sorriso":\n  1. "Clínica Sorriso" (id:clinic-1)\n\nIf one of these is the user\'s clinic and name+email+role are already captured, continue FLOW D and use request_clinic_membership with the matching clinicId. Do NOT ask for a join code unless the user explicitly says they have one.',
   },
   {
     name: 'confused_user',

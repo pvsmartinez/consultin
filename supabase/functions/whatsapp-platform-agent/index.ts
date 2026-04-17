@@ -790,6 +790,8 @@ async function runAgent(
 
   // ── Tool loops (only on first pass) ──────────────────────────────────────
   if (!toolResult) {
+    const onboardingIntent = structuredOnboardingContext?.match(/intent=([a-z_]+)/)?.[1] ?? 'unknown'
+
     function reRun(result: string): Promise<PlatformAction> {
       return runAgent(
         user, linkedClinics, adminClinic, botConfig,
@@ -806,8 +808,14 @@ async function runAgent(
       const text = results.length > 0
         ? `Clinics similar to "${action.clinicName}":\n` +
           results.map((c, i) => `  ${i + 1}. "${c.name}" (id:${c.id})`).join('\n') +
-          `\n\nAsk if one is theirs. YES → join code flow. NO → create new clinic.`
-        : `No clinics found similar to "${action.clinicName}". Tell user and offer to create a new clinic.`
+          (onboardingIntent === 'request_membership'
+            ? `\n\nIf one of these is the user's clinic and name+email+role are already captured, continue FLOW D and use request_clinic_membership with the matching clinicId. Do NOT ask for a join code unless the user explicitly says they have one.`
+            : `\n\nAsk if one is theirs. YES → join code flow or continue with the matching onboarding flow. NO → create new clinic.`)
+        : onboardingIntent === 'create_clinic'
+          ? `No clinics found similar to "${action.clinicName}". If clinicName + personName + email are already captured, continue FLOW A and use create_clinic_now now. Otherwise ask only for the missing fields.`
+          : onboardingIntent === 'request_membership'
+            ? `No clinics found similar to "${action.clinicName}". Ask for a more precise clinic name or another way to identify the clinic. Do NOT ask for a join code here.`
+            : `No clinics found similar to "${action.clinicName}". Tell user and offer to create a new clinic.`
       return reRun(text)
     }
 
