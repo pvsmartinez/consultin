@@ -95,7 +95,7 @@ describe('useReportData', () => {
 
     await act(async () => { await new Promise(r => setTimeout(r, 20)) })
 
-    expect(result.current.data.length).toBe(2)
+    expect(result.current.data!.length).toBe(2)
   })
 })
 

@@ -64,6 +64,20 @@ serve(async (req: Request) => {
 
   const cleanEmail = email.trim().toLowerCase()
 
+  // ─── 0. Guard: reject if email already has an account ─────────────────────
+  const { data: { users: existingUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  const existingAuthUser = existingUsers?.find(u => u.email === cleanEmail)
+  if (existingAuthUser) {
+    const { data: existingProfile } = await admin
+      .from('user_profiles')
+      .select('id, clinic_id')
+      .eq('id', existingAuthUser.id)
+      .maybeSingle()
+    if (existingProfile) {
+      return json({ error: 'Este e-mail já possui uma conta. Faça login para acessar.' }, 409)
+    }
+  }
+
   // ─── 1. Create clinic ──────────────────────────────────────────────────────
   const { data: clinic, error: clinicError } = await admin
     .from('clinics')
@@ -94,14 +108,12 @@ serve(async (req: Request) => {
   )
 
   if (inviteError) {
-    // User already exists — link them to the new clinic
-    const { data: { users: allUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const existing = allUsers?.find(u => u.email === cleanEmail)
-    if (!existing) {
+    // Fallback: use the auth user found in the guard step above
+    if (!existingAuthUser) {
       console.error('Invite error:', inviteError)
       return json({ error: 'Erro ao criar acesso. Tente novamente.' }, 500)
     }
-    userId = existing.id
+    userId = existingAuthUser.id
   } else {
     if (!inviteResult?.user) return json({ error: 'Erro ao criar acesso.' }, 500)
     userId = inviteResult.user.id

@@ -7,7 +7,7 @@ const mockEq = vi.fn(() => Promise.resolve({ error: null }))
 const mockUpdate = vi.fn(() => ({ eq: mockEq }))
 const mockFrom = vi.fn(() => ({ update: mockUpdate }))
 vi.mock('../services/supabase', () => ({
-  supabase: { from: (...args: unknown[]) => mockFrom(...args) },
+  supabase: { from: mockFrom },
 }))
 vi.mock('../contexts/AuthContext', () => ({
   useAuthContext: () => ({

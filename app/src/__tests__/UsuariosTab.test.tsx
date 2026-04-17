@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { makeQueryClient, MOCK_ADMIN_PROFILE, MOCK_RECEPTIONIST_PROFILE } from './testUtils'
+import { makeQueryClient, MOCK_ADMIN_PROFILE } from './testUtils'
 import type { ClinicMember, ClinicInvite } from '../hooks/useClinic'
 
 const MEMBERS: ClinicMember[] = [
-  { id: 'm1', name: 'Dr. Admin', email: 'admin@test.com', roles: ['admin'], permissionOverrides: {} },
-  { id: 'm2', name: 'Dr. Prof',  email: 'prof@test.com',  roles: ['professional'], permissionOverrides: {} },
+  { id: 'm1', name: 'Dr. Admin', roles: ['admin'], permissionOverrides: {} },
+  { id: 'm2', name: 'Dr. Prof',  roles: ['professional'], permissionOverrides: {} },
 ]
 const INVITES: ClinicInvite[] = [
-  { id: 'inv1', email: 'pending@test.com', role: 'receptionist', status: 'pending', createdAt: new Date().toISOString() },
+  { id: 'inv1', email: 'pending@test.com', name: null, role: 'receptionist', createdAt: new Date().toISOString() },
 ]
 
 vi.mock('../hooks/useClinic', () => ({

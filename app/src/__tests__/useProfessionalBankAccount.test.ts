@@ -8,15 +8,13 @@
  *  - deactivate() sets active=false
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { makeQueryClient } from './testUtils'
 import {
   useProfessionalBankAccount,
   useClinicBankAccounts,
-  useSaveProfessionalBankAccount,
-  useDeactivateProfessionalBankAccount,
 } from '../hooks/useProfessionalBankAccount'
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { makeQueryClient, MOCK_ADMIN_PROFILE } from './testUtils'
+import { makeQueryClient } from './testUtils'
 import type { Clinic } from '../types'
 
 const mockUpdate = { mutateAsync: vi.fn() }

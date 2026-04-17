@@ -167,6 +167,7 @@ function LeftPanel() {
 export default function CadastroClinicaPage() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [emailAlreadyExists, setEmailAlreadyExists] = useState(false)
   const [isSolo, setIsSolo] = useState(false)
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -175,6 +176,7 @@ export default function CadastroClinicaPage() {
 
   async function onSubmit(values: FormValues) {
     setServerError(null)
+    setEmailAlreadyExists(false)
     try {
       // Submit via Edge Function (service role insert + Telegram notification)
       const { error } = await supabase.functions.invoke('submit-clinic-signup', {
@@ -189,7 +191,16 @@ export default function CadastroClinicaPage() {
         },
       })
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        // Parse body — supabase.functions returns raw body text as error.message
+        let msg: string = error.message ?? ''
+        try { msg = (JSON.parse(msg) as { error?: string }).error ?? msg } catch { /* not JSON */ }
+        if (msg.includes('já possui uma conta')) {
+          setEmailAlreadyExists(true)
+          return
+        }
+        throw new Error(msg)
+      }
 
       trackPublicEvent('clinic_signup_submit')
       gtagEvent('sign_up', { method: 'clinic_form' })
@@ -337,6 +348,16 @@ export default function CadastroClinicaPage() {
                   className={`${inputClass(false)} resize-none`}
                 />
               </Field>
+
+              {emailAlreadyExists && (
+                <div className="text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <p className="text-amber-800 font-medium">Este e-mail já possui uma conta.</p>
+                  <p className="text-amber-700 mt-0.5">
+                    <Link to="/login" className="underline font-medium">Faça login</Link>
+                    {' '}para acessar sua clínica.
+                  </p>
+                </div>
+              )}
 
               {serverError && (
                 <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">

@@ -118,7 +118,7 @@ describe('RelatoriosPage', () => {
     vi.mocked(useReportData).mockReturnValueOnce({
       data: [],
       isLoading: true,
-    } as ReturnType<typeof useReportData>)
+    } as unknown as ReturnType<typeof useReportData>)
     renderPage()
     expect(screen.getByText(/carregando/i)).toBeInTheDocument()
   })
@@ -127,7 +127,7 @@ describe('RelatoriosPage', () => {
     vi.mocked(useReportData).mockReturnValue({
       data: [MOCK_ROW],
       isLoading: false,
-    } as ReturnType<typeof useReportData>)
+    } as unknown as ReturnType<typeof useReportData>)
     renderPage()
     // Page renders KPI section (not a table of individual rows)
     expect(screen.getByText(/consultas concluídas/i)).toBeInTheDocument()
@@ -137,7 +137,7 @@ describe('RelatoriosPage', () => {
     vi.mocked(useReportData).mockReturnValueOnce({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useReportData>)
+    } as unknown as ReturnType<typeof useReportData>)
     renderPage()
     expect(screen.getByText('Dr. Silva')).toBeInTheDocument()
   })
@@ -146,7 +146,7 @@ describe('RelatoriosPage', () => {
     vi.mocked(useReportData).mockReturnValueOnce({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useReportData>)
+    } as unknown as ReturnType<typeof useReportData>)
     renderPage()
     expect(screen.queryAllByText(/pdf|csv|exportar/i).length).toBeGreaterThan(0)
   })
@@ -155,7 +155,7 @@ describe('RelatoriosPage', () => {
     vi.mocked(useReportData).mockReturnValueOnce({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useReportData>)
+    } as unknown as ReturnType<typeof useReportData>)
     renderPage()
     // Table with zero rows or a "sem dados" message
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument()

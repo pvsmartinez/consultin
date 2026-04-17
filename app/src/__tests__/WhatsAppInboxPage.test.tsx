@@ -25,13 +25,13 @@ const mockSubscribeToSessions = vi.fn(() => () => {})
 const mockSubscribeToSession  = vi.fn(() => () => {})
 
 vi.mock('../services/whatsapp', () => ({
-  fetchActiveSessions:  (...args: unknown[]) => mockFetchActiveSessions(...args),
-  fetchMessages:        (...args: unknown[]) => mockFetchMessages(...args),
+  fetchActiveSessions:  mockFetchActiveSessions,
+  fetchMessages:        mockFetchMessages,
   resolveSession:       vi.fn(),
   escalateSession:      vi.fn(),
   sendAttendantMessage: vi.fn(),
-  subscribeToSession:   (...args: unknown[]) => mockSubscribeToSession(...args),
-  subscribeToSessions:  (...args: unknown[]) => mockSubscribeToSessions(...args),
+  subscribeToSession:   mockSubscribeToSession,
+  subscribeToSessions:  mockSubscribeToSessions,
 }))
 
 vi.mock('../lib/settingsNavigation', () => ({
@@ -117,7 +117,6 @@ describe('WhatsAppInboxPage', () => {
 
     await waitFor(() => {
       // Empty state or "sem conversas" / "nenhuma conversa"
-      const emptyMsg = screen.queryByText(/sem conversa|nenhuma|empty|inbox vazio/i)
       // If no sessions and no selected session, expect no message panel
       expect(screen.queryByText('João Paciente')).not.toBeInTheDocument()
       // This checks the page rendered without crashing with empty state

@@ -17,7 +17,6 @@ import { useClinic, useClinicMembers } from '../hooks/useClinic'
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockFrom = vi.fn()
-const mockToast = { success: vi.fn(), error: vi.fn() }
 
 vi.mock('../services/supabase', () => ({
   supabase: {

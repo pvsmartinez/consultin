@@ -10,7 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import React from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { makeQueryClient } from './testUtils'
 import { useClinicModules } from '../hooks/useClinicModules'
 
@@ -56,7 +56,7 @@ describe('useClinicModules', () => {
   it('returns all flags as false with empty modulesEnabled', () => {
     vi.mocked(useClinic).mockReturnValue({
       data: { id: 'clinic-1', modulesEnabled: [] },
-    } as ReturnType<typeof useClinic>)
+    } as unknown as ReturnType<typeof useClinic>)
 
     const { result } = renderHook(() => useClinicModules(), { wrapper: makeWrapper() })
 

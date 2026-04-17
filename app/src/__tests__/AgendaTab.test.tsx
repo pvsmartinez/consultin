@@ -69,7 +69,7 @@ describe('AgendaTab', () => {
   })
 
   it('disables save button while saving', async () => {
-    let resolve!: () => void
+    let resolve!: (value?: unknown) => void
     mockUpdate.mutateAsync.mockReturnValue(new Promise(r => { resolve = r }))
     setup()
     const saveBtn = screen.getByRole('button', { name: /salvar/i })

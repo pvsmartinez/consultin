@@ -49,7 +49,7 @@ describe('AssinaturaPage', () => {
   })
 
   it('renders nothing when clinic resolves to null', () => {
-    vi.mocked(useClinic).mockReturnValueOnce({ data: null, isLoading: false } as ReturnType<typeof useClinic>)
+    vi.mocked(useClinic).mockReturnValueOnce({ data: null, isLoading: false } as unknown as ReturnType<typeof useClinic>)
     const { container } = renderPage()
     expect(container.firstChild).toBeNull()
   })

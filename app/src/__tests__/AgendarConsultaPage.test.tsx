@@ -127,8 +127,6 @@ describe('AgendarConsultaPage', () => {
 
     await waitFor(() => {
       // After selecting a professional, some date input or calendar should appear
-      const dateInput = document.querySelector('input[type="date"]') ||
-                        document.querySelector('input[type="month"]')
       // If no dedicated date input, just check the page rendered without crashing
       expect(document.body).toBeInTheDocument()
     })
@@ -137,7 +135,6 @@ describe('AgendarConsultaPage', () => {
   it('shows a back link to the agenda', () => {
     renderPage()
     // The page should have some back navigation (link or button with voltar)
-    const backlink = screen.queryByRole('link') || screen.queryByText(/voltar/i)
     // Not all pages have an explicit back link; render success is sufficient
     expect(document.body).toBeInTheDocument()
   })
