@@ -94,9 +94,9 @@ export default function PatientDetailPage() {
   )
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl w-full">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/pacientes')}
@@ -113,7 +113,7 @@ export default function PatientDetailPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setScheduling(true)}
             className="flex items-center gap-2 text-sm text-white px-3 py-1.5 rounded-xl transition-all active:scale-[0.98]"

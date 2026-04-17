@@ -110,7 +110,7 @@ export default function ProfessionalModal({ open, onClose, professional }: Props
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] z-40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#fcfdfd] rounded-[28px] shadow-xl w-full max-w-lg focus:outline-none max-h-[90dvh] overflow-y-auto border border-white/60">
+        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-[#fcfdfd] rounded-[28px] shadow-xl w-[calc(100%-2rem)] max-w-lg focus:outline-none max-h-[90dvh] overflow-y-auto border border-white/60">
           <div className="px-6 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
             <div className="flex items-start justify-between gap-4">
               <div>

@@ -27,6 +27,7 @@ export default function WhatsAppInboxPage() {
   const [messages,        setMessages]        = useState<WhatsAppMessage[]>([])
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [sidebarOpen,     setSidebarOpen]     = useState(true)
 
   const selectedSession = sessions.find((s) => s.id === selectedId) ?? null
 
@@ -97,13 +98,21 @@ export default function WhatsAppInboxPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] bg-white rounded-2xl border border-gray-200 overflow-hidden">
       {/* Session list */}
-      <aside className="w-72 flex-shrink-0 border-r border-gray-100 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h1 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <WhatsappLogo size={16} weight="fill" className="text-green-500" />
-            Caixa de Mensagens
-          </h1>
-          <p className="text-xs text-gray-400 mt-0.5">{sessions.length} conversas abertas</p>
+      <aside className={`${sidebarOpen ? 'flex' : 'hidden'} sm:flex w-full sm:w-72 flex-shrink-0 border-r border-gray-100 flex-col absolute sm:relative inset-0 sm:inset-auto z-10 bg-white rounded-2xl sm:rounded-none`}>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h1 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <WhatsappLogo size={16} weight="fill" className="text-green-500" />
+              Caixa de Mensagens
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">{sessions.length} conversas abertas</p>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="sm:hidden p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
+          >
+            ✕
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -121,7 +130,7 @@ export default function WhatsAppInboxPage() {
               key={s.id}
               session={s}
               active={s.id === selectedId}
-              onClick={() => setSelectedId(s.id)}
+              onClick={() => { setSelectedId(s.id); setSidebarOpen(false) }}
             />
           ))}
         </div>
@@ -134,6 +143,7 @@ export default function WhatsAppInboxPage() {
           messages={messages}
           loading={loadingMessages}
           clinicId={clinic.id}
+          onBack={() => setSidebarOpen(true)}
           onResolve={async () => {
             try {
               await resolveSession(selectedSession.id)
@@ -157,8 +167,14 @@ export default function WhatsAppInboxPage() {
           }}
         />
       ) : (
-        <div className="flex-1 flex items-center justify-center text-gray-300 text-sm">
-          Selecione uma conversa
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-gray-300 text-sm">
+          <span>Selecione uma conversa</span>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="sm:hidden text-xs text-[#006970] border border-teal-200 rounded-lg px-3 py-1.5"
+          >
+            Ver conversas
+          </button>
         </div>
       )}
     </div>
@@ -211,6 +227,7 @@ function ChatPanel({
   messages,
   loading,
   clinicId,
+  onBack,
   onResolve,
   onEscalate,
 }: {
@@ -218,6 +235,7 @@ function ChatPanel({
   messages:   WhatsAppMessage[]
   loading:    boolean
   clinicId:   string
+  onBack:     () => void
   onResolve:  () => Promise<void>
   onEscalate: () => Promise<void>
 }) {
@@ -259,16 +277,22 @@ function ChatPanel({
   return (
     <div className="flex-1 flex flex-col min-w-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+      <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-gray-100 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            onClick={onBack}
+            className="sm:hidden p-1.5 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0"
+          >
+            ‹
+          </button>
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
             <User size={14} className="text-gray-400" />
           </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-800">{displayName}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-800 truncate">{displayName}</p>
             <p className="text-xs text-gray-400">{formatPhone(session.waPhone)}</p>
           </div>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 hidden sm:inline ${
             session.status === 'human'
               ? 'bg-amber-100 text-amber-700'
               : 'bg-teal-100 text-teal-700'
@@ -277,7 +301,7 @@ function ChatPanel({
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {session.status !== 'human' && (
             <button
               onClick={() => { setSending('escalate'); onEscalate().finally(() => setSending('')) }}

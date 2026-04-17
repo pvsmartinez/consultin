@@ -99,85 +99,87 @@ export default function FinanceiroPage() {
               ) : data.length === 0 ? (
                 <p className="text-center text-gray-400 text-sm py-12">Nenhuma consulta neste mês.</p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Paciente</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Profissional</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Pago</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Forma</th>
-                      <th className="px-4 py-3" />
-                      {clinic?.paymentsEnabled && (
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-indigo-500 uppercase tracking-wide">Asaas</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {data.map(row => (
-                      <tr key={row.id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                          {format(parseISO(row.startsAt), 'dd/MM/yyyy HH:mm')}
-                        </td>
-                        <td className="px-4 py-3 text-gray-800 font-medium">
-                          {row.patient?.name ?? '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {row.professional?.name ?? '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={APPOINTMENT_STATUS_VARIANTS[row.status]}>
-                            {APPOINTMENT_STATUS_LABELS[row.status]}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-700">
-                          {formatBRL(row.chargeAmountCents)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {row.paidAmountCents != null ? (
-                            <span className="text-green-600 font-medium">{formatBRL(row.paidAmountCents)}</span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">
-                          {row.paymentMethod
-                            ? PAYMENT_METHOD_LABELS[row.paymentMethod as AppointmentPaymentMethod] ?? row.paymentMethod
-                            : <span className="text-gray-300">—</span>
-                          }
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {row.paidAmountCents == null ? (
-                            <button
-                              onClick={() => setRegisteringRow({
-                                id: row.id,
-                                patientName: row.patient?.name ?? 'Paciente',
-                                chargeAmountCents: row.chargeAmountCents,
-                              })}
-                              className="flex items-center gap-1 text-xs text-[#006970] hover:underline whitespace-nowrap"
-                            >
-                              <CurrencyCircleDollar size={14} />
-                              Registrar
-                            </button>
-                          ) : null}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[600px]">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Paciente</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Profissional</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Status</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Pago</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Forma</th>
+                        <th className="px-4 py-3" />
                         {clinic?.paymentsEnabled && (
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => setChargingAppointment(row)}
-                              className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 whitespace-nowrap border border-indigo-200 rounded-lg px-2 py-1 hover:bg-indigo-50 transition-colors"
-                            >
-                              <CurrencyCircleDollar size={13} />
-                              Cobrar
-                            </button>
-                          </td>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-indigo-500 uppercase tracking-wide hidden lg:table-cell">Asaas</th>
                         )}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {data.map(row => (
+                        <tr key={row.id} className="hover:bg-gray-50 transition">
+                          <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                            {format(parseISO(row.startsAt), 'dd/MM HH:mm')}
+                          </td>
+                          <td className="px-4 py-3 text-gray-800 font-medium">
+                            {row.patient?.name ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
+                            {row.professional?.name ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            <Badge variant={APPOINTMENT_STATUS_VARIANTS[row.status]}>
+                              {APPOINTMENT_STATUS_LABELS[row.status]}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-700">
+                            {formatBRL(row.chargeAmountCents)}
+                          </td>
+                          <td className="px-4 py-3 text-right hidden sm:table-cell">
+                            {row.paidAmountCents != null ? (
+                              <span className="text-green-600 font-medium">{formatBRL(row.paidAmountCents)}</span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 hidden lg:table-cell">
+                            {row.paymentMethod
+                              ? PAYMENT_METHOD_LABELS[row.paymentMethod as AppointmentPaymentMethod] ?? row.paymentMethod
+                              : <span className="text-gray-300">—</span>
+                            }
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {row.paidAmountCents == null ? (
+                              <button
+                                onClick={() => setRegisteringRow({
+                                  id: row.id,
+                                  patientName: row.patient?.name ?? 'Paciente',
+                                  chargeAmountCents: row.chargeAmountCents,
+                                })}
+                                className="flex items-center gap-1 text-xs text-[#006970] hover:underline whitespace-nowrap"
+                              >
+                                <CurrencyCircleDollar size={14} />
+                                Registrar
+                              </button>
+                            ) : null}
+                          </td>
+                          {clinic?.paymentsEnabled && (
+                            <td className="px-4 py-3 hidden lg:table-cell">
+                              <button
+                                onClick={() => setChargingAppointment(row)}
+                                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 whitespace-nowrap border border-indigo-200 rounded-lg px-2 py-1 hover:bg-indigo-50 transition-colors"
+                              >
+                                <CurrencyCircleDollar size={13} />
+                                Cobrar
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 

@@ -581,10 +581,10 @@ export default function AppointmentModal({
                 {!isEditing && <p className="text-xs text-gray-400 mt-0.5">Selecionar preenche automaticamente duração e valor.</p>}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Input label="Data *" type="date" error={errors.date?.message} {...register('date')} />
               <Input label="Horário *" type="time" error={errors.startTime?.message} {...register('startTime')} />
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duração</label>
                 <select
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"

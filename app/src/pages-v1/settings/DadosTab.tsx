@@ -71,15 +71,15 @@ function DadosTabForm({ clinic }: { clinic: Clinic }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input label="Nome da clínica *" error={errors.name?.message} {...register('name')} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input label="CNPJ" placeholder="00.000.000/0001-00" {...register('cnpj')} />
         <Input label="Telefone" {...register('phone')} />
       </div>
       <Input label="E-mail" type="email" error={errors.email?.message} {...register('email')} />
       <Input label="Endereço" {...register('address')} />
       <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2"><Input label="Cidade" {...register('city')} /></div>
-        <Input label="UF" maxLength={2} {...register('state')} />
+        <div className="col-span-3 sm:col-span-2"><Input label="Cidade" {...register('city')} /></div>
+        <div className="col-span-3 sm:col-span-1"><Input label="UF" maxLength={2} {...register('state')} /></div>
       </div>
 
       {/* Patient self-registration */}

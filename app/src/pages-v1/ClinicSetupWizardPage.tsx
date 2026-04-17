@@ -234,17 +234,19 @@ function StepDados({ clinic, onNext }: { clinic: Clinic; onNext: () => void }) {
       </div>
 
       <Input label="Nome da clínica *" error={errors.name?.message} {...register('name')} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input label="CNPJ" placeholder="00.000.000/0001-00" {...register('cnpj')} />
         <Input label="Telefone" placeholder="(11) 3000-0000" {...register('phone')} />
       </div>
       <Input label="E-mail" type="email" error={errors.email?.message} {...register('email')} />
       <Input label="Endereço" placeholder="Rua, número, bairro" {...register('address')} />
       <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-2">
+        <div className="col-span-3 sm:col-span-2">
           <Input label="Cidade" {...register('city')} />
         </div>
-        <Input label="UF" maxLength={2} placeholder="SP" {...register('state')} />
+        <div className="col-span-3 sm:col-span-1">
+          <Input label="UF" maxLength={2} placeholder="SP" {...register('state')} />
+        </div>
       </div>
 
       <WizardNavBar

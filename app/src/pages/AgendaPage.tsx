@@ -583,7 +583,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           {/* Module extras */}
           <div className="mt-4 w-full max-w-lg">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Extras disponíveis</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([
                 { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff,    tab: 'usuarios'  as SettingsTab },
                 { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms,    tab: 'salas'     as SettingsTab },

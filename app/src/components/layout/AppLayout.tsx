@@ -220,7 +220,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
 
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 md:p-6">
           <ErrorBoundary>
             {children}
           </ErrorBoundary>

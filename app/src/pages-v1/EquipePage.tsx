@@ -143,22 +143,24 @@ function ProfissionaisTab() {
       {showInviteForm && (
         <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
           <p className="text-sm font-medium text-[#006970] mb-3">Convidar para o sistema</p>
-          <form onSubmit={handleSendInvite} className="flex flex-wrap gap-2 items-end">
-            <div className="flex-1 min-w-[180px]">
-              <label className="block text-xs text-gray-500 mb-1">E-mail *</label>
-              <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                placeholder="profissional@clinica.com"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
-            </div>
-            <div className="flex-1 min-w-[140px]">
-              <label className="block text-xs text-gray-500 mb-1">Nome (opcional)</label>
-              <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
-                placeholder="Dr. João Silva"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
+          <form onSubmit={handleSendInvite} className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">E-mail *</label>
+                <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="profissional@clinica.com"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Nome (opcional)</label>
+                <input type="text" value={inviteName} onChange={e => setInviteName(e.target.value)}
+                  placeholder="Dr. João Silva"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]" />
+              </div>
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Funções</label>
-              <div className="flex gap-4 items-center h-[38px]">
+              <div className="flex flex-wrap gap-4 items-center py-1">
                 {(['professional', 'receptionist', 'admin'] as const).map(r => (
                   <label key={r} className="flex items-center gap-1.5 cursor-pointer select-none">
                     <input type="checkbox" checked={inviteRoles.includes(r)} onChange={() => toggleInviteRole(r)}
@@ -170,13 +172,15 @@ function ProfissionaisTab() {
                 ))}
               </div>
             </div>
-            <button type="submit" disabled={createInvite.isPending}
-              className="px-4 py-2 text-white text-sm rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
-              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
-              {createInvite.isPending ? 'Enviando…' : 'Criar convite'}
-            </button>
-            <button type="button" onClick={() => setShowInviteForm(false)}
-              className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Cancelar</button>
+            <div className="flex gap-2">
+              <button type="submit" disabled={createInvite.isPending}
+                className="px-4 py-2 text-white text-sm rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+                {createInvite.isPending ? 'Enviando…' : 'Criar convite'}
+              </button>
+              <button type="button" onClick={() => setShowInviteForm(false)}
+                className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Cancelar</button>
+            </div>
           </form>
         </div>
       )}
@@ -191,20 +195,20 @@ function ProfissionaisTab() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 divide-y divide-gray-100">
           {professionals.map(p => (
-            <div key={p.id} className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-[#006970] font-semibold text-sm">
+            <div key={p.id} className="flex items-center gap-3 px-5 py-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center text-[#006970] font-semibold text-sm flex-shrink-0">
                   {p.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                  <p className="text-xs text-gray-400">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                  <p className="text-xs text-gray-400 truncate">
                     {p.specialty ?? 'Especialidade não informada'}{p.councilId ? ` · ${p.councilId}` : ''}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <span className={`text-xs px-2 py-0.5 rounded-full mr-2 ${p.active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className={`text-xs px-2 py-0.5 rounded-full mr-1 hidden sm:inline ${p.active ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                   {p.active ? 'Ativo' : 'Inativo'}
                 </span>
                 <button onClick={() => { setEditing(p); setModalOpen(true) }} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg">
