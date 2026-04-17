@@ -66,6 +66,6 @@ describe('PaginaPublicaTab', () => {
 
   it('renders public page link', () => {
     setup()
-    expect(screen.getByText(/consultin\.pmatz\.com|publição|página pública/i)).toBeDefined()
+    expect(screen.getAllByText(/página pública/i).length).toBeGreaterThan(0)
   })
 })
