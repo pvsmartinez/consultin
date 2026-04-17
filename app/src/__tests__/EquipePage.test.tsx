@@ -130,7 +130,9 @@ describe('EquipePage', () => {
     renderPage()
     const user = userEvent.setup()
 
-    const addBtn = screen.queryByRole('button', { name: /adicionar|novo/i })
+    // Avoid multiple-match: pick specifically the "Novo profissional" button
+    const addBtn = screen.queryAllByRole('button', { name: /adicionar|novo/i })
+      .find(b => b.textContent?.includes('Novo profissional') || b.textContent?.includes('Adicionar'))
     if (addBtn) {
       await user.click(addBtn)
       await waitFor(() => {

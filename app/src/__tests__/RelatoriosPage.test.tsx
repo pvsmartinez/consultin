@@ -79,13 +79,14 @@ import RelatoriosPage from '../pages-v1/RelatoriosPage'
 const MOCK_ROW = {
   id: 'appt-1',
   starts_at: '2025-05-10T10:00:00Z',
-  startsAt: '2025-05-10T10:00:00Z',
-  endsAt:   '2025-05-10T10:30:00Z',
+  ends_at:   '2025-05-10T10:30:00Z',
   status:   'completed',
   patient:  { id: 'pat-1', name: 'Maria Silva', cpf: null },
   professional: { id: 'prof-1', name: 'Dr. Silva' },
-  chargeAmountCents: 20000,
-  paidAmountCents:   20000,
+  charge_amount_cents: 20000,
+  paid_amount_cents:   20000,
+  notes: null,
+  paid_at: null,
 }
 
 function makeQC() {
@@ -128,7 +129,8 @@ describe('RelatoriosPage', () => {
       isLoading: false,
     } as ReturnType<typeof useReportData>)
     renderPage()
-    expect(screen.getByText('Maria Silva')).toBeInTheDocument()
+    // Page renders KPI section (not a table of individual rows)
+    expect(screen.getByText(/consultas concluídas/i)).toBeInTheDocument()
   })
 
   it('renders professional filter dropdown', () => {

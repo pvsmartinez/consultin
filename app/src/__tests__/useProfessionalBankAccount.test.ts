@@ -80,10 +80,11 @@ describe('useProfessionalBankAccount', () => {
       wrapper: makeWrapper(),
     })
 
-    await waitFor(() => expect(result.current.data).not.toBeNull())
-    expect(result.current.data?.id).toBe('ba-1')
-    expect(result.current.data?.bankName).toBe('Banco do Brasil')
-    expect(result.current.data?.agency).toBe('1234')
+    await waitFor(() => {
+      expect(result.current.data?.id).toBe('ba-1')
+      expect(result.current.data?.bankName).toBe('Banco do Brasil')
+      expect(result.current.data?.agency).toBe('1234')
+    })
   })
 
   it('returns null when no bank account exists', async () => {
