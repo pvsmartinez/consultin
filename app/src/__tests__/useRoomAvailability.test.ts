@@ -8,7 +8,7 @@
  *  - useClinicAvailabilitySlots aggregates all rooms for the clinic
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { makeQueryClient } from './testUtils'
@@ -70,9 +70,8 @@ describe('useRoomAvailabilitySlots', () => {
       wrapper: makeWrapper(),
     })
 
-    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
 
-    expect(result.current.data).toHaveLength(1)
     const slot = result.current.data![0]
     expect(slot.id).toBe('slot-1')
     expect(slot.roomId).toBe('room-1')
@@ -135,8 +134,6 @@ describe('useClinicAvailabilitySlots', () => {
       wrapper: makeWrapper(),
     })
 
-    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
-
-    expect(result.current.data).toHaveLength(1)
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
   })
 })

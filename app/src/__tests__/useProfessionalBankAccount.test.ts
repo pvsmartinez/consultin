@@ -8,7 +8,7 @@
  *  - deactivate() sets active=false
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { makeQueryClient } from './testUtils'
@@ -80,9 +80,7 @@ describe('useProfessionalBankAccount', () => {
       wrapper: makeWrapper(),
     })
 
-    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
-
-    expect(result.current.data).not.toBeNull()
+    await waitFor(() => expect(result.current.data).not.toBeNull())
     expect(result.current.data?.id).toBe('ba-1')
     expect(result.current.data?.bankName).toBe('Banco do Brasil')
     expect(result.current.data?.agency).toBe('1234')
@@ -103,9 +101,7 @@ describe('useProfessionalBankAccount', () => {
       wrapper: makeWrapper(),
     })
 
-    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
-
-    expect(result.current.data).toBeNull()
+    await waitFor(() => expect(result.current.data).toBeNull())
   })
 
   it('does not fetch when professionalId is undefined', () => {
@@ -137,9 +133,7 @@ describe('useClinicBankAccounts', () => {
       wrapper: makeWrapper(),
     })
 
-    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
-
-    expect(result.current.data).toHaveLength(1)
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
     expect(result.current.data?.[0].bankCode).toBe('001')
   })
 })

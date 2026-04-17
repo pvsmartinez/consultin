@@ -104,9 +104,11 @@ describe('EquipePage', () => {
 
   it('renders "Adicionar profissional" button', () => {
     renderPage()
-    // Button text in ProfissionaisTab
-    const btn = screen.queryByRole('button', { name: /adicionar profissional/i }) ||
-                screen.queryByText(/adicionar profissional/i)
+    // Button text in ProfissionaisTab — actual text is "Novo profissional"
+    const btn = screen.getAllByRole('button').find(b =>
+      b.textContent?.toLowerCase().includes('novo profissional') ||
+      b.textContent?.toLowerCase().includes('adicionar profissional')
+    )
     expect(btn).toBeTruthy()
   })
 

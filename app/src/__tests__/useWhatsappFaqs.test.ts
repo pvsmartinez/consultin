@@ -92,9 +92,7 @@ describe('useWhatsappFaqs', () => {
       wrapper: makeWrapper(),
     })
 
-    await act(async () => { await new Promise(r => setTimeout(r, 0)) })
-
-    expect(result.current.data).toEqual([])
+    await waitFor(() => expect(result.current.data).toEqual([]))
   })
 })
 

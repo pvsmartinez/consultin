@@ -57,19 +57,20 @@ describe('WhatsAppTab', () => {
 
   it('renders connect step when not connected', () => {
     setup({ whatsappPhoneNumberId: null })
-    expect(screen.getByText(/conectar|configurar|guia/i)).toBeDefined()
+    expect(screen.getAllByText(/conectar|configurar|guia/i).length).toBeGreaterThan(0)
   })
 
   it('renders phone display when connected', () => {
     setup({
       whatsappPhoneNumberId: '123456',
       whatsappPhoneDisplay: '+55 11 99999-9999',
+      whatsappEnabled: true,
     })
-    expect(screen.getByText(/\+55 11/)).toBeDefined()
+    expect(screen.getAllByText(/\+55 11/i).length).toBeGreaterThan(0)
   })
 
   it('renders AI model section', () => {
-    setup({ whatsappPhoneNumberId: '123456', whatsappPhoneDisplay: '+55 11 99999-9999' })
-    expect(screen.getByText(/modelo|AI/i)).toBeDefined()
+    setup({ whatsappPhoneNumberId: '123456', whatsappPhoneDisplay: '+55 11 99999-9999', whatsappEnabled: true })
+    expect(screen.getAllByText(/modelo|AI/i).length).toBeGreaterThan(0)
   })
 })
