@@ -171,7 +171,7 @@ export default function WhatsAppInboxPage() {
           <span>Selecione uma conversa</span>
           <button
             onClick={() => setSidebarOpen(true)}
-            className="sm:hidden text-xs text-[#006970] border border-teal-200 rounded-lg px-3 py-1.5"
+            className="sm:hidden rounded-lg border border-teal-200 px-4 py-2.5 text-sm text-[#006970]"
           >
             Ver conversas
           </button>
@@ -277,8 +277,8 @@ function ChatPanel({
   return (
     <div className="flex-1 flex flex-col min-w-0">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-gray-100 gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="flex flex-col gap-3 border-b border-gray-100 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             onClick={onBack}
             className="sm:hidden p-2.5 text-gray-400 hover:text-gray-600 rounded-lg flex-shrink-0 text-lg leading-none"
@@ -302,12 +302,12 @@ function ChatPanel({
           </span>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <div className="flex w-full items-stretch gap-2 sm:w-auto sm:flex-shrink-0">
           {session.status !== 'human' && (
             <button
               onClick={() => { setSending('escalate'); onEscalate().finally(() => setSending('')) }}
               disabled={!!sending}
-              className="flex items-center gap-1.5 px-3 py-2.5 text-xs text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-50 disabled:opacity-50">
+              className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-200 px-3 py-2.5 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-50 sm:flex-none">
               <Headset size={14} />
               {sending === 'escalate' ? 'Atribuindo...' : 'Assumir'}
             </button>
@@ -315,7 +315,7 @@ function ChatPanel({
           <button
             onClick={() => { setSending('resolve'); onResolve().finally(() => setSending('')) }}
             disabled={!!sending}
-            className="flex items-center gap-1.5 px-3 py-2.5 text-xs text-green-700 border border-green-200 rounded-lg hover:bg-green-50 disabled:opacity-50">
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-green-200 px-3 py-2.5 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50 sm:flex-none">
             <CheckCircle size={14} />
             {sending === 'resolve' ? 'Resolvendo...' : 'Resolver'}
           </button>
@@ -353,7 +353,7 @@ function ChatPanel({
           <button
             onClick={handleSend}
             disabled={!text.trim() || sending === 'send'}
-            className="px-4 bg-green-500 text-white rounded-xl hover:bg-green-600 disabled:opacity-40 transition-colors flex-shrink-0">
+            className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-500 text-white transition-colors hover:bg-green-600 disabled:opacity-40 flex-shrink-0">
             <ArrowBendUpRight size={16} />
           </button>
         </div>

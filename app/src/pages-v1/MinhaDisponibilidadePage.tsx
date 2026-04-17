@@ -50,7 +50,7 @@ export default function MinhaDisponibilidadePage() {
               <button
                 key={r.id}
                 onClick={() => setSelectedProfId(r.id)}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                className={`flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-base transition-colors sm:w-auto ${
                   r.id === activeProfId
                     ? 'bg-[#0ea5b0] text-white border-transparent'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50'

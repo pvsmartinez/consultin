@@ -468,7 +468,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   return (
     <div className="space-y-4">
       {!showWelcome && (
-      <div className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-5">
+      <div className="rounded-[28px] bg-white/90 border border-gray-200/80 px-4 py-4 shadow-sm sm:px-6 sm:py-5">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">
@@ -490,7 +490,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           {!isPersonalView && (
             <button
               onClick={() => { setEditingAppt(null); setInitialSlot(null); openNewAppointmentModal() }}
-              className="flex items-center gap-2 px-4 py-2.5 text-white text-sm rounded-xl transition-all active:scale-95 shadow-sm"
+              className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm text-white shadow-sm transition-all active:scale-95 sm:w-auto"
               style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               <Plus size={16} /> Nova consulta
@@ -498,12 +498,12 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           )}
         </div>
 
-        <div className="mt-5 flex items-center gap-2 flex-wrap">
+        <div className="mt-5 flex flex-wrap items-stretch gap-2">
           {!isPersonalView && activeProfessionals.length > 1 && (
             <select
               value={filterProfId}
               onChange={e => setFilterProfId(e.target.value)}
-              className="text-xs border border-gray-200 rounded-xl px-3 py-2 text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-[#f8fafb]"
+              className="min-h-11 w-full rounded-xl border border-gray-200 bg-[#f8fafb] px-3 py-2.5 text-base text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] sm:w-auto"
             >
               <option value="">Todos os profissionais</option>
               {activeProfessionals.map(p => (
@@ -514,24 +514,24 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           {!isPersonalView && hasRooms && (role === 'admin' || isSuperAdmin) && (
             <button
               onClick={() => setRoomsDrawerOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs border border-gray-200 bg-[#f8fafb] text-gray-600 rounded-xl hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0] transition-colors"
+              className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-[#f8fafb] px-3 py-2.5 text-sm text-gray-600 transition-colors hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0] sm:w-auto"
             >
               <DoorOpen size={14} /> Salas
             </button>
           )}
           {!isPersonalView && activeRoomCount > 1 && (
-            <div className="flex items-center border border-gray-200 bg-[#f8fafb] rounded-xl overflow-hidden text-xs p-1">
+            <div className="flex w-full items-center rounded-xl border border-gray-200 bg-[#f8fafb] p-1 text-sm sm:w-auto">
               {([
                 ['room', DoorOpen,     'Por sala'],
                 ['prof', UserCircle,   'Profissional'],
               ] as const).map(([v, Icon, label]) => (
                 <button key={v} onClick={() => setAgendaView(v)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors ${
+                  className={`flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 transition-colors sm:flex-none ${
                     agendaView === v ? 'bg-white text-[#006970] shadow-sm' : 'text-gray-600 hover:bg-white/70'
                   }`}
                 >
                   <Icon size={14} />
-                  <span className="hidden sm:inline">{label}</span>
+                  <span>{label}</span>
                 </button>
               ))}
             </div>

@@ -6,7 +6,7 @@ import { gtagEvent } from '../lib/gtag'
 import { SEO_DEFAULT_IMAGE, SEO_SITE_URL } from '../lib/seo'
 import {
   Stethoscope, CalendarBlank, Users, CurrencyDollar,
-  ChartLine, WhatsappLogo, Heartbeat, Syringe,
+  WhatsappLogo, Heartbeat, Syringe,
   Tooth, Brain, Leaf, ArrowRight, CheckCircle,
   Sparkle, ShieldCheck, Lightning, Star,
   Buildings, UserCircle, Hospital, Headset,
@@ -241,6 +241,47 @@ function Hero() {
                 Sou recepcionista
               </Link>
             </div>
+
+            <div className="mt-10 md:hidden">
+              <div className="relative rounded-3xl border border-blue-100 bg-white p-4 shadow-xl shadow-blue-100/60">
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[
+                    { label: 'Hoje', value: '12 consultas', tone: 'bg-blue-500' },
+                    { label: 'Confirmadas', value: '10 de 12', tone: 'bg-emerald-500' },
+                    { label: 'Receita', value: 'R$ 2.840', tone: 'bg-indigo-500' },
+                  ].map((stat) => (
+                    <div key={stat.label} className="rounded-2xl bg-gray-50 p-3">
+                      <div className={`mb-2 h-2 w-2 rounded-full ${stat.tone}`} />
+                      <p className="text-xs font-bold text-gray-900 leading-tight">{stat.value}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-inner">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-medium text-slate-300">
+                    <WhatsappLogo size={16} weight="fill" className="text-emerald-400" />
+                    Assistente no WhatsApp
+                  </div>
+                  <div className="space-y-2">
+                    <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-emerald-500/20 px-3 py-2 text-sm text-emerald-50">
+                      confirma as consultas de amanhã e me mostra quem faltou essa semana
+                    </div>
+                    <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-white/10 px-3 py-2 text-sm text-slate-100">
+                      Amanhã tem 12 consultas. 10 já confirmadas. Nesta semana, 3 pacientes faltaram e 2 precisam de retorno.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {['Agenda em tempo real', 'Cobrança do dia', 'Lembretes automáticos'].map((item) => (
+                    <span key={item} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Visual mockup */}
@@ -359,76 +400,119 @@ function Hero() {
   )
 }
 
-// ─── Features ─────────────────────────────────────────────────────────────────
-const features = [
-  {
-    icon: <CalendarBlank size={24} weight="duotone" />,
-    color: 'text-blue-600 bg-blue-50',
-    title: 'Agenda inteligente',
-    desc: 'Visualização por dia, semana ou mês. Confirmação automática via WhatsApp. Sem conflitos, sem faltas.',
-  },
-  {
-    icon: <Users size={24} weight="duotone" />,
-    color: 'text-indigo-600 bg-indigo-50',
-    title: 'Prontuários digitais',
-    desc: 'Histórico completo de cada paciente. Fichas de anamnese personalizáveis por especialidade.',
-  },
-  {
-    icon: <CurrencyDollar size={24} weight="duotone" />,
-    color: 'text-emerald-600 bg-emerald-50',
-    title: 'Financeiro integrado',
-    desc: 'Cobranças via Pix e cartão, repasse para profissionais, fluxo de caixa em tempo real.',
-  },
-  {
-    icon: <WhatsappLogo size={24} weight="duotone" />,
-    color: 'text-green-600 bg-green-50',
-    title: 'WhatsApp Business',
-    desc: 'Lembretes e confirmações automáticos. Inbox centralizado para atender todos os chats da clínica.',
-  },
-  {
-    icon: <ChartLine size={24} weight="duotone" />,
-    color: 'text-violet-600 bg-violet-50',
-    title: 'Relatórios detalhados',
-    desc: 'Receita por profissional, taxa de ocupação, evolução de novos pacientes e muito mais.',
-  },
-  {
-    icon: <ShieldCheck size={24} weight="duotone" />,
-    color: 'text-rose-600 bg-rose-50',
-    title: 'Multi-usuário seguro',
-    desc: 'Permissões granulares por função: admin, profissional, recepcionista. Cada um vê só o que deve.',
-  },
+const assistantCommands = [
+  'confirma as consultas de amanhã',
+  'me mostra quem faltou essa semana',
+  'agenda retorno da Maria para terça',
+  'quanto entrou hoje?',
+  'manda lembrete para os pacientes das 14h',
 ]
 
-function Features() {
+function AssistantShowcase() {
   return (
     <section id="funcionalidades" className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-14">
-          <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-            <Lightning size={13} weight="fill" />
-            Tudo que sua clínica precisa
-          </div>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-            Uma plataforma completa,{' '}
-            <span className="text-blue-600">sem complicação</span>
-          </h2>
-          <p className="text-gray-500 max-w-xl mx-auto">
-            Do primeiro agendamento ao fechamento financeiro do mês — o Consultin
-            acompanha cada etapa da jornada da sua clínica.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map(f => (
-            <div key={f.title}
-              className="group p-6 bg-white border border-gray-100 rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
-              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 ${f.color}`}>
-                {f.icon}
-              </div>
-              <h3 className="text-base font-bold text-gray-900 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 mb-5">
+              <WhatsappLogo size={13} weight="fill" />
+              Seu assistente de WhatsApp entra na operação junto com você
             </div>
-          ))}
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-5">
+              O WhatsApp não fica só no lembrete.
+              <span className="block text-blue-600">Ele ajuda a tocar a clínica.</span>
+            </h2>
+            <p className="text-gray-500 text-lg leading-relaxed mb-6">
+              Em vez de mostrar só uma telinha bonita, o Consultin mostra serviço: confirma agenda,
+              encontra faltas, acompanha receita, dispara mensagens e organiza o dia da recepção.
+            </p>
+
+            <div className="space-y-3 mb-8">
+              {[
+                'Peça ações operacionais reais em linguagem natural, sem decorar tela ou menu.',
+                'Veja confirmações, faltas, retornos e lembretes no mesmo fluxo da agenda.',
+                'Use o WhatsApp como atalho de operação para quem atende, recebe e acompanha caixa.',
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+                  <CheckCircle size={18} weight="fill" className="mt-0.5 text-emerald-500 shrink-0" />
+                  <p className="text-sm leading-relaxed text-gray-700">{item}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/cadastro-clinica"
+                data-analytics-event="signup_cta_click"
+                data-analytics-placement="assistant-section"
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
+              >
+                Criar conta e entrar
+                <ArrowRight size={16} weight="bold" />
+              </Link>
+              <a
+                href={WA_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-analytics-event="whatsapp_cta_click"
+                data-analytics-placement="assistant-section"
+                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+              >
+                <WhatsappLogo size={18} weight="fill" />
+                Começar pelo WhatsApp
+              </a>
+            </div>
+          </div>
+
+          <div className="rounded-[28px] bg-slate-950 p-5 shadow-2xl shadow-slate-200">
+            <div className="mb-4 flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/90">
+              <div>
+                <p className="font-semibold">Assistente Consultin</p>
+                <p className="text-xs text-white/60">Operação da clínica em linguagem natural</p>
+              </div>
+              <div className="rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-semibold text-emerald-300">
+                online agora
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="max-w-[75%] rounded-3xl rounded-bl-md bg-emerald-500/20 px-4 py-3 text-sm leading-relaxed text-emerald-50">
+                confirma as consultas de amanhã e me mostra quem faltou essa semana
+              </div>
+              <div className="ml-auto max-w-[88%] rounded-3xl rounded-br-md bg-white/10 px-4 py-3 text-sm leading-relaxed text-slate-100">
+                Amanhã você tem 12 consultas. 10 já confirmadas. Nesta semana, 3 pacientes faltaram.
+                Quer que eu mande retorno para eles agora?
+              </div>
+              <div className="max-w-[75%] rounded-3xl rounded-bl-md bg-emerald-500/20 px-4 py-3 text-sm leading-relaxed text-emerald-50">
+                agenda retorno da Maria para terça e quanto entrou hoje?
+              </div>
+              <div className="ml-auto max-w-[88%] rounded-3xl rounded-br-md bg-white/10 px-4 py-3 text-sm leading-relaxed text-slate-100">
+                Retorno da Maria reservado para terça às 14h30. Hoje entraram R$ 2.840, com 4 pagamentos já conciliados.
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl bg-white/10 p-4 text-white">
+                <p className="text-xs uppercase tracking-[0.24em] text-white/50 mb-2">Exemplos do que pedir</p>
+                <div className="flex flex-wrap gap-2">
+                  {assistantCommands.map((command) => (
+                    <span key={command} className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/80">
+                      {command}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-4 text-white">
+                <p className="text-xs uppercase tracking-[0.24em] text-blue-100 mb-2">O ganho no dia a dia</p>
+                <ul className="space-y-2 text-sm text-blue-50">
+                  <li>Menos retrabalho da recepção</li>
+                  <li>Mais respostas e confirmações rápidas</li>
+                  <li>Operação e financeiro visíveis sem abrir mil telas</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -441,20 +525,26 @@ function HowItWorks() {
     {
       step: '01',
       title: 'Cadastre sua clínica',
-      desc: 'Preencha os dados básicos e escolha seu tipo de especialidade. Leva menos de 2 minutos.',
+      desc: 'Escolha se você atende sozinho ou se opera uma clínica. O cadastro ficou direto ao ponto.',
       icon: <Buildings size={28} weight="duotone" className="text-blue-600" />,
     },
     {
       step: '02',
-      title: 'Configure sua equipe',
-      desc: 'Convide os profissionais da sua clínica por e-mail. Cada um tem seu acesso e agenda.',
+      title: 'Entre na hora',
+      desc: 'Você define sua senha, entra automaticamente e já começa a experimentar o sistema sem trava por e-mail.',
       icon: <Users size={28} weight="duotone" className="text-indigo-600" />,
     },
     {
       step: '03',
+      title: 'Configure em minutos',
+      desc: 'Ajuste agenda, equipe, pacientes e módulos essenciais no onboarding inicial, sem implantação longa.',
+      icon: <Lightning size={28} weight="duotone" className="text-emerald-600" />,
+    },
+    {
+      step: '04',
       title: 'Comece a atender',
-      desc: 'Crie agendamentos, cadastre pacientes e acompanhe o crescimento da sua clínica em tempo real.',
-      icon: <CalendarBlank size={28} weight="duotone" className="text-emerald-600" />,
+      desc: 'Agenda, pacientes, financeiro e WhatsApp entram na rotina desde o primeiro dia de teste.',
+      icon: <CalendarBlank size={28} weight="duotone" className="text-teal-600" />,
     },
   ]
 
@@ -468,11 +558,11 @@ function HowItWorks() {
           <p className="text-gray-500">Sua clínica pronta em minutos, não em semanas.</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
           {steps.map((s, i) => (
             <div key={s.step} className="relative">
               {i < steps.length - 1 && (
-                <div className="hidden md:block absolute top-6 left-[calc(100%_-_16px)] w-8 border-t-2 border-dashed border-blue-200 z-0" />
+                <div className="hidden xl:block absolute top-6 left-[calc(100%_-_16px)] w-8 border-t-2 border-dashed border-blue-200 z-0" />
               )}
               <div className="relative z-10 bg-white rounded-2xl p-7 border border-gray-100 shadow-sm text-center hover:shadow-lg transition">
                 <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -774,58 +864,122 @@ function TrustBar() {
 }
 
 function SearchIntentSection() {
-  const pages = [
+  const capabilities = [
     {
-      href: '/sistema-para-clinicas',
-      title: 'Sistema para clínicas',
-      description: 'Página focada em gestão, operação e crescimento de clínicas brasileiras.',
+      icon: <CalendarBlank size={22} weight="duotone" className="text-blue-600" />,
+      title: 'Agenda e atendimento sem ruído',
+      description: 'Veja retornos, encaixes, confirmações e faltas sem depender de planilha ou troca de mensagens solta.',
+      example: 'Exemplo: confirmar o dia seguinte, localizar faltas da semana e reagendar retorno em segundos.',
+      tone: 'from-blue-50 to-indigo-50',
     },
     {
-      href: '/software-para-consultorios',
-      title: 'Software para consultórios',
-      description: 'Conteúdo direcionado a consultórios enxutos que precisam de mais controle sem burocracia.',
+      icon: <Users size={22} weight="duotone" className="text-indigo-600" />,
+      title: 'Pacientes e histórico organizados',
+      description: 'Cadastro, prontuário e acompanhamento ficam no mesmo sistema, com contexto para recepção e profissional.',
+      example: 'Exemplo: abrir a ficha da Maria, ver último atendimento e preparar o próximo retorno sem retrabalho.',
+      tone: 'from-indigo-50 to-sky-50',
     },
     {
-      href: '/agenda-medica-online',
-      title: 'Agenda médica online',
-      description: 'Fluxo de agendamento, confirmação e produtividade da recepção em uma página dedicada.',
+      icon: <CurrencyDollar size={22} weight="duotone" className="text-emerald-600" />,
+      title: 'Financeiro visível no mesmo fluxo',
+      description: 'Cobrança, entrada do dia, repasses e visão por profissional deixam de ficar espalhados em outros lugares.',
+      example: 'Exemplo: perguntar quanto entrou hoje e já saber o que está pendente antes do fechamento do dia.',
+      tone: 'from-emerald-50 to-teal-50',
+    },
+    {
+      icon: <Buildings size={22} weight="duotone" className="text-violet-600" />,
+      title: 'Equipe, salas e operação sob controle',
+      description: 'Cada pessoa vê o que precisa, cada profissional acompanha sua agenda e a clínica mantém a visão geral.',
+      example: 'Exemplo: recepção acompanha o fluxo, profissional vê sua agenda e o admin enxerga a operação inteira.',
+      tone: 'from-violet-50 to-fuchsia-50',
+    },
+    {
+      icon: <WhatsappLogo size={22} weight="duotone" className="text-green-600" />,
+      title: 'Automações que realmente economizam tempo',
+      description: 'O WhatsApp deixa de ser um gargalo e vira canal operacional para confirmação, lembrete e resposta rápida.',
+      example: 'Exemplo: disparar lembretes das 14h, acompanhar respostas e manter a agenda viva sem correr atrás de todo mundo.',
+      tone: 'from-green-50 to-emerald-50',
     },
   ]
 
   return (
     <section className="py-20 bg-slate-50 border-y border-slate-100">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="max-w-2xl mb-10">
+        <div className="max-w-3xl mb-12">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-600 mb-3">
-            Guias públicos
+            O que você passa a ter depois do cadastro
           </p>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-            Páginas feitas para quem está pesquisando solução para clínica no Brasil
+            Funcionalidades fortes, mostradas com contexto de uso real
           </h2>
           <p className="text-gray-500 leading-relaxed">
-            Se você ainda está comparando opções, estes guias resumem os problemas mais comuns da
-            operação de clínica e mostram onde o Consultin entra na rotina.
+            Em vez de uma grade genérica de recursos, aqui está o que o Consultin ajuda sua clínica
+            a fazer no dia a dia: operar agenda, cuidar de pacientes, acompanhar caixa, coordenar equipe
+            e usar o WhatsApp como parte da rotina.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {pages.map((page) => (
-            <a
-              key={page.href}
-              href={page.href}
-              className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-            >
-              <p className="text-sm font-semibold text-blue-600 mb-3">Leitura recomendada</p>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-700 transition">
-                {page.title}
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed mb-5">{page.description}</p>
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 group-hover:text-blue-700 transition">
-                Abrir página
-                <ArrowRight size={16} weight="bold" />
-              </span>
-            </a>
-          ))}
+        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
+          <div className="space-y-4">
+            {capabilities.map((capability) => (
+              <article
+                key={capability.title}
+                className={`rounded-3xl bg-gradient-to-br ${capability.tone} p-6 shadow-sm ring-1 ring-white/70`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
+                    {capability.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{capability.title}</h3>
+                    <p className="text-sm leading-relaxed text-gray-600 mb-3">{capability.description}</p>
+                    <p className="text-sm font-medium text-gray-800">{capability.example}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="rounded-[32px] bg-white p-5 shadow-xl ring-1 ring-slate-200/80 lg:sticky lg:top-24">
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {[
+                { label: 'Confirmações', value: '10 / 12', tone: 'bg-emerald-500' },
+                { label: 'Faltas da semana', value: '3', tone: 'bg-rose-500' },
+                { label: 'Receita do dia', value: 'R$ 2.840', tone: 'bg-blue-500' },
+                { label: 'Mensagens ativas', value: '18', tone: 'bg-indigo-500' },
+              ].map((card) => (
+                <div key={card.label} className="rounded-2xl bg-slate-50 p-4">
+                  <div className={`mb-2 h-2.5 w-2.5 rounded-full ${card.tone}`} />
+                  <p className="text-sm font-bold text-gray-900">{card.value}</p>
+                  <p className="mt-1 text-xs text-gray-500">{card.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-3xl bg-slate-950 p-4 text-white mb-4">
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
+                <WhatsappLogo size={16} weight="fill" className="text-emerald-400" />
+                fluxo operacional
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="rounded-2xl rounded-bl-md bg-emerald-500/20 px-3 py-2 text-emerald-50">
+                  manda lembrete para os pacientes das 14h
+                </div>
+                <div className="ml-auto rounded-2xl rounded-br-md bg-white/10 px-3 py-2 text-slate-100 max-w-[88%]">
+                  5 lembretes enviados. 3 pacientes já responderam confirmando presença.
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-600 p-5 text-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100 mb-3">Por que isso converte melhor</p>
+              <ul className="space-y-2 text-sm leading-relaxed text-blue-50">
+                <li>O visitante entende o valor operacional, não só a promessa.</li>
+                <li>O produto parece mais completo porque mostra rotina real, não lista vaga.</li>
+                <li>Clínica e profissional liberal conseguem se enxergar usando o sistema.</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -833,26 +987,32 @@ function SearchIntentSection() {
 }
 
 function UseCaseSection() {
-  const pages = [
+  const audiences = [
     {
-      href: '/clinica-odontologica',
-      title: 'Clínica odontológica',
-      description: 'Agenda recorrente, retorno, encaixes e coordenação entre recepção, profissional e financeiro.',
+      title: 'Para clínicas e consultórios com equipe',
+      description: 'Quando existe recepção, mais de um profissional, necessidade de repasse e uma operação inteira acontecendo ao mesmo tempo.',
+      icon: <Buildings size={28} weight="duotone" className="text-blue-600" />,
+      accent: 'bg-blue-50 text-blue-700',
+      cta: '/cadastro-clinica?persona=gestor',
+      bullets: [
+        'Agenda compartilhada com visão do dia, da semana e dos encaixes.',
+        'Equipe com acessos separados para recepção, admin e profissional.',
+        'Financeiro consolidado com visão por profissional e por clínica.',
+        'WhatsApp como apoio à operação, não só canal de lembrete.',
+      ],
     },
     {
-      href: '/clinica-de-psicologia',
-      title: 'Clínica de psicologia',
-      description: 'Fluxo para sessões recorrentes, agenda previsível, faltas e organização de pacientes.',
-    },
-    {
-      href: '/clinica-de-estetica',
-      title: 'Clínica de estética',
-      description: 'Operação com procedimentos, recorrência, pacotes e rotina comercial mais próxima do atendimento.',
-    },
-    {
-      href: '/clinica-de-fisioterapia',
-      title: 'Clínica de fisioterapia',
-      description: 'Visão clara de tratamentos em série, agenda da equipe e ocupação da clínica no dia a dia.',
+      title: 'Para profissional liberal que atende sozinho',
+      description: 'Quando você quer operar com organização de clínica, mas sem depender de secretária, planilha ou vários apps paralelos.',
+      icon: <UserCircle size={28} weight="duotone" className="text-indigo-600" />,
+      accent: 'bg-indigo-50 text-indigo-700',
+      cta: '/cadastro-clinica?persona=profissional',
+      bullets: [
+        'Agenda própria com confirmação e retorno sem esforço manual.',
+        'Paciente, histórico e financeiro no mesmo lugar.',
+        'Mais previsibilidade para o dia sem precisar operar tudo no braço.',
+        'Entrada direta no sistema para testar agora, sem implantação pesada.',
+      ],
     },
   ]
 
@@ -861,34 +1021,46 @@ function UseCaseSection() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="max-w-2xl mb-10">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-indigo-600 mb-3">
-            Casos de uso
+            Dois caminhos, o mesmo produto
           </p>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-            Landings para realidades específicas de clínicas brasileiras
+            O Consultin se adapta ao tamanho da sua operação
           </h2>
           <p className="text-gray-500 leading-relaxed">
-            O Consultin não serve para um único tipo de operação. Estas páginas explicam o produto
-            na linguagem de especialidades e rotinas que aparecem com frequência na busca orgânica.
+            A página precisa deixar claro quando o ganho vem de organizar uma clínica inteira e quando
+            o ganho vem de um profissional liberal parar de operar tudo sozinho no improviso.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
-          {pages.map((page) => (
-            <a
-              key={page.href}
-              href={page.href}
-              className="group rounded-3xl border border-slate-200 bg-slate-50 p-6 shadow-sm transition hover:-translate-y-1 hover:bg-white hover:shadow-xl"
-            >
-              <p className="text-sm font-semibold text-indigo-600 mb-3">Página por especialidade</p>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-700 transition">
-                {page.title}
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed mb-5">{page.description}</p>
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 group-hover:text-indigo-700 transition">
-                Ver caso de uso
+        <div className="grid gap-6 lg:grid-cols-2">
+          {audiences.map((audience) => (
+            <article key={audience.title} className="rounded-[30px] border border-slate-200 bg-slate-50 p-7 shadow-sm">
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${audience.accent} mb-5`}>
+                {audience.icon}
+                Direção de uso
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">{audience.title}</h3>
+              <p className="text-sm leading-relaxed text-gray-600 mb-6">{audience.description}</p>
+
+              <div className="space-y-3 mb-8">
+                {audience.bullets.map((bullet) => (
+                  <div key={bullet} className="flex items-start gap-3">
+                    <CheckCircle size={18} weight="fill" className="mt-0.5 text-emerald-500 shrink-0" />
+                    <p className="text-sm leading-relaxed text-gray-700">{bullet}</p>
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                to={audience.cta}
+                data-analytics-event="signup_cta_click"
+                data-analytics-placement={audience.title.includes('clínicas') ? 'audience-clinic' : 'audience-solo'}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                Ver esse fluxo
                 <ArrowRight size={16} weight="bold" />
-              </span>
-            </a>
+              </Link>
+            </article>
           ))}
         </div>
       </div>
@@ -1041,13 +1213,13 @@ export default function LandingPage() {
         <Navbar />
         <main>
           <Hero />
-          <Features />
+          <AssistantShowcase />
+          <SearchIntentSection />
+          <UseCaseSection />
           <HowItWorks />
           <WhatsAppOnboarding />
           <Pricing />
           <Specialties />
-          <UseCaseSection />
-          <SearchIntentSection />
           <FAQSection />
           <TrustBar />
           <FinalCTA />

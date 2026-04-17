@@ -199,6 +199,7 @@ export default function ConfiguracoesPage() {
 
   // Only show tabs whose module is active (or has no module requirement)
   const visibleTabs = TABS.filter(t => !t.moduleRequired || moduleActiveMap[t.moduleRequired])
+  const activeTabMeta = visibleTabs.find(tab => tab.id === activeTab)
 
   // If current tab becomes invisible (module disabled), go to dados
   useEffect(() => {
@@ -229,7 +230,7 @@ export default function ConfiguracoesPage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-6">
+      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 px-4 py-5 shadow-sm sm:px-6 sm:py-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">
           Configurações
         </p>
@@ -259,8 +260,27 @@ export default function ConfiguracoesPage() {
 
       {/* Settings tabs */}
       <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="border-b border-gray-100 p-4 md:hidden">
+          <label htmlFor="settings-tab-select" className="mb-2 block text-xs font-semibold uppercase tracking-widest text-gray-400">
+            Seção
+          </label>
+          <select
+            id="settings-tab-select"
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as Tab)}
+            className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+          >
+            {visibleTabs.map(tab => (
+              <option key={tab.id} value={tab.id}>{tab.label}</option>
+            ))}
+          </select>
+          {activeTabMeta && (
+            <p className="mt-2 text-xs text-gray-500">{activeTabMeta.label}</p>
+          )}
+        </div>
+
         {/* Tab bar */}
-        <div className="flex overflow-x-auto border-b border-gray-100 px-2 pt-2 gap-1">
+        <div className="hidden gap-1 overflow-x-auto border-b border-gray-100 px-2 pt-2 md:flex">
           {visibleTabs.map(tab => {
             const TabIcon = tab.icon
             const isActive = activeTab === tab.id
@@ -282,7 +302,7 @@ export default function ConfiguracoesPage() {
         </div>
 
         {/* Tab content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <TabComponent clinic={clinic} fieldEntity={activeTab === 'campos' ? fieldEntity : undefined} />
         </div>
       </section>

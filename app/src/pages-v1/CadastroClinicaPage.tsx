@@ -24,7 +24,6 @@ const schema = z.object({
   password:        z.string().min(8, 'A senha deve ter pelo menos 8 caracteres'),
   confirmPassword: z.string().min(1, 'Confirme sua senha'),
   responsibleName: z.string().optional(),
-  message:         z.string().optional(),
 }).refine(values => values.password === values.confirmPassword, {
   message: 'As senhas não coincidem',
   path: ['confirmPassword'],
@@ -172,10 +171,13 @@ function LeftPanel() {
 
 export default function CadastroClinicaPage() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [serverError, setServerError] = useState<string | null>(null)
   const [emailAlreadyExists, setEmailAlreadyExists] = useState(false)
   const [isSolo, setIsSolo] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const personaIndex = PERSONA_SLIDE[params.get('persona') ?? ''] ?? 0
+  const activePersona = slides[personaIndex]
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -194,7 +196,6 @@ export default function CadastroClinicaPage() {
           password:            values.password,
           cnpj:                values.cnpj    || undefined,
           phone:               values.phone   || undefined,
-          message:             values.message || undefined,
           isSoloPractitioner:  isSolo,
         },
       })
@@ -263,6 +264,21 @@ export default function CadastroClinicaPage() {
             <p className="text-sm text-gray-500 mb-6">
               Preencha os dados, escolha sua senha e acesse na hora.
             </p>
+
+            <div className="lg:hidden mb-5 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 mb-3 shadow-sm">
+                {activePersona.icon}
+                {activePersona.persona}
+              </div>
+              <p className="text-sm font-semibold text-gray-900 mb-1">{activePersona.sub}</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {activePersona.perks.map(perk => (
+                  <span key={perk.text} className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-gray-600 shadow-sm">
+                    {perk.text}
+                  </span>
+                ))}
+              </div>
+            </div>
 
             {/* WhatsApp shortcut */}
             <a
@@ -380,6 +396,13 @@ export default function CadastroClinicaPage() {
                 )} />
               </Field>
 
+              <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                <p className="font-semibold mb-1">Você já entra direto no sistema.</p>
+                <p className="text-blue-800/80 leading-relaxed">
+                  Sem esperar aprovação, sem e-mail travando o teste. O objetivo aqui é você conseguir usar e experimentar agora.
+                </p>
+              </div>
+
               {/* Responsible name — hidden for solo (clinicName IS the person) */}
               {!isSolo && (
                 <Field label="Nome do responsável *" error={errors.responsibleName?.message}>
@@ -390,16 +413,6 @@ export default function CadastroClinicaPage() {
                   />
                 </Field>
               )}
-
-              {/* Message */}
-              <Field label="Mensagem (opcional)">
-                <textarea
-                  {...register('message')}
-                  rows={3}
-                  placeholder="Conte um pouco sobre sua clínica, especialidade, número de profissionais..."
-                  className={`${inputClass(false)} resize-none`}
-                />
-              </Field>
 
               {emailAlreadyExists && (
                 <div className="text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
