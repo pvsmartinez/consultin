@@ -64,18 +64,44 @@ serve(async (req: Request) => {
 
   const cleanEmail = email.trim().toLowerCase()
 
-  // ─── 0. Guard: reject if email already has an account ─────────────────────
-  const { data: { users: existingUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
-  const existingAuthUser = existingUsers?.find(u => u.email === cleanEmail)
-  if (existingAuthUser) {
+  // ─── 0. Guard + get userId: invite first, create clinic only if safe ───────
+  // Sending the invite BEFORE creating the clinic serves two purposes:
+  //   a) If the user already has an account and a clinic, we return 409 immediately
+  //      without creating orphaned data.
+  //   b) On double-submit, the second call fails here (invite already sent) and
+  //      never reaches clinic creation, avoiding duplicate clinics.
+  let userId: string
+  const { data: inviteResult, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
+    cleanEmail,
+    {
+      data: { name: responsibleName.trim() },
+      redirectTo: `${SITE_URL}/nova-senha`,
+    },
+  )
+
+  if (inviteError) {
+    // User already exists in auth.users — find their ID via listUsers.
+    // (supabase-js admin API has no getUserByEmail; listUsers is the standard approach.)
+    const { data: { users: allUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
+    const found = allUsers?.find(u => u.email === cleanEmail) ?? null
+    if (!found) {
+      console.error('Invite error and user not found:', inviteError)
+      return json({ error: 'Erro ao criar acesso. Tente novamente.' }, 500)
+    }
+    // If the user already has a clinic profile, block the signup
     const { data: existingProfile } = await admin
       .from('user_profiles')
-      .select('id, clinic_id')
-      .eq('id', existingAuthUser.id)
+      .select('id')
+      .eq('id', found.id)
       .maybeSingle()
     if (existingProfile) {
       return json({ error: 'Este e-mail já possui uma conta. Faça login para acessar.' }, 409)
     }
+    // User exists in auth but has no profile — link them to the new clinic
+    userId = found.id
+  } else {
+    if (!inviteResult?.user) return json({ error: 'Erro ao criar acesso.' }, 500)
+    userId = inviteResult.user.id
   }
 
   // ─── 1. Create clinic ──────────────────────────────────────────────────────
@@ -97,29 +123,7 @@ serve(async (req: Request) => {
 
   const clinicId = (clinic as { id: string }).id
 
-  // ─── 2. Invite user by email (Supabase sends the invite email) ────────────
-  let userId: string
-  const { data: inviteResult, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    cleanEmail,
-    {
-      data: { name: responsibleName.trim() },
-      redirectTo: `${SITE_URL}/nova-senha`,
-    },
-  )
-
-  if (inviteError) {
-    // Fallback: use the auth user found in the guard step above
-    if (!existingAuthUser) {
-      console.error('Invite error:', inviteError)
-      return json({ error: 'Erro ao criar acesso. Tente novamente.' }, 500)
-    }
-    userId = existingAuthUser.id
-  } else {
-    if (!inviteResult?.user) return json({ error: 'Erro ao criar acesso.' }, 500)
-    userId = inviteResult.user.id
-  }
-
-  // ─── 3. Create user_profile as clinic admin ────────────────────────────────
+  // ─── 2. Create user_profile as clinic admin ────────────────────────────────
   const { error: profileError } = await admin.from('user_profiles').upsert({
     id:             userId,
     name:           responsibleName.trim(),

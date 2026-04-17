@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 
 export default function NovaSenhaPage() {
-  const { clearRecoveryMode } = useAuthContext()
+  const { clearRecoveryMode, refreshProfile } = useAuthContext()
 
   // Detect if this is from an invite link (first access) or a password reset
   const isInvite = typeof window !== 'undefined' && window.location.hash.includes('type=invite')
@@ -66,6 +66,11 @@ export default function NovaSenhaPage() {
     }
 
     setDone(true)
+    // Fetch profile before clearing recovery mode so App.tsx renders the correct
+    // screen (wizard or dashboard) instead of the "no-access" OnboardingPage.
+    // This is critical for new clinic owners: fetchStartupData was skipped on the
+    // SIGNED_IN+invite event, so profile is null until we explicitly load it here.
+    await refreshProfile()
     setTimeout(() => clearRecoveryMode(), 2500)
   }
 
