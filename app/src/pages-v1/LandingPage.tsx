@@ -55,6 +55,36 @@ const homeFaqs = [
   },
 ]
 
+const heroTrustPills = [
+  '7 dias grátis',
+  'Sem cartão de crédito',
+  'Dados no Brasil',
+  'Suporte em português',
+]
+
+const comparisonRows = [
+  {
+    label: 'Confirmar agenda e reduzir faltas',
+    before: 'Recepção liga, cobra resposta e perde tempo em vários lugares.',
+    after: 'Lembretes, confirmações e follow-up ficam no mesmo fluxo da agenda.',
+  },
+  {
+    label: 'Ver pacientes e histórico sem retrabalho',
+    before: 'Cadastro, ficha e contexto ficam espalhados em papel, WhatsApp ou planilha.',
+    after: 'Paciente, atendimento e próximos passos ficam juntos no sistema.',
+  },
+  {
+    label: 'Fechar o dia com caixa e operação visíveis',
+    before: 'Você descobre o financeiro depois, em outra planilha ou no improviso.',
+    after: 'Agenda, cobrança e visão por profissional aparecem no mesmo painel.',
+  },
+  {
+    label: 'Coordenar equipe e rotina da clínica',
+    before: 'Cada pessoa opera de um jeito e a clínica perde visibilidade.',
+    after: 'Recepção, profissional e gestão trabalham com a mesma fonte de verdade.',
+  },
+]
+
 const homeStructuredData = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -113,7 +143,10 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur-md"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
@@ -149,7 +182,7 @@ function Navbar() {
 
         {/* Mobile menu toggle */}
         <button
-          className="md:hidden p-2 text-gray-500"
+          className="min-h-11 min-w-11 rounded-xl p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 md:hidden"
           onClick={() => setMenuOpen(v => !v)}
           aria-label="Menu"
         >
@@ -163,14 +196,14 @@ function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
-          <a href="#funcionalidades" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Funcionalidades</a>
-          <a href="#como-funciona" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Como funciona</a>
-          <a href="#precos" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Preços</a>
-          <a href="#especialidades" className="block text-sm text-gray-600 py-3" onClick={() => setMenuOpen(false)}>Especialidades</a>
-          <div className="flex gap-2 pt-2">
-            <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center border border-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-lg">Entrar</Link>
-            <Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="navbar-mobile" className="flex-1 text-sm text-center bg-blue-600 text-white font-medium px-4 py-2.5 rounded-lg">Cadastrar</Link>
+        <div className="space-y-2 border-t border-gray-100 bg-white px-4 py-4 md:hidden">
+          <a href="#funcionalidades" className="block rounded-xl px-3 py-3.5 text-base font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" onClick={() => setMenuOpen(false)}>Funcionalidades</a>
+          <a href="#como-funciona" className="block rounded-xl px-3 py-3.5 text-base font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" onClick={() => setMenuOpen(false)}>Como funciona</a>
+          <a href="#precos" className="block rounded-xl px-3 py-3.5 text-base font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" onClick={() => setMenuOpen(false)}>Preços</a>
+          <a href="#especialidades" className="block rounded-xl px-3 py-3.5 text-base font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" onClick={() => setMenuOpen(false)}>Especialidades</a>
+          <div className="grid gap-2 pt-2">
+            <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700">Entrar</Link>
+            <Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="navbar-mobile" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white">Cadastrar</Link>
           </div>
         </div>
       )}
@@ -192,26 +225,25 @@ function Hero() {
             </div>
 
             <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-5">
-              Sua clínica{' '}
+              Agenda, pacientes, financeiro e WhatsApp{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-                organizada
+                no mesmo lugar
               </span>{' '}
-              do jeito certo
+              para sua clínica parar de operar no improviso
             </h1>
 
             <p className="text-lg text-gray-500 mb-8 leading-relaxed">
-              Agenda inteligente, prontuários digitais, gestão financeira e WhatsApp
-              integrado — tudo em um só lugar para você focar no que importa:
-              seus pacientes.
+              Organize a rotina da clínica sem planilha, sem recado perdido e sem depender de mil telas.
+              Entre agora, teste por 7 dias e veja sua agenda rodando com mais clareza desde o primeiro dia.
             </p>
 
             {/* Main CTAs */}
-            <div className="flex flex-wrap gap-3 mb-8">
+            <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link to="/cadastro-clinica"
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement="hero-primary"
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg shadow-blue-200 transition text-sm">
-                Começar gratuitamente
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 sm:w-auto">
+                Começar 7 dias grátis
                 <ArrowRight size={16} weight="bold" />
               </Link>
               <a href={WA_LINK}
@@ -219,26 +251,38 @@ function Hero() {
                 rel="noopener noreferrer"
                 data-analytics-event="whatsapp_cta_click"
                 data-analytics-placement="hero-whatsapp"
-                className="inline-flex items-center gap-2 border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 font-medium px-6 py-3.5 rounded-xl transition text-sm">
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-green-300 bg-green-50 px-6 py-3.5 text-sm font-medium text-green-700 transition hover:bg-green-100 sm:w-auto">
                 <WhatsappLogo size={18} weight="fill" />
-                Cadastrar pelo WhatsApp
+                Configurar pelo WhatsApp
               </a>
             </div>
 
+            <div className="mb-8 flex flex-wrap gap-2">
+              {heroTrustPills.map((pill) => (
+                <span key={pill} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm ring-1 ring-gray-200">
+                  {pill}
+                </span>
+              ))}
+            </div>
+
+            <p className="mb-6 text-sm font-medium text-gray-500">
+              Formulário: acesso imediato. WhatsApp: a gente configura com você.
+            </p>
+
             {/* Profile type selector */}
-            <div className="flex flex-wrap gap-3">
-              <p className="w-full text-xs font-medium text-gray-400 uppercase tracking-wider">Quem você é?</p>
-              <Link to="/cadastro-clinica?persona=gestor" data-analytics-event="signup_cta_click" data-analytics-placement="persona-manager" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <p className="w-full text-xs font-medium text-gray-400 uppercase tracking-wider">Entrar com contexto pronto</p>
+              <Link to="/cadastro-clinica?persona=gestor" data-analytics-event="signup_cta_click" data-analytics-placement="persona-manager" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700">
                 <Buildings size={18} className="text-blue-500" />
                 Sou gestor de clínica
               </Link>
-              <Link to="/cadastro-clinica?persona=profissional" data-analytics-event="signup_cta_click" data-analytics-placement="persona-professional" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 text-gray-600 hover:text-indigo-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
+              <Link to="/cadastro-clinica?persona=profissional" data-analytics-event="signup_cta_click" data-analytics-placement="persona-professional" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700">
                 <UserCircle size={18} className="text-indigo-500" />
-                Sou profissional liberal
+                Atendo sozinho
               </Link>
-              <Link to="/cadastro-clinica?persona=recepcao" data-analytics-event="signup_cta_click" data-analytics-placement="persona-patient" className="group flex items-center gap-2 bg-white border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-gray-600 hover:text-teal-700 text-sm font-medium px-4 py-2.5 rounded-xl transition">
+              <Link to="/cadastro-clinica?persona=recepcao" data-analytics-event="signup_cta_click" data-analytics-placement="persona-patient" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700">
                 <Heartbeat size={18} className="text-teal-500" />
-                Sou recepcionista
+                Quero configurar para a recepção
               </Link>
             </div>
 
@@ -250,10 +294,10 @@ function Hero() {
                     { label: 'Confirmadas', value: '10 de 12', tone: 'bg-emerald-500' },
                     { label: 'Receita', value: 'R$ 2.840', tone: 'bg-indigo-500' },
                   ].map((stat) => (
-                    <div key={stat.label} className="rounded-2xl bg-gray-50 p-3">
+                    <div key={stat.label} className="rounded-2xl bg-gray-50 p-3.5">
                       <div className={`mb-2 h-2 w-2 rounded-full ${stat.tone}`} />
-                      <p className="text-xs font-bold text-gray-900 leading-tight">{stat.value}</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-wide text-gray-400">{stat.label}</p>
+                      <p className="text-sm font-bold leading-tight text-gray-900">{stat.value}</p>
+                      <p className="mt-1 text-[11px] uppercase tracking-wide text-gray-400">{stat.label}</p>
                     </div>
                   ))}
                 </div>
@@ -376,8 +420,11 @@ function Hero() {
 
         {/* Social proof */}
         <div className="mt-16 pt-8 border-t border-gray-200">
-          <p className="text-center text-xs font-medium text-gray-400 uppercase tracking-wider mb-5">
-            Confie nas mesmas ferramentas que clínicas usam para crescer
+          <p className="text-center text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+            Feito para a rotina real de clínicas e consultórios brasileiros
+          </p>
+          <p className="mb-5 text-center text-sm text-gray-500">
+            Da odontologia à clínica geral, o fluxo se adapta ao seu jeito de atender sem virar um sistema pesado.
           </p>
           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12">
             {[
@@ -391,6 +438,47 @@ function Hero() {
               <div key={s.label} className="flex items-center gap-2 text-gray-400 text-sm">
                 {s.icon}
                 {s.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ComparisonSection() {
+  return (
+    <section className="border-y border-slate-100 bg-white py-20">
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="max-w-3xl mb-10">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-blue-600">
+            O contraste que o visitante precisa ver
+          </p>
+          <h2 className="mb-4 text-3xl font-extrabold text-gray-900 md:text-4xl">
+            O ganho não vem de ter mais um software. Vem de tirar a clínica do improviso.
+          </h2>
+          <p className="text-gray-500 leading-relaxed">
+            Quando a operação depende de planilha, WhatsApp solto e memória da recepção, a agenda perde força.
+            O Consultin centraliza o que mais pesa no dia a dia em uma rotina simples de usar.
+          </p>
+        </div>
+
+        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50 shadow-sm">
+          <div className="grid gap-px bg-slate-200 md:grid-cols-[1.2fr_1fr_1fr]">
+            <div className="bg-white px-5 py-4 text-sm font-semibold text-gray-900">Situação</div>
+            <div className="bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700">Hoje</div>
+            <div className="bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700">Com Consultin</div>
+          </div>
+
+          <div className="divide-y divide-slate-200 bg-white">
+            {comparisonRows.map((row) => (
+              <div key={row.label} className="grid gap-4 px-5 py-5 md:grid-cols-[1.2fr_1fr_1fr] md:gap-6">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{row.label}</p>
+                </div>
+                <p className="text-sm leading-relaxed text-gray-600">{row.before}</p>
+                <p className="text-sm leading-relaxed text-gray-700">{row.after}</p>
               </div>
             ))}
           </div>
@@ -440,14 +528,14 @@ function AssistantShowcase() {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 to="/cadastro-clinica"
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement="assistant-section"
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
               >
-                Criar conta e entrar
+                Testar a agenda inteligente
                 <ArrowRight size={16} weight="bold" />
               </Link>
               <a
@@ -456,7 +544,7 @@ function AssistantShowcase() {
                 rel="noopener noreferrer"
                 data-analytics-event="whatsapp_cta_click"
                 data-analytics-placement="assistant-section"
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-3.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
               >
                 <WhatsappLogo size={18} weight="fill" />
                 Começar pelo WhatsApp
@@ -524,26 +612,26 @@ function HowItWorks() {
   const steps = [
     {
       step: '01',
-      title: 'Cadastre sua clínica',
-      desc: 'Escolha se você atende sozinho ou se opera uma clínica. O cadastro ficou direto ao ponto.',
+      title: 'Sua recepção para de apagar incêndio',
+      desc: 'A confirmação de consultas e o acompanhamento do dia deixam de depender de ligação, memória e recado perdido.',
       icon: <Buildings size={28} weight="duotone" className="text-blue-600" />,
     },
     {
       step: '02',
-      title: 'Entre na hora',
-      desc: 'Você define sua senha, entra automaticamente e já começa a experimentar o sistema sem trava por e-mail.',
+      title: 'Agenda e pacientes aparecem com contexto',
+      desc: 'Você enxerga o que vai acontecer no dia, quem falta confirmar e onde precisa agir sem procurar em vários lugares.',
       icon: <Users size={28} weight="duotone" className="text-indigo-600" />,
     },
     {
       step: '03',
-      title: 'Configure em minutos',
-      desc: 'Ajuste agenda, equipe, pacientes e módulos essenciais no onboarding inicial, sem implantação longa.',
+      title: 'O financeiro deixa de chegar atrasado',
+      desc: 'Cobrança, repasse e entrada do dia ficam visíveis no mesmo fluxo da agenda, antes de virarem problema.',
       icon: <Lightning size={28} weight="duotone" className="text-emerald-600" />,
     },
     {
       step: '04',
-      title: 'Comece a atender',
-      desc: 'Agenda, pacientes, financeiro e WhatsApp entram na rotina desde o primeiro dia de teste.',
+      title: 'A clínica volta a operar com previsibilidade',
+      desc: 'Equipe, agenda, lembretes e rotina passam a trabalhar juntos desde o primeiro dia de teste.',
       icon: <CalendarBlank size={28} weight="duotone" className="text-teal-600" />,
     },
   ]
@@ -553,9 +641,9 @@ function HowItWorks() {
       <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-14">
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-            Simples de começar
+            O que muda na rotina quando entra no Consultin
           </h2>
-          <p className="text-gray-500">Sua clínica pronta em minutos, não em semanas.</p>
+          <p className="text-gray-500">A implementação importa, mas o que converte é ver sua operação ficando mais leve logo no começo.</p>
         </div>
 
         <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
@@ -615,8 +703,7 @@ function WhatsAppOnboarding() {
             <span className="text-green-600">pelo WhatsApp</span>
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto">
-            Prefere não preencher formulário? Nosso assistente cria tudo pra você numa conversa simples.
-            Em menos de 2 minutos sua clínica já está no ar.
+            O formulário dá acesso imediato. Se preferir, nosso assistente monta a configuração inicial com você e devolve tudo pronto.
           </p>
         </div>
 
@@ -645,7 +732,7 @@ function WhatsAppOnboarding() {
             rel="noopener noreferrer"
             data-analytics-event="whatsapp_cta_click"
             data-analytics-placement="wa-section-cta"
-            className="inline-flex items-center gap-3 bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-green-200 transition text-base"
+            className="inline-flex min-h-12 items-center gap-3 rounded-xl bg-green-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-green-200 transition hover:bg-green-600"
           >
             <WhatsappLogo size={22} weight="fill" />
             Começar pelo WhatsApp
@@ -714,16 +801,26 @@ function Pricing() {
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
             <Sparkle size={13} weight="fill" />
-            7 dias grátis em todos os planos
+            7 dias grátis para validar com calma
           </div>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
             Planos que crescem com{' '}
             <span className="text-blue-600">a sua clínica</span>
           </h2>
           <p className="text-gray-500 max-w-md mx-auto">
-            Comece de graça por 7 dias. Sem cartão de crédito para testar.
-            Escolha o plano ideal para o volume de atendimentos da sua clínica.
+            Teste sem cartão, veja se a rotina melhora de verdade e só depois escolha o plano pelo volume de atendimentos.
           </p>
+        </div>
+
+        <div className="mb-8 grid gap-4 rounded-[28px] border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <p className="mb-2 text-sm font-semibold text-gray-900">Sem Consultin</p>
+            <p className="text-sm leading-relaxed text-gray-600">Agenda espalhada, financeiro chegando depois e recepção resolvendo tudo no braço.</p>
+          </div>
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <p className="mb-2 text-sm font-semibold text-gray-900">Com Consultin</p>
+            <p className="text-sm leading-relaxed text-gray-700">Um lugar para agenda, pacientes, cobrança e confirmações, com menos ruído operacional.</p>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 items-start">
@@ -778,13 +875,13 @@ function Pricing() {
                 to="/cadastro-clinica"
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement={`pricing-${plan.name.toLowerCase()}`}
-                className={`w-full text-center py-3 rounded-xl font-semibold text-sm transition ${
+                className={`inline-flex min-h-12 w-full items-center justify-center rounded-xl py-3 text-sm font-semibold transition ${
                   plan.highlight
                     ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                 }`}
               >
-                Começar 7 dias grátis
+                {plan.highlight ? 'Usar o Profissional por 7 dias' : `Testar o ${plan.name} por 7 dias`}
               </Link>
             </div>
           ))}
@@ -801,14 +898,14 @@ function Pricing() {
 // ─── Specialties ─────────────────────────────────────────────────────────────
 function Specialties() {
   const types = [
-    { icon: <Tooth size={32} weight="duotone" />, name: 'Odontologia', color: 'text-sky-600 bg-sky-50' },
-    { icon: <Brain size={32} weight="duotone" />, name: 'Psicologia', color: 'text-violet-600 bg-violet-50' },
-    { icon: <Heartbeat size={32} weight="duotone" />, name: 'Cardiologia', color: 'text-rose-600 bg-rose-50' },
-    { icon: <Leaf size={32} weight="duotone" />, name: 'Estética', color: 'text-emerald-600 bg-emerald-50' },
-    { icon: <Syringe size={32} weight="duotone" />, name: 'Fisioterapia', color: 'text-orange-600 bg-orange-50' },
-    { icon: <Hospital size={32} weight="duotone" />, name: 'Clínica geral', color: 'text-blue-600 bg-blue-50' },
-    { icon: <Stethoscope size={32} weight="duotone" />, name: 'medicina ocupacional', color: 'text-indigo-600 bg-indigo-50' },
-    { icon: <Star size={32} weight="duotone" />, name: 'E muito mais…', color: 'text-amber-600 bg-amber-50' },
+    { icon: <Tooth size={32} weight="duotone" />, name: 'Odontologia', color: 'text-sky-600 bg-sky-50', note: 'Controle retorno, encaixe e confirmação sem ligar para a agenda inteira.' },
+    { icon: <Brain size={32} weight="duotone" />, name: 'Psicologia', color: 'text-violet-600 bg-violet-50', note: 'Organize recorrência, faltas e histórico sem perder o contexto do paciente.' },
+    { icon: <Heartbeat size={32} weight="duotone" />, name: 'Cardiologia', color: 'text-rose-600 bg-rose-50', note: 'Acompanhe agenda e operação clínica com mais previsibilidade no dia.' },
+    { icon: <Leaf size={32} weight="duotone" />, name: 'Estética', color: 'text-emerald-600 bg-emerald-50', note: 'Equipe, salas e retornos ficam no mesmo fluxo para reduzir ruído na recepção.' },
+    { icon: <Syringe size={32} weight="duotone" />, name: 'Fisioterapia', color: 'text-orange-600 bg-orange-50', note: 'Veja sequência de atendimentos, frequência e encaixes sem improviso.' },
+    { icon: <Hospital size={32} weight="duotone" />, name: 'Clínica geral', color: 'text-blue-600 bg-blue-50', note: 'Traga a rotina da clínica para um sistema simples, sem inflar a operação.' },
+    { icon: <Stethoscope size={32} weight="duotone" />, name: 'Medicina ocupacional', color: 'text-indigo-600 bg-indigo-50', note: 'Campos e fluxo podem ser adaptados para a realidade da sua especialidade.' },
+    { icon: <Star size={32} weight="duotone" />, name: 'Outras especialidades', color: 'text-amber-600 bg-amber-50', note: 'O Consultin se ajusta ao jeito de atender da sua equipe, não o contrário.' },
   ]
 
   return (
@@ -816,21 +913,21 @@ function Specialties() {
       <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-            Para qualquer especialidade
+            O produto faz sentido na especialidade e no dia a dia
           </h2>
           <p className="text-gray-500 max-w-lg mx-auto">
-            O Consultin se adapta ao vocabulário da sua área. Campos, fluxos e relatórios
-            configurados para a sua realidade.
+            Em vez de parecer genérico, o Consultin encaixa na rotina de quem atende, confirma, recebe e organiza a clínica.
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {types.map(t => (
             <div key={t.name}
-              className="flex flex-col items-center gap-3 p-5 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-md transition border border-transparent hover:border-gray-100">
+              className="flex flex-col items-center gap-3 rounded-2xl border border-transparent bg-gray-50 p-5 transition hover:border-gray-100 hover:bg-white hover:shadow-md">
               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${t.color}`}>
                 {t.icon}
               </div>
               <p className="text-sm font-medium text-gray-700 text-center capitalize">{t.name}</p>
+              <p className="text-center text-xs leading-relaxed text-gray-500">{t.note}</p>
             </div>
           ))}
         </div>
@@ -842,9 +939,9 @@ function Specialties() {
 // ─── Trust bar ─────────────────────────────────────────────────────────────
 function TrustBar() {
   const items = [
-    { icon: <ShieldCheck size={20} weight="fill" className="text-blue-600" />, text: 'Dados criptografados e seguros' },
-    { icon: <Lightning size={20} weight="fill" className="text-yellow-500" />, text: 'Sem instalação — funciona no navegador' },
-    { icon: <CheckCircle size={20} weight="fill" className="text-emerald-500" />, text: 'Suporte em português' },
+    { icon: <ShieldCheck size={20} weight="fill" className="text-blue-600" />, text: 'Dados protegidos e operação no Brasil' },
+    { icon: <Lightning size={20} weight="fill" className="text-yellow-500" />, text: 'Sem instalação e sem cartão para testar' },
+    { icon: <CheckCircle size={20} weight="fill" className="text-emerald-500" />, text: 'Suporte em português para clínica real' },
   ]
 
   return (
@@ -1055,7 +1152,7 @@ function UseCaseSection() {
                 to={audience.cta}
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement={audience.title.includes('clínicas') ? 'audience-clinic' : 'audience-solo'}
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md"
+                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 Ver esse fluxo
                 <ArrowRight size={16} weight="bold" />
@@ -1113,12 +1210,12 @@ function FinalCTA() {
           Simplifique o dia a dia da sua equipe, melhore a experiência dos seus pacientes
           e tome decisões com dados — não com papel.
         </p>
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="flex flex-col justify-center gap-4 sm:flex-row sm:flex-wrap">
           <Link to="/cadastro-clinica"
             data-analytics-event="signup_cta_click"
             data-analytics-placement="final-cta"
-            className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-bold px-8 py-4 rounded-xl shadow-lg transition text-sm">
-            Cadastrar minha clínica
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-8 py-4 text-sm font-bold text-blue-700 shadow-lg transition hover:bg-blue-50">
+            Cadastrar minha clínica agora
             <ArrowRight size={16} weight="bold" />
           </Link>
           <a href={WA_LINK}
@@ -1126,7 +1223,7 @@ function FinalCTA() {
             rel="noopener noreferrer"
             data-analytics-event="whatsapp_cta_click"
             data-analytics-placement="final-cta-whatsapp"
-            className="inline-flex items-center gap-2 border-2 border-white/40 text-white hover:bg-white/10 font-medium px-8 py-4 rounded-xl transition text-sm">
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-white/40 px-8 py-4 text-sm font-medium text-white transition hover:bg-white/10">
             <WhatsappLogo size={18} weight="fill" />
             Começar pelo WhatsApp
           </a>
@@ -1159,25 +1256,25 @@ function Footer() {
             <div>
               <p className="text-white font-medium mb-3">Produto</p>
               <ul className="space-y-2">
-                <li><a href="#funcionalidades" className="hover:text-white transition">Funcionalidades</a></li>
-                <li><a href="#como-funciona" className="hover:text-white transition">Como funciona</a></li>
-                <li><a href="#precos" className="hover:text-white transition">Preços</a></li>
-                <li><a href="#especialidades" className="hover:text-white transition">Especialidades</a></li>
+                <li><a href="#funcionalidades" className="inline-block py-1.5 transition hover:text-white">Funcionalidades</a></li>
+                <li><a href="#como-funciona" className="inline-block py-1.5 transition hover:text-white">Como funciona</a></li>
+                <li><a href="#precos" className="inline-block py-1.5 transition hover:text-white">Preços</a></li>
+                <li><a href="#especialidades" className="inline-block py-1.5 transition hover:text-white">Especialidades</a></li>
               </ul>
             </div>
             <div>
               <p className="text-white font-medium mb-3">Acesso</p>
               <ul className="space-y-2">
-                <li><Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="footer" className="hover:text-white transition">Entrar</Link></li>
-                <li><Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="footer" className="hover:text-white transition">Cadastrar clínica</Link></li>
+                <li><Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="footer" className="inline-block py-1.5 transition hover:text-white">Entrar</Link></li>
+                <li><Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="footer" className="inline-block py-1.5 transition hover:text-white">Cadastrar clínica</Link></li>
               </ul>
             </div>
             <div>
               <p className="text-white font-medium mb-3">Suporte</p>
               <ul className="space-y-2">
-                <li><a href="mailto:suporte@consultin.com.br" className="hover:text-white transition">Contato</a></li>
-                <li><a href="/politica-de-privacidade" className="hover:text-white transition">Privacidade</a></li>
-                <li><a href="/termos-de-uso" className="hover:text-white transition">Termos de Uso</a></li>
+                <li><a href="mailto:suporte@consultin.com.br" className="inline-block py-1.5 transition hover:text-white">Contato</a></li>
+                <li><a href="/politica-de-privacidade" className="inline-block py-1.5 transition hover:text-white">Privacidade</a></li>
+                <li><a href="/termos-de-uso" className="inline-block py-1.5 transition hover:text-white">Termos de Uso</a></li>
               </ul>
             </div>
           </div>
@@ -1213,13 +1310,14 @@ export default function LandingPage() {
         <Navbar />
         <main>
           <Hero />
+          <ComparisonSection />
           <AssistantShowcase />
           <SearchIntentSection />
           <UseCaseSection />
           <HowItWorks />
-          <WhatsAppOnboarding />
           <Pricing />
           <Specialties />
+          <WhatsAppOnboarding />
           <FAQSection />
           <TrustBar />
           <FinalCTA />

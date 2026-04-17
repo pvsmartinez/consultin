@@ -24,6 +24,13 @@
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { T, COL }       from '../_shared/tables.ts'
+import {
+  buildCrossClinicConflictReply,
+  evaluateProfileProvisioning,
+  findExactClinicNameConflict,
+  mergeRoles,
+  resolvePlatformFastPath,
+} from './logic.ts'
 
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -126,6 +133,17 @@ interface ClinicInfo {
   name:     string
   role:     string
   joinCode?: string
+}
+
+interface ExistingProfileSnapshot {
+  clinicId: string | null
+  clinicName: string | null
+  roles: string[]
+}
+
+interface AuthProvisioningResult {
+  userId: string | null
+  createdNewAuthUser: boolean
 }
 
 interface ClinicBotConfig {
@@ -564,225 +582,34 @@ serve(async (req) => {
     .slice(0, -1)
 
   const isFirstMessage = history.length === 0
-  const buttonReplyId = body.buttonReplyId?.trim() ?? ''
+  const fastPath = resolvePlatformFastPath({
+    buttonReplyId: body.buttonReplyId,
+    messageText,
+    pendingJoinCode: user.bot_state?.pendingJoinCode,
+    siteUrl: SITE_URL,
+  })
 
-  if (buttonReplyId === 'open_dashboard') {
-    const directReply = [
-      `Aqui está o painel:`,
-      `${SITE_URL}`,
-      '',
-      `Se quiser, também posso te ajudar por aqui no WhatsApp.`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'view_pricing', title: 'Ver precos' },
-      { id: 'create_clinic', title: 'Criar clinica' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  if (buttonReplyId === 'view_pricing') {
-    const directReply = [
-      `Claro. Os detalhes dos planos estão aqui:`,
-      `${SITE_URL}/precos`,
-      '',
-      `Se quiser, eu também posso te ajudar a começar sua clínica agora mesmo.`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'open_dashboard', title: 'Abrir painel' },
-      { id: 'create_clinic', title: 'Criar clinica' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  if (buttonReplyId === 'create_clinic' || buttonReplyId === 'start_clinic') {
-    const directReply = [
-      `Bora criar sua clínica.`,
-      `Me manda o *nome da clínica* e seu *e-mail* em uma mensagem só para eu adiantar seu acesso.`,
-      '',
-      `Exemplo: Clínica Sorriso, joao@clinica.com`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'view_pricing', title: 'Ver precos' },
-      { id: 'open_dashboard', title: 'Abrir painel' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  if (buttonReplyId === 'role_professional' || buttonReplyId === 'role_reception') {
-    const roleLabel = buttonReplyId === 'role_professional' ? 'profissional' : 'recepcionista'
-    const pendingJoinCode = user.bot_state?.pendingJoinCode?.trim().toUpperCase() ?? ''
-    const directReply = pendingJoinCode
-      ? [
-          `Perfeito, vou te cadastrar como *${roleLabel}* usando o código *${pendingJoinCode}*.`,
-          `Agora me mande seu *e-mail* para eu concluir o acesso.`,
-          '',
-          `Exemplo: joao@clinica.com`,
-        ].join('\n')
-      : [
-          `Perfeito, vou te cadastrar como *${roleLabel}*.`,
-          `Agora me mande seu *e-mail* junto com o *código de acesso* da clínica para eu concluir.`,
-          '',
-          `Exemplo: ABC123, joao@clinica.com`,
-        ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWA(fromPhone, directReply)
-    return new Response('OK', { status: 200 })
-  }
-
-  const wantsSupport = /(\bsuporte\b|falar\s+com\s+(algu[eé]m|humano)|atendimento|resolver\s+um\s+problema)/i.test(messageText)
-  if (wantsSupport) {
-    const directReply = [
-      `Pode me chamar por aqui mesmo.`,
-      `Se me mandar em 1 mensagem o que aconteceu, o nome da clínica e o que você quer fazer, eu já te ajudo sem te jogar para outro canal.`,
-      '',
-      `Se preferir, você também pode abrir o painel:`,
-      `${SITE_URL}`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'open_dashboard', title: 'Abrir painel' },
-      { id: 'create_clinic', title: 'Criar clinica' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  const normalizedMessage = messageText.trim().toUpperCase()
-  const directJoinCode = /^[A-Z0-9]{6}$/.test(normalizedMessage)
-    ? normalizedMessage
-    : (messageText.match(/\bc[oó]digo\b[^A-Z0-9]*([A-Z0-9]{6})\b/i)?.[1] ?? '').toUpperCase()
-  if (directJoinCode) {
-    const joinCode = directJoinCode
-    const nextBotState = {
-      ...normalizePlatformBotState(user.bot_state),
-      pendingJoinCode: joinCode,
+  if (fastPath) {
+    if (fastPath.nextPendingJoinCode) {
+      const nextBotState = {
+        ...normalizePlatformBotState(user.bot_state),
+        pendingJoinCode: fastPath.nextPendingJoinCode,
+      }
+      await savePlatformBotState(supabase, user.id, nextBotState)
+      user = { ...user, bot_state: nextBotState }
     }
-    await savePlatformBotState(supabase, user.id, nextBotState)
-    user = { ...user, bot_state: nextBotState }
-    const directReply = [
-      `Perfeito. Vou usar o código *${joinCode}*.`,
-      `Agora me mande seu *e-mail* e sua função na clínica: *profissional* ou *recepcionista*.`,
-      '',
-      `Exemplo: joao@clinica.com, profissional`,
-    ].join('\n')
 
     await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
       platform_user_id: user.id,
       role:             'assistant',
-      content:          directReply,
+      content:          fastPath.replyText,
     })
 
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'role_professional', title: 'Sou profissional' },
-      { id: 'role_reception', title: 'Sou recepcionista' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  const wantsCreateClinic = /(quero\s+criar|minha\s+clinica|minha\s+cl[ií]nica|criar\s+(uma\s+)?cl[ií]nica|abrir\s+minha\s+cl[ií]nica|come[cç]ar\s+minha\s+cl[ií]nica)/i.test(messageText)
-  if (wantsCreateClinic) {
-    const directReply = [
-      `Bora criar sua clínica.`,
-      `Me manda o *nome da clínica* e seu *e-mail* em uma mensagem só para eu adiantar seu acesso.`,
-      '',
-      `Exemplo: Clínica Sorriso, joao@clinica.com`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'create_clinic', title: 'Criar clinica' },
-      { id: 'view_pricing', title: 'Ver precos' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  // ── Deterministic fast-path: direct panel link requests ─────────────────
-  // Avoids relying on model variance for simple "send me the link" asks.
-  const wantsPricingLink = /(\bpreco\b|\bprecos\b|\bpreço\b|\bpreços\b|\bplano\b|\bplanos\b)/i.test(messageText)
-  if (wantsPricingLink) {
-    const directReply = [
-      `Claro. Você pode ver os detalhes dos planos por aqui:`,
-      `${SITE_URL}/precos`,
-      '',
-      `Se quiser, eu também posso te ajudar a começar sua clínica agora mesmo.`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'open_dashboard', title: 'Abrir painel' },
-      { id: 'start_clinic', title: 'Criar clinica' },
-    ])
-
-    return new Response('OK', { status: 200 })
-  }
-
-  const wantsPanelLink = /(\bpainel\b|\bdashboard\b|manda\s+o?\s*link|link\s+de\s+acesso|como\s+(eu\s+)?(acesso|entro))/i.test(messageText)
-  if (wantsPanelLink) {
-    const directReply = [
-      `Tem sim! Você pode acessar o painel completo por aqui:`,
-      `${SITE_URL}`,
-      '',
-      `Se quiser, também posso te ajudar a configurar tudo por aqui no WhatsApp.`,
-    ].join('\n')
-
-    await supabase.from(T.WA_PLATFORM_MESSAGES).insert({
-      platform_user_id: user.id,
-      role:             'assistant',
-      content:          directReply,
-    })
-
-    await sendWAInteractive(fromPhone, directReply, [
-      { id: 'open_dashboard', title: 'Abrir painel' },
-      { id: 'view_pricing', title: 'Ver precos' },
-    ])
+    if (fastPath.mode === 'interactive' && fastPath.buttons && fastPath.buttons.length > 0) {
+      await sendWAInteractive(fromPhone, fastPath.replyText, fastPath.buttons)
+    } else {
+      await sendWA(fromPhone, fastPath.replyText)
+    }
 
     return new Response('OK', { status: 200 })
   }
@@ -1305,6 +1132,18 @@ async function executeSideEffect(
       return null
     }
 
+    const similarClinics = await searchClinics(supabase, clinicName)
+    const exactConflict = findExactClinicNameConflict(clinicName, similarClinics)
+    if (exactConflict) {
+      return [
+        `⚠️ Encontrei uma clínica com nome muito parecido: *${exactConflict.name}*.`,
+        '',
+        'Para evitar duplicidade, eu não vou criar outra clínica automaticamente com esse nome agora.',
+        'Se for a mesma clínica, peça o código de acesso ao responsável.',
+        'Se for outra operação, me mande um nome diferente para seguir com segurança.',
+      ].join('\n')
+    }
+
     // 1. Create clinic row (join_code auto-generated by DB default)
     const { data: newClinic, error: clinicErr } = await supabase
       .from(T.CLINICS)
@@ -1317,50 +1156,42 @@ async function executeSideEffect(
       return null
     }
 
-    // 2. Invite responsible person by email (Supabase Auth Admin invite)
-    const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey:          SUPABASE_SRK,
-        Authorization:   `Bearer ${SUPABASE_SRK}`,
-      },
-      body: JSON.stringify({
-        email,
-        data: { redirect_to: `${SITE_URL}/nova-senha` },
-      }),
+    const authProvision = await resolveAuthUserForInvite(supabase, email)
+    if (!authProvision.userId) {
+      await rollbackCreatedClinic(supabase, {
+        clinicId: newClinic.id,
+        userId: authProvision.userId,
+        deleteInvitedUser: authProvision.createdNewAuthUser,
+      })
+      return '😅 Não consegui preparar o acesso por e-mail com segurança. Tente novamente em instantes.'
+    }
+
+    const profileProvision = await provisionPrimaryProfileSafely(supabase, {
+      userId: authProvision.userId,
+      targetClinicId: newClinic.id,
+      targetClinicName: clinicName,
+      displayName: responsibleName || email,
+      email,
+      phone: phone || null,
+      requestedRoles: ['admin'],
+      operation: 'create_clinic',
     })
 
-    let userId: string | null = null
-    if (inviteRes.ok) {
-      userId = (await inviteRes.json())?.id ?? null
-    } else {
-      const errText = await inviteRes.text()
-      console.warn('[platform-agent] invite response (user may already exist):', errText)
-      // User already exists — look them up
-      const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-      const existing = (users ?? []).find((u: { email?: string }) => u.email === email)
-      if (existing) userId = existing.id
-    }
-
-    if (userId) {
-      // 3. Create user_profile as clinic admin
-      await supabase.from(T.USER_PROFILES).upsert({
-        id:        userId,
-        name:      responsibleName || email,
-        roles:     ['admin'],
-        clinic_id: newClinic.id,
-        phone:     phone || null,
+    if (!profileProvision.ok) {
+      await rollbackCreatedClinic(supabase, {
+        clinicId: newClinic.id,
+        userId: authProvision.userId,
+        deleteInvitedUser: authProvision.createdNewAuthUser,
       })
-
-      // 4. Link platform user to the Supabase auth user
-      await supabase.from(T.WA_PLATFORM_USERS).update({
-        linked_user_id: userId,
-        name:           (user.name ?? responsibleName) || null,
-        email,
-        bot_state:      {},
-      }).eq('id', user.id)
+      return profileProvision.replyText
     }
+
+    await supabase.from(T.WA_PLATFORM_USERS).update({
+      linked_user_id: authProvision.userId,
+      name:           (user.name ?? responsibleName) || null,
+      email,
+      bot_state:      {},
+    }).eq('id', user.id)
 
     // 5. Notify Pedro on Telegram
     await notifyTelegram([
@@ -1423,40 +1254,38 @@ async function executeSideEffect(
       return null
     }
 
-    // Send email invite
-    const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey:          SUPABASE_SRK,
-        Authorization:   `Bearer ${SUPABASE_SRK}`,
-      },
-      body: JSON.stringify({ email }),
+    const authProvision = await resolveAuthUserForInvite(supabase, email)
+    if (!authProvision.userId) {
+      return '😅 Não consegui preparar seu acesso por e-mail agora. Tente novamente em instantes.'
+    }
+
+    const profileProvision = await provisionPrimaryProfileSafely(supabase, {
+      userId: authProvision.userId,
+      targetClinicId: clinic.id,
+      targetClinicName: clinic.name,
+      displayName: user.name ?? email,
+      email,
+      phone: fromPhone || null,
+      requestedRoles: [role],
+      operation: 'join_clinic',
     })
 
-    let userId: string | null = null
-    if (inviteRes.ok) {
-      userId = (await inviteRes.json())?.id ?? null
-    } else {
-      const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-      const existing = (users ?? []).find((u: { email?: string }) => u.email === email)
-      if (existing) userId = existing.id
+    if (!profileProvision.ok) {
+      if (authProvision.createdNewAuthUser) {
+        try {
+          await supabase.auth.admin.deleteUser(authProvision.userId)
+        } catch (error) {
+          console.error('[platform-agent] deleteUser join rollback error:', error)
+        }
+      }
+      return profileProvision.replyText
     }
 
-    if (userId) {
-      await supabase.from(T.USER_PROFILES).upsert({
-        id:        userId,
-        name:      user.name ?? email,
-        roles:     [role],
-        clinic_id: clinic.id,
-        phone:     fromPhone || null,
-      })
-      await supabase.from(T.WA_PLATFORM_USERS).update({
-        linked_user_id: userId,
-        email,
-        bot_state:      {},
-      }).eq('id', user.id)
-    }
+    await supabase.from(T.WA_PLATFORM_USERS).update({
+      linked_user_id: authProvision.userId,
+      email,
+      bot_state:      {},
+    }).eq('id', user.id)
 
     await notifyTelegram([
       `👤 *Novo membro via Bot WhatsApp*`,
@@ -1545,15 +1374,22 @@ async function executeSideEffect(
     const r         = req as Record<string, unknown>
     const clinicName = (r.clinics as { name: string } | null)?.name ?? '?'
 
-    await inviteStaffWithWA({
-      supabase,
-      staffEmail: r.requester_email as string,
-      staffPhone: r.requester_phone as string,
-      staffName:  r.requester_name  as string,
-      clinicId:   r.clinic_id       as string,
-      clinicName,
-      role:       r.role            as string,
-    })
+    try {
+      await inviteStaffWithWA({
+        supabase,
+        staffEmail: r.requester_email as string,
+        staffPhone: r.requester_phone as string,
+        staffName:  r.requester_name  as string,
+        clinicId:   r.clinic_id       as string,
+        clinicName,
+        role:       r.role            as string,
+      })
+    } catch (error) {
+      console.error('[platform-agent] approve_staff_request invite error:', error)
+      return typeof error === 'object' && error && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : '😅 Não consegui aprovar esse acesso com segurança agora. Tente novamente em instantes.'
+    }
 
     await supabase
       .from(T.CLINIC_STAFF_REQUESTS)
@@ -1601,12 +1437,19 @@ async function executeSideEffect(
       return null
     }
 
-    await inviteStaffWithWA({
-      supabase, staffEmail, staffPhone, staffName,
-      clinicId:   adminClinic.id,
-      clinicName: adminClinic.name,
-      role,
-    })
+    try {
+      await inviteStaffWithWA({
+        supabase, staffEmail, staffPhone, staffName,
+        clinicId:   adminClinic.id,
+        clinicName: adminClinic.name,
+        role,
+      })
+    } catch (error) {
+      console.error('[platform-agent] invite_staff_directly error:', error)
+      return typeof error === 'object' && error && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : '😅 Não consegui enviar esse convite com segurança agora. Tente novamente em instantes.'
+    }
 
     await notifyTelegram([
       `👤 *Funcionário convidado via Bot WhatsApp*`,
@@ -2153,6 +1996,185 @@ async function doCreatePatient(
   return (data as { id: string }).id
 }
 
+async function resolveAuthUserForInvite(
+  supabase: ReturnType<typeof createClient>,
+  email: string,
+): Promise<AuthProvisioningResult> {
+  const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey:          SUPABASE_SRK,
+      Authorization:   `Bearer ${SUPABASE_SRK}`,
+    },
+    body: JSON.stringify({
+      email,
+      data: { redirect_to: `${SITE_URL}/nova-senha` },
+    }),
+  })
+
+  if (inviteRes.ok) {
+    return {
+      userId: (await inviteRes.json())?.id ?? null,
+      createdNewAuthUser: true,
+    }
+  }
+
+  const errText = await inviteRes.text()
+  console.warn('[platform-agent] invite response (fallback to existing user lookup):', errText)
+  const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+  const existing = (users ?? []).find((candidate: { email?: string }) => candidate.email === email)
+
+  return {
+    userId: existing?.id ?? null,
+    createdNewAuthUser: false,
+  }
+}
+
+async function loadExistingProfileSnapshot(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<ExistingProfileSnapshot | null> {
+  const { data: profile } = await supabase
+    .from(T.USER_PROFILES)
+    .select('clinic_id, roles, clinics(name)')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (!profile) return null
+
+  const row = profile as { clinic_id: string | null; roles: string[] | null; clinics: { name: string } | null }
+  return {
+    clinicId: row.clinic_id,
+    clinicName: row.clinics?.name ?? null,
+    roles: Array.isArray(row.roles) ? row.roles : [],
+  }
+}
+
+async function ensureUserClinicMembership(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    userId: string
+    clinicId: string
+    role: string
+    email: string
+    phone: string | null
+  },
+): Promise<void> {
+  let professionalId: string | null = null
+
+  if (params.role === 'professional') {
+    const phoneDigits = params.phone?.replace(/\D/g, '') ?? ''
+    const last9 = phoneDigits.slice(-9)
+    let professionalQuery = supabase
+      .from(T.PROFESSIONALS)
+      .select('id, user_id')
+      .eq('clinic_id', params.clinicId)
+      .eq('active', true)
+      .limit(1)
+
+    if (params.email) {
+      professionalQuery = professionalQuery.ilike('email', params.email)
+    } else if (last9) {
+      professionalQuery = professionalQuery.ilike('phone', `%${last9}%`)
+    } else {
+      professionalQuery = professionalQuery.eq('id', '__no_match__')
+    }
+
+    const { data: professional } = await professionalQuery.maybeSingle()
+    const professionalRow = professional as { id: string; user_id?: string | null } | null
+    if (professionalRow) {
+      professionalId = professionalRow.id
+      if (!professionalRow.user_id || professionalRow.user_id === params.userId) {
+        await supabase
+          .from(T.PROFESSIONALS)
+          .update({ user_id: params.userId })
+          .eq('id', professionalRow.id)
+          .eq('clinic_id', params.clinicId)
+      }
+    }
+  }
+
+  await supabase
+    .from(T.USER_CLINIC_MEMBERSHIPS)
+    .upsert({
+      user_id: params.userId,
+      clinic_id: params.clinicId,
+      professional_id: professionalId,
+      active: true,
+    }, { onConflict: 'user_id,clinic_id' })
+}
+
+async function provisionPrimaryProfileSafely(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    userId: string
+    targetClinicId: string
+    targetClinicName: string
+    displayName: string
+    email: string
+    phone: string | null
+    requestedRoles: string[]
+    operation: 'create_clinic' | 'join_clinic'
+  },
+): Promise<{ ok: true; roles: string[] } | { ok: false; replyText: string }> {
+  const existingProfile = await loadExistingProfileSnapshot(supabase, params.userId)
+  const guard = evaluateProfileProvisioning(existingProfile, params.targetClinicId, params.requestedRoles)
+
+  if (guard.kind === 'cross_clinic_conflict') {
+    return {
+      ok: false,
+      replyText: buildCrossClinicConflictReply({
+        email: params.email,
+        existingClinicName: existingProfile?.clinicName ?? null,
+        targetClinicName: params.targetClinicName,
+        operation: params.operation,
+      }),
+    }
+  }
+
+  const nextRoles = guard.mergedRoles ?? params.requestedRoles
+  const { error: profileError } = await supabase.from(T.USER_PROFILES).upsert({
+    id:        params.userId,
+    name:      params.displayName,
+    roles:     nextRoles,
+    clinic_id: params.targetClinicId,
+    phone:     params.phone,
+  })
+
+  if (profileError) {
+    console.error('[platform-agent] profile provisioning error:', profileError)
+    return {
+      ok: false,
+      replyText: '😅 Não consegui concluir o acesso com segurança agora. Tente novamente em instantes ou use outro e-mail.',
+    }
+  }
+
+  await ensureUserClinicMembership(supabase, {
+    userId: params.userId,
+    clinicId: params.targetClinicId,
+    role: params.requestedRoles[0] ?? 'professional',
+    email: params.email,
+    phone: params.phone,
+  })
+
+  return { ok: true, roles: nextRoles }
+}
+
+async function rollbackCreatedClinic(
+  supabase: ReturnType<typeof createClient>,
+  params: { clinicId: string; userId: string | null; deleteInvitedUser: boolean },
+): Promise<void> {
+  await supabase.from(T.CLINICS).delete().eq('id', params.clinicId)
+  if (params.deleteInvitedUser && params.userId) {
+    try {
+      await supabase.auth.admin.deleteUser(params.userId)
+    } catch (error) {
+      console.error('[platform-agent] deleteUser rollback error:', error)
+    }
+  }
+}
+
 // ─── formatAgendaForPrompt ────────────────────────────────────────────────────
 
 function formatAgendaForPrompt(items: AgendaItem[], label: string): string {
@@ -2235,37 +2257,31 @@ async function inviteStaffWithWA(opts: {
   const { supabase, staffEmail, staffPhone, staffName, clinicId, clinicName, role } = opts
   const firstName = staffName.split(' ')[0] || staffEmail
 
-  // 1. Send Auth invite email
-  const inviteRes = await fetch(`${SUPABASE_URL}/auth/v1/invite`, {
-    method:  'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey:          SUPABASE_SRK,
-      Authorization:   `Bearer ${SUPABASE_SRK}`,
-    },
-    body: JSON.stringify({
-      email: staffEmail,
-      data:  { redirect_to: `${SITE_URL}/nova-senha` },
-    }),
-  })
-
-  let userId: string | null = null
-  if (inviteRes.ok) {
-    userId = (await inviteRes.json())?.id ?? null
-  } else {
-    const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-    const existing = (users ?? []).find((u: { email?: string }) => u.email === staffEmail)
-    if (existing) userId = existing.id
+  const authProvision = await resolveAuthUserForInvite(supabase, staffEmail)
+  if (!authProvision.userId) {
+    throw new Error('Failed to provision auth user for staff invite')
   }
 
-  if (userId) {
-    await supabase.from(T.USER_PROFILES).upsert({
-      id:        userId,
-      name:      staffName || staffEmail,
-      roles:     [role],
-      clinic_id: clinicId,
-      phone:     staffPhone,
-    })
+  const profileProvision = await provisionPrimaryProfileSafely(supabase, {
+    userId: authProvision.userId,
+    targetClinicId: clinicId,
+    targetClinicName: clinicName,
+    displayName: staffName || staffEmail,
+    email: staffEmail,
+    phone: staffPhone,
+    requestedRoles: [role],
+    operation: 'join_clinic',
+  })
+
+  if (!profileProvision.ok) {
+    if (authProvision.createdNewAuthUser) {
+      try {
+        await supabase.auth.admin.deleteUser(authProvision.userId)
+      } catch (error) {
+        console.error('[platform-agent] deleteUser direct-invite rollback error:', error)
+      }
+    }
+    throw new Error(profileProvision.replyText)
   }
 
   // 2. Send WhatsApp invite message

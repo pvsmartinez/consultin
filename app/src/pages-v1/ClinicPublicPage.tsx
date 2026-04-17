@@ -57,7 +57,7 @@ export default function ClinicPublicPage() {
           <GlobeHemisphereWest size={32} className="mx-auto text-gray-300" />
           <h1 className="mt-4 text-2xl font-semibold text-gray-900">Página não encontrada</h1>
           <p className="mt-2 text-sm text-gray-500">Esse perfil público não existe ou ainda não foi publicado.</p>
-          <Link to="/" className="mt-5 inline-flex rounded-xl bg-[#0ea5b0] px-4 py-2 text-sm font-medium text-white">
+          <Link to="/" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0ea5b0] px-4 py-2.5 text-sm font-medium text-white">
             Voltar para o Consultin
           </Link>
         </div>
@@ -89,7 +89,7 @@ export default function ClinicPublicPage() {
       <main className="mx-auto -mt-24 max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-6">
-            <section className="rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <section className="rounded-[28px] border border-white/70 bg-white p-4 shadow-[0_10px_40px_rgba(0,0,0,0.06)] sm:p-6">
               <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div className="flex gap-4">
                   <div className="h-24 w-24 overflow-hidden rounded-[28px] border-4 border-white bg-white shadow-sm flex items-center justify-center">
@@ -133,7 +133,7 @@ export default function ClinicPublicPage() {
                       href={whatsappHref}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-sm"
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-semibold text-white shadow-sm"
                       style={{ background: page.primaryColor }}
                     >
                       <WhatsappLogo size={18} weight="fill" />
@@ -143,7 +143,7 @@ export default function ClinicPublicPage() {
                   {page.showBooking && page.clinic.allowSelfRegistration && (
                     <Link
                       to={bookingHref}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-800"
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3.5 text-sm font-semibold text-gray-800"
                     >
                       <CalendarBlank size={18} />
                       {bookingLabel}
@@ -154,7 +154,7 @@ export default function ClinicPublicPage() {
             </section>
 
             {page.showProfessionals && page.professionals.length > 0 && (
-              <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+              <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="flex items-center gap-2">
                   <UserCircle size={18} style={{ color: page.primaryColor }} />
                   <h2 className="text-xl font-semibold text-gray-900">Profissionais</h2>
@@ -185,7 +185,7 @@ export default function ClinicPublicPage() {
             )}
 
             {page.showServices && page.services.length > 0 && (
-              <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+              <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="flex items-center gap-2">
                   <Stethoscope size={18} style={{ color: page.primaryColor }} />
                   <h2 className="text-xl font-semibold text-gray-900">Atendimentos</h2>
@@ -213,7 +213,7 @@ export default function ClinicPublicPage() {
 
           <aside className="space-y-6">
             {page.showLocation && addressLine && (
-              <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+              <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="flex items-center gap-2">
                   <MapPin size={18} style={{ color: page.primaryColor }} />
                   <h2 className="text-lg font-semibold text-gray-900">Localização</h2>
@@ -223,7 +223,7 @@ export default function ClinicPublicPage() {
                   href={mapsHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-800"
+                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3.5 text-sm font-semibold text-gray-800"
                 >
                   <MapPin size={16} />
                   Abrir no Google Maps
@@ -232,7 +232,7 @@ export default function ClinicPublicPage() {
             )}
 
             {page.showHours && workingHours.length > 0 && (
-              <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+              <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="flex items-center gap-2">
                   <Clock size={18} style={{ color: page.primaryColor }} />
                   <h2 className="text-lg font-semibold text-gray-900">Horários</h2>
@@ -247,7 +247,7 @@ export default function ClinicPublicPage() {
               </section>
             )}
 
-            <section className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
               <p className="text-sm font-semibold text-gray-900">Contato rápido</p>
               <p className="mt-2 text-sm text-gray-500">
                 Compartilhe esta página com novos pacientes para centralizar apresentação, localização e contato.
@@ -258,7 +258,7 @@ export default function ClinicPublicPage() {
                     href={whatsappHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white"
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-semibold text-white"
                     style={{ background: page.primaryColor }}
                   >
                     <WhatsappLogo size={18} weight="fill" />
@@ -268,7 +268,7 @@ export default function ClinicPublicPage() {
                 {page.showBooking && page.clinic.allowSelfRegistration && (
                   <Link
                     to={bookingHref}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-800"
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-3.5 text-sm font-semibold text-gray-800"
                   >
                     <CalendarBlank size={18} />
                     {bookingLabel}

@@ -35,6 +35,13 @@ import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto }       from 'https://deno.land/std@0.168.0/crypto/mod.ts'
 import { encode }       from 'https://deno.land/std@0.168.0/encoding/hex.ts'
+import {
+  extractWebhookMessageBatches,
+  parsePlatformMessageInput,
+  type MetaContact,
+  type MetaMessage,
+  type MetaWebhookPayload,
+} from './logic.ts'
 
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -87,60 +94,44 @@ serve(async (req) => {
   try { payload = JSON.parse(rawBody) }
   catch { return new Response('Bad Request', { status: 400 }) }
 
-  for (const entry of payload.entry ?? []) {
-    for (const change of entry.changes ?? []) {
-      if (change.field !== 'messages') continue
-
-      const value         = change.value
-      const phoneNumberId = value.metadata?.phone_number_id
-      if (!phoneNumberId) continue
-
-      // ── Platform number check FIRST — before clinic lookup ────────────────
-      // This ensures Consultin's own WA number always routes to the platform
-      // agent even if it's also registered as a test clinic's phone.
-      const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
-      if (platformPhoneId && phoneNumberId === platformPhoneId) {
-        for (const msg of value.messages ?? []) {
-          const msgType = msg.type as string
-          const buttonReplyId = msg.interactive?.button_reply?.id ?? null
-          let msgText =
-            msg.text?.body ??
-            msg.button?.text ??
-            msg.interactive?.button_reply?.title ??
-            null
-          if (msgType === 'audio' && msg.audio?.id) {
-            const transcribed = await transcribeAudio(msg.audio.id, { accessToken: PLATFORM_WA_TOKEN })
-            if (transcribed) {
-              msgText = `[Áudio transcrito]: ${transcribed}`
-            }
+  const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
+  for (const batch of extractWebhookMessageBatches(payload, platformPhoneId)) {
+    if (batch.route === 'platform') {
+      for (const msg of batch.messages) {
+        const parsed = parsePlatformMessageInput(msg)
+        let msgText = parsed.messageText
+        if (parsed.msgType === 'audio' && parsed.audioId) {
+          const transcribed = await transcribeAudio(parsed.audioId, { accessToken: PLATFORM_WA_TOKEN })
+          if (transcribed) {
+            msgText = `[Áudio transcrito]: ${transcribed}`
           }
-          if (!msgText || !msg.from) continue
-          await callPlatformAgent(msg.from, msgText, msg.id, buttonReplyId ?? undefined)
         }
-        continue
+        if (!msgText || !parsed.fromPhone) continue
+        await callPlatformAgent(parsed.fromPhone, msgText, parsed.waMessageId, parsed.buttonReplyId ?? undefined)
       }
+      continue
+    }
 
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
-      const { data: clinic } = await supabase
-        .from('clinics')
-        .select('id, whatsapp_enabled, wa_attendant_inbox, whatsapp_phone_number_id')
-        .eq('whatsapp_phone_number_id', phoneNumberId)
-        .eq('whatsapp_enabled', true)
-        .maybeSingle()
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('id, whatsapp_enabled, wa_attendant_inbox, whatsapp_phone_number_id')
+      .eq('whatsapp_phone_number_id', batch.phoneNumberId)
+      .eq('whatsapp_enabled', true)
+      .maybeSingle()
 
-      if (!clinic) continue
+    if (!clinic) continue
 
-      for (const status of value.statuses ?? []) {
-        await supabase
-          .from('whatsapp_messages')
-          .update({ delivery_status: status.status })
-          .eq('wa_message_id', status.id)
-          .eq('clinic_id', clinic.id)
-      }
+    for (const status of batch.statuses) {
+      await supabase
+        .from('whatsapp_messages')
+        .update({ delivery_status: status.status })
+        .eq('wa_message_id', status.id)
+        .eq('clinic_id', clinic.id)
+    }
 
-      for (const msg of value.messages ?? []) {
-        await processInbound(supabase, clinic, msg, value.contacts ?? [], phoneNumberId)
-      }
+    for (const msg of batch.messages) {
+      await processInbound(supabase, clinic, msg, batch.contacts, batch.phoneNumberId)
     }
   }
 
@@ -1087,34 +1078,4 @@ interface AgentAction {
   patientPhone?:     string  // staff_create_patient
 }
 
-interface MetaWebhookPayload {
-  entry?: {
-    changes?: {
-      field: string
-      value: {
-        metadata?: { phone_number_id: string }
-        messages?: MetaMessage[]
-        statuses?: { id: string; status: string }[]
-        contacts?: MetaContact[]
-      }
-    }[]
-  }[]
-}
-
-interface MetaMessage {
-  id:           string
-  from:         string
-  type:         string
-  text?:        { body: string }
-  audio?:       { id: string }
-  image?:       { id: string; caption?: string }
-  document?:    { id: string; filename?: string }
-  button?:      { text: string; payload: string }
-  interactive?: { button_reply?: { id: string; title: string } }
-}
-
-interface MetaContact {
-  profile: { name: string }
-  wa_id:   string
-}
 

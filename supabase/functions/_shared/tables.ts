@@ -26,6 +26,7 @@ export const T = {
   ROOM_CLOSURES:        'room_closures',
   SERVICE_TYPES:        'service_types',
   USER_PROFILES:        'user_profiles',
+  USER_CLINIC_MEMBERSHIPS: 'user_clinic_memberships',
   WA_PLATFORM_MESSAGES: 'wa_platform_messages',
   WA_PLATFORM_USERS:    'wa_platform_users',
   WHATSAPP_FAQS:        'whatsapp_faqs',

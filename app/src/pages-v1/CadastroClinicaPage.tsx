@@ -235,8 +235,8 @@ export default function CadastroClinicaPage() {
   return (
     <>
       <Seo
-        title="Criar conta | Consultin"
-        description="Crie sua conta no Consultin e comece agora a organizar agenda, pacientes, prontuário e financeiro da sua clínica ou consultório."
+        title="Cadastrar minha clínica | Consultin"
+        description="Cadastre sua clínica no Consultin, entre na hora e teste agenda, pacientes, financeiro e WhatsApp integrado por 7 dias."
         canonicalPath="/cadastro-clinica"
         keywords={[
           'cadastro de clínica',
@@ -250,7 +250,7 @@ export default function CadastroClinicaPage() {
         <LeftPanel />
 
         {/* Right — form */}
-        <div className="flex flex-col justify-center items-center bg-white p-8 min-h-screen lg:min-h-0">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 py-8 sm:p-8 lg:min-h-0">
           <div className="w-full max-w-sm">
             {/* Header */}
             <div className="flex items-center gap-2 mb-6 lg:hidden">
@@ -260,9 +260,9 @@ export default function CadastroClinicaPage() {
               <span className="text-base font-bold text-gray-900">Consultin</span>
             </div>
 
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Criar sua conta</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Cadastrar minha clínica</h1>
             <p className="text-sm text-gray-500 mb-6">
-              Preencha os dados, escolha sua senha e acesse na hora.
+              Entre agora, teste por 7 dias e configure o resto com calma depois.
             </p>
 
             <div className="lg:hidden mb-5 rounded-2xl border border-gray-200 bg-gray-50 p-4">
@@ -280,41 +280,33 @@ export default function CadastroClinicaPage() {
               </div>
             </div>
 
-            {/* WhatsApp shortcut */}
-            <a
-              href="https://wa.me/5511936213029?text=Oi%2C+quero+cadastrar+minha+cl%C3%ADnica+no+Consultin"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 w-full border border-green-200 bg-green-50 hover:bg-green-100 text-green-800 rounded-xl px-4 py-3 mb-5 transition"
-            >
-              <WhatsappLogo size={20} weight="fill" className="text-green-600 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold">Prefere pelo WhatsApp?</p>
-                <p className="text-xs text-green-700/70 truncate">Nosso assistente configura tudo em 2 min</p>
+            <div className="mb-5 grid gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white p-3 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Formulário</p>
+                <p className="mt-2 text-sm font-semibold text-gray-900">Acesso imediato</p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">Você cria a conta, entra na hora e testa sem cartão.</p>
               </div>
-              <ArrowRight size={14} className="text-green-600 shrink-0" />
-            </a>
-
-            <div className="relative flex items-center mb-5">
-              <div className="flex-1 border-t border-gray-200" />
-              <span className="mx-3 text-xs text-gray-400">ou preencha o formulário</span>
-              <div className="flex-1 border-t border-gray-200" />
+              <div className="rounded-2xl bg-white p-3 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-green-600">WhatsApp</p>
+                <p className="mt-2 text-sm font-semibold text-gray-900">Configuração assistida</p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">Se preferir, nosso assistente monta a clínica com você.</p>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {/* Solo / Clinic toggle */}
-              <div className="flex items-center border border-gray-200 rounded-xl p-1 bg-gray-50 gap-1">
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1.5">
                 <button
                   type="button"
                   onClick={() => setIsSolo(false)}
-                  className={`flex-1 py-3 text-sm font-medium rounded-lg transition-colors ${!isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`min-h-12 rounded-lg px-3 py-3 text-[15px] font-medium leading-tight transition-colors ${!isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
                 >
                   Tenho uma clínica
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsSolo(true)}
-                  className={`flex-1 py-3 text-sm font-medium rounded-lg transition-colors ${isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`min-h-12 rounded-lg px-3 py-3 text-[15px] font-medium leading-tight transition-colors ${isSolo ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
                 >
                   Profissional liberal
                 </button>
@@ -327,19 +319,6 @@ export default function CadastroClinicaPage() {
                   placeholder={isSolo ? 'Ex: Dra. Ana Costa' : 'Ex: Clínica Saúde & Vida'}
                   className={inputClass(!!errors.clinicName)}
                 />
-              </Field>
-
-              {/* CNPJ / CPF */}
-              <Field label={isSolo ? 'CPF (opcional)' : 'CNPJ'}>
-                <Controller control={control} name="cnpj" render={({ field }) => (
-                  <IMaskInput
-                    mask={isSolo ? '000.000.000-00' : '00.000.000/0000-00'}
-                    value={field.value ?? ''}
-                    onAccept={(val: string) => field.onChange(val)}
-                    placeholder={isSolo ? '000.000.000-00' : '00.000.000/0001-00'}
-                    className={inputClass(false)}
-                  />
-                )} />
               </Field>
 
               {/* Email */}
@@ -365,7 +344,7 @@ export default function CadastroClinicaPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(current => !current)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
                     aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                   >
                     {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
@@ -383,36 +362,54 @@ export default function CadastroClinicaPage() {
                 />
               </Field>
 
-              {/* Phone */}
-              <Field label="Telefone">
-                <Controller control={control} name="phone" render={({ field }) => (
-                  <IMaskInput
-                    mask={[{ mask: '(00) 0000-0000' }, { mask: '(00) 00000-0000' }]}
-                    value={field.value ?? ''}
-                    onAccept={(val: string) => field.onChange(val)}
-                    placeholder="(11) 99999-9999"
-                    className={inputClass(false)}
-                  />
-                )} />
-              </Field>
-
               <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                <p className="font-semibold mb-1">Você já entra direto no sistema.</p>
+                <p className="font-semibold mb-1">Você entra na hora e valida se faz sentido.</p>
                 <p className="text-blue-800/80 leading-relaxed">
-                  Sem esperar aprovação, sem e-mail travando o teste. O objetivo aqui é você conseguir usar e experimentar agora.
+                  Sem cartão, sem esperar aprovação e sem travar o primeiro acesso por e-mail. O objetivo aqui é você sentir a operação funcionando.
                 </p>
               </div>
 
-              {/* Responsible name — hidden for solo (clinicName IS the person) */}
-              {!isSolo && (
-                <Field label="Nome do responsável *" error={errors.responsibleName?.message}>
-                  <input
-                    {...register('responsibleName')}
-                    placeholder="Nome do responsável pela clínica"
-                    className={inputClass(!!errors.responsibleName)}
-                  />
-                </Field>
-              )}
+              <details className="rounded-2xl border border-gray-200 bg-gray-50 p-1 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-gray-700 transition hover:bg-white">
+                  <span>Adicionar dados da clínica agora (opcional)</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">opcional</span>
+                </summary>
+                <div className="space-y-4 px-3 pb-3 pt-1">
+                  <Field label={isSolo ? 'CPF (opcional)' : 'CNPJ'}>
+                    <Controller control={control} name="cnpj" render={({ field }) => (
+                      <IMaskInput
+                        mask={isSolo ? '000.000.000-00' : '00.000.000/0000-00'}
+                        value={field.value ?? ''}
+                        onAccept={(val: string) => field.onChange(val)}
+                        placeholder={isSolo ? '000.000.000-00' : '00.000.000/0001-00'}
+                        className={inputClass(false)}
+                      />
+                    )} />
+                  </Field>
+
+                  <Field label="Telefone">
+                    <Controller control={control} name="phone" render={({ field }) => (
+                      <IMaskInput
+                        mask={[{ mask: '(00) 0000-0000' }, { mask: '(00) 00000-0000' }]}
+                        value={field.value ?? ''}
+                        onAccept={(val: string) => field.onChange(val)}
+                        placeholder="(11) 99999-9999"
+                        className={inputClass(false)}
+                      />
+                    )} />
+                  </Field>
+
+                  {!isSolo && (
+                    <Field label="Nome do responsável" error={errors.responsibleName?.message}>
+                      <input
+                        {...register('responsibleName')}
+                        placeholder="Nome do responsável pela clínica"
+                        className={inputClass(!!errors.responsibleName)}
+                      />
+                    </Field>
+                  )}
+                </div>
+              </details>
 
               {emailAlreadyExists && (
                 <div className="text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
@@ -433,13 +430,27 @@ export default function CadastroClinicaPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors">
-                {isSubmitting ? 'Criando sua conta...' : 'Criar conta e entrar'}
+                className="min-h-12 w-full rounded-xl bg-blue-600 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-300">
+                {isSubmitting ? 'Criando seu acesso...' : 'Entrar no Consultin agora'}
               </button>
 
               <p className="text-xs text-center text-gray-500 leading-relaxed">
-                Você entra agora e pode validar seu e-mail depois, sem travar o primeiro acesso.
+                7 dias grátis • sem cartão de crédito • valida seu e-mail depois
               </p>
+
+              <a
+                href="https://wa.me/5511936213029?text=Oi%2C+quero+cadastrar+minha+cl%C3%ADnica+no+Consultin"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3.5 text-green-800 transition hover:bg-green-100"
+              >
+                <WhatsappLogo size={20} weight="fill" className="shrink-0 text-green-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-tight">Quer que a gente configure com você?</p>
+                  <p className="text-xs leading-relaxed text-green-700/80">Fale no WhatsApp e receba ajuda para montar a clínica.</p>
+                </div>
+                <ArrowRight size={14} className="shrink-0 text-green-600" />
+              </a>
             </form>
 
             <p className="mt-4 text-center text-sm text-gray-500">
@@ -457,7 +468,7 @@ export default function CadastroClinicaPage() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function inputClass(hasError: boolean) {
-  return `w-full border rounded-lg px-3 py-3 text-base text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 ${
+  return `min-h-12 w-full rounded-xl border px-4 py-3.5 text-base text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
     hasError ? 'border-red-400' : 'border-gray-300'
   }`
 }
@@ -472,7 +483,7 @@ function Field({
 }) {
   return (
     <div className={className}>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="mb-2 block text-sm font-medium text-gray-700">{label}</label>
       {children}
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
