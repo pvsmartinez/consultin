@@ -32,7 +32,7 @@ export default function FinanceiroPage() {
   return (
     <div className="space-y-6">
       {/* v2 Hero */}
-      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-6">
+      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-4 py-5 sm:px-6 sm:py-6">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">Gestão clínica</p>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">Financeiro</h1>
         <p className="text-sm text-gray-500">Cobranças, pagamentos e fluxo de caixa da clínica.</p>
@@ -40,17 +40,17 @@ export default function FinanceiroPage() {
 
       <div>
         {/* Month nav + tab bar */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setMonth(m => subMonths(m, 1))}
-              className="p-2.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
+              className="rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100"
             >
               <CaretLeft size={16} />
             </button>
             <button
               onClick={() => monthInputRef.current?.showPicker?.()}
-              className="text-sm font-medium text-gray-700 capitalize w-40 text-center hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors"
+              className="min-h-11 flex-1 rounded-lg px-3 py-2.5 text-center text-sm font-medium capitalize text-gray-700 transition-colors hover:bg-gray-100 sm:w-40 sm:flex-none"
               title="Selecionar mês"
             >
               {monthLabel}
@@ -71,14 +71,14 @@ export default function FinanceiroPage() {
             />
             <button
               onClick={() => setMonth(m => addMonths(m, 1))}
-              className="p-2.5 rounded-lg hover:bg-gray-100 transition text-gray-500"
+              className="rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100"
             >
               <CaretRight size={16} />
             </button>
             {!isThisMonth(month) && (
               <button
                 onClick={() => setMonth(new Date())}
-                className="text-xs text-[#006970] hover:text-[#004f55] border border-teal-200 rounded-xl px-2.5 py-1 hover:bg-teal-50 transition-colors"
+                className="min-h-10 rounded-xl border border-teal-200 px-3 py-2 text-sm text-[#006970] transition-colors hover:bg-teal-50 hover:text-[#004f55]"
               >
                 Mês atual
               </button>
@@ -99,7 +99,71 @@ export default function FinanceiroPage() {
               ) : data.length === 0 ? (
                 <p className="text-center text-gray-400 text-sm py-12">Nenhuma consulta neste mês.</p>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {data.map(row => (
+                    <div key={row.id} className="space-y-3 px-4 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">{row.patient?.name ?? '—'}</p>
+                          <p className="mt-1 text-xs text-gray-500">{format(parseISO(row.startsAt), 'dd/MM HH:mm')}</p>
+                          <p className="mt-1 text-xs text-gray-500">Profissional: {row.professional?.name ?? '—'}</p>
+                        </div>
+                        <Badge variant={APPOINTMENT_STATUS_VARIANTS[row.status]}>
+                          {APPOINTMENT_STATUS_LABELS[row.status]}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 rounded-2xl bg-[#f8fafb] p-3 text-sm">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-gray-400">Valor</p>
+                          <p className="mt-1 font-semibold text-gray-800">{formatBRL(row.chargeAmountCents)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-gray-400">Pago</p>
+                          <p className="mt-1 font-semibold text-gray-800">
+                            {row.paidAmountCents != null ? formatBRL(row.paidAmountCents) : '—'}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-[11px] uppercase tracking-wide text-gray-400">Forma</p>
+                          <p className="mt-1 text-sm text-gray-700">
+                            {row.paymentMethod
+                              ? PAYMENT_METHOD_LABELS[row.paymentMethod as AppointmentPaymentMethod] ?? row.paymentMethod
+                              : '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {row.paidAmountCents == null && (
+                          <button
+                            onClick={() => setRegisteringRow({
+                              id: row.id,
+                              patientName: row.patient?.name ?? 'Paciente',
+                              chargeAmountCents: row.chargeAmountCents,
+                            })}
+                            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-teal-200 px-4 py-2.5 text-sm text-[#006970] transition-colors hover:bg-teal-50"
+                          >
+                            <CurrencyCircleDollar size={15} />
+                            Registrar pagamento
+                          </button>
+                        )}
+                        {clinic?.paymentsEnabled && (
+                          <button
+                            onClick={() => setChargingAppointment(row)}
+                            className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-indigo-200 px-4 py-2.5 text-sm text-indigo-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
+                          >
+                            <CurrencyCircleDollar size={15} />
+                            Cobrar via Asaas
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto sm:block">
                   <table className="w-full text-sm min-w-[600px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
@@ -180,6 +244,7 @@ export default function FinanceiroPage() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
 

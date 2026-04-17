@@ -3,6 +3,7 @@ import { Stethoscope, SignOut, CalendarBlank, User, CalendarPlus, Phone, MapPin,
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useClinic } from '../../hooks/useClinic'
 import { useMyPatientClinics } from '../../hooks/usePatients'
+import { APP_ROUTES } from '../../lib/appRoutes'
 
 interface PatientPortalLayoutProps {
   children: React.ReactNode
@@ -20,15 +21,15 @@ export default function PatientPortalLayout({ children }: PatientPortalLayoutPro
   const hasMultipleClinics = patientClinics.length > 1
 
   const navItems = [
-    { to: '/minhas-consultas', label: 'Consultas', icon: CalendarBlank },
-    { to: '/agendar', label: 'Agendar', icon: CalendarPlus },
-    { to: '/meu-perfil', label: 'Perfil', icon: User },
-    ...(hasMultipleClinics ? [{ to: '/minhas-clinicas', label: 'Clínicas', icon: Buildings }] : []),
+    { to: APP_ROUTES.patient.appointments, label: 'Consultas', icon: CalendarBlank },
+    { to: APP_ROUTES.patient.booking, label: 'Agendar', icon: CalendarPlus },
+    { to: APP_ROUTES.patient.profile, label: 'Perfil', icon: User },
+    ...(hasMultipleClinics ? [{ to: APP_ROUTES.patient.clinics, label: 'Clínicas', icon: Buildings }] : []),
   ]
 
   if (loading) return null
-  if (!role) return <Navigate to="/login" replace />
-  if (role !== 'patient') return <Navigate to="/dashboard" replace />
+  if (!role) return <Navigate to={APP_ROUTES.public.login} replace />
+  if (role !== 'patient') return <Navigate to={APP_ROUTES.staff.legacyDashboard} replace />
 
   return (
     <div className="min-h-dvh bg-gray-50">

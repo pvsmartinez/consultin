@@ -60,13 +60,13 @@ export default function PaymentRegistrationModal({
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/40 z-40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 focus:outline-none">
-          <div className="flex items-center justify-between mb-5">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-4 shadow-xl focus:outline-none max-h-[90dvh] overflow-y-auto sm:p-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <Dialog.Title className="text-base font-semibold text-gray-800">
               Registrar pagamento
             </Dialog.Title>
             <Dialog.Close asChild>
-              <button className="text-gray-400 hover:text-gray-600">
+              <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
                 <X size={18} />
               </button>
             </Dialog.Close>
@@ -85,7 +85,7 @@ export default function PaymentRegistrationModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Valor recebido (R$)
               </label>
-              <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#0ea5b0]">
+              <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 focus-within:ring-2 focus-within:ring-[#0ea5b0]">
                 <span className="text-gray-400 text-sm">R$</span>
                 <input
                   // eslint-disable-next-line jsx-a11y/no-autofocus
@@ -96,7 +96,7 @@ export default function PaymentRegistrationModal({
                   onChange={e => setAmount(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleConfirm() }}
                   placeholder="0,00"
-                  className="flex-1 text-sm focus:outline-none"
+                  className="flex-1 text-base focus:outline-none"
                 />
               </div>
             </div>
@@ -109,7 +109,7 @@ export default function PaymentRegistrationModal({
               <select
                 value={method}
                 onChange={e => setMethod(e.target.value as AppointmentPaymentMethod)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               >
                 {(Object.entries(PAYMENT_METHOD_LABELS) as [AppointmentPaymentMethod, string][]).map(
                   ([val, label]) => <option key={val} value={val}>{label}</option>
@@ -118,16 +118,16 @@ export default function PaymentRegistrationModal({
             </div>
           </div>
 
-          <div className="flex gap-2 mt-6">
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <Dialog.Close asChild>
-              <button className="flex-1 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <button className="flex-1 min-h-11 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-50">
                 Cancelar
               </button>
             </Dialog.Close>
             <button
               onClick={handleConfirm}
               disabled={markPaid.isPending}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm text-white transition-colors hover:bg-green-700 disabled:opacity-50"
             >
               <CheckCircle size={16} />
               {markPaid.isPending ? 'Salvando...' : 'Confirmar'}

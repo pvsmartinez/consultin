@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import RequireAuth from '../components/auth/RequireAuth'
 import RequireModule from '../components/auth/RequireModule'
+import { APP_ROUTES } from '../lib/appRoutes'
 
 // ─── v2 pages ────────────────────────────────────────────────────────────────
 const AgendaPage          = lazy(() => import('../pages/AgendaPage'))
@@ -32,72 +33,72 @@ export default function StaffRoutes() {
   return (
     <Routes>
       {/* v2: Agenda is the home */}
-      <Route path="/" element={<Navigate to="/agenda" replace />} />
-      <Route path="/hoje" element={<Navigate to="/agenda" replace />} />
-      <Route path="/dashboard" element={<Navigate to="/agenda" replace />} />
+      <Route path="/" element={<Navigate to={APP_ROUTES.staff.home} replace />} />
+      <Route path={APP_ROUTES.staff.legacyToday} element={<Navigate to={APP_ROUTES.staff.home} replace />} />
+      <Route path={APP_ROUTES.staff.legacyDashboard} element={<Navigate to={APP_ROUTES.staff.home} replace />} />
 
       {/* Agenda */}
-      <Route path="/agenda" element={<AgendaPage />} />
-      <Route path="/minha-agenda" element={<AgendaPage myOnly />} />
-      <Route path="/minha-disponibilidade" element={<MinhaDisponibilidadePage />} />
+      <Route path={APP_ROUTES.staff.home} element={<AgendaPage />} />
+      <Route path={APP_ROUTES.staff.myAgenda} element={<AgendaPage myOnly />} />
+      <Route path={APP_ROUTES.staff.myAvailability} element={<MinhaDisponibilidadePage />} />
 
       {/* Pacientes */}
-      <Route path="/pacientes" element={
+      <Route path={APP_ROUTES.staff.patients} element={
         <RequireAuth permission="canViewPatients"><PacientesPage /></RequireAuth>
       } />
-      <Route path="/pacientes/novo" element={
+      <Route path={APP_ROUTES.staff.patientsNew} element={
         <RequireAuth permission="canManagePatients"><PacientesPage /></RequireAuth>
       } />
-      <Route path="/pacientes/:id" element={
+      <Route path={APP_ROUTES.staff.patientDetail} element={
         <RequireAuth permission="canViewPatients"><PatientDetailPage /></RequireAuth>
       } />
-      <Route path="/pacientes/:id/editar" element={
+      <Route path={APP_ROUTES.staff.patientEdit} element={
         <RequireAuth permission="canManagePatients"><PatientDetailPage /></RequireAuth>
       } />
-      <Route path="/pacientes/:id/anamnese" element={
+      <Route path={APP_ROUTES.staff.patientAnamnesis} element={
         <RequireAuth permission="canViewPatients"><PatientAnamnesisPage /></RequireAuth>
       } />
 
       {/* Salas (módulo rooms) */}
-      <Route path="/salas" element={
+      <Route path={APP_ROUTES.staff.rooms} element={
         <RequireModule module="rooms"><SalasPage /></RequireModule>
       } />
 
       {/* Equipe (módulo staff) */}
-      <Route path="/equipe" element={
+      <Route path={APP_ROUTES.staff.team} element={
         <RequireAuth permission="canManageProfessionals"><EquipePage /></RequireAuth>
       } />
-      <Route path="/profissionais" element={<Navigate to="/equipe" replace />} />
+      <Route path={APP_ROUTES.staff.professionals} element={<Navigate to={APP_ROUTES.staff.team} replace />} />
 
       {/* WhatsApp (módulo whatsapp) */}
-      <Route path="/whatsapp" element={
+      <Route path={APP_ROUTES.staff.whatsapp} element={
         <RequireModule module="whatsapp">
           <RequireAuth permission="canViewWhatsApp"><WhatsAppInboxPage /></RequireAuth>
         </RequireModule>
       } />
 
       {/* Financeiro (módulo financial) */}
-      <Route path="/financeiro" element={
+      <Route path={APP_ROUTES.staff.financial} element={
         <RequireModule module="financial">
           <RequireAuth permission="canViewFinancial"><FinanceiroPage /></RequireAuth>
         </RequireModule>
       } />
-      <Route path="/relatorios" element={
+      <Route path={APP_ROUTES.staff.reports} element={
         <RequireModule module="financial">
           <RequireAuth permission="canViewFinancial"><RelatoriosPage /></RequireAuth>
         </RequireModule>
       } />
 
       {/* Configurações */}
-      <Route path="/configuracoes" element={
+      <Route path={APP_ROUTES.staff.settings} element={
         <RequireAuth permission="canManageSettings"><ConfiguracoesPage /></RequireAuth>
       } />
 
       {/* Account */}
-      <Route path="/assinatura" element={<AssinaturaPage />} />
-      <Route path="/minha-conta" element={<MinhaContaPage />} />
-      <Route path="/acesso-negado" element={<AccessDeniedPage />} />
-      <Route path="*" element={<Navigate to="/agenda" replace />} />
+      <Route path={APP_ROUTES.staff.subscription} element={<AssinaturaPage />} />
+      <Route path={APP_ROUTES.staff.account} element={<MinhaContaPage />} />
+      <Route path={APP_ROUTES.staff.accessDenied} element={<AccessDeniedPage />} />
+      <Route path="*" element={<Navigate to={APP_ROUTES.staff.home} replace />} />
     </Routes>
   )
 }

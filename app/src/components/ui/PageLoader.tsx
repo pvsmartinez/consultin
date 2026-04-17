@@ -13,9 +13,17 @@ export function Skel({ className = '' }: { className?: string }) {
 // Used for auth loading (FullScreenLoader) so the "first paint" feels instant.
 function AppShellSkeleton() {
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex min-h-dvh flex-col bg-slate-50 md:h-screen md:flex-row">
+      <div className="flex h-16 items-center justify-between border-b border-gray-100 bg-white px-4 md:hidden">
+        <Skel className="h-4 w-24" />
+        <div className="flex items-center gap-2">
+          <Skel className="h-9 w-20 rounded-lg" />
+          <Skel className="h-10 w-10 rounded-xl" />
+        </div>
+      </div>
+
       {/* Sidebar skeleton */}
-      <aside className="w-56 bg-gray-950 flex flex-col flex-shrink-0">
+      <aside className="hidden w-56 flex-col flex-shrink-0 bg-gray-950 md:flex">
         {/* Logo */}
         <div className="p-4 border-b border-gray-800">
           <div className="flex items-center gap-2 mb-2">
@@ -44,8 +52,17 @@ function AppShellSkeleton() {
         </div>
       </aside>
       {/* Main content skeleton */}
-      <div className="flex-1 p-6 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-4 md:p-6">
         <DashboardContentSkeleton />
+      </div>
+
+      <div className="grid grid-cols-4 border-t border-gray-200 bg-white px-2 py-2 md:hidden">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="flex flex-col items-center gap-1 py-1">
+            <Skel className="h-5 w-5 rounded" />
+            <Skel className="h-2.5 w-10" />
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -61,7 +78,7 @@ function DashboardContentSkeleton() {
         <Skel className="h-3.5 w-28" />
       </div>
       {/* KPI cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -102,9 +119,9 @@ export function CalendarSkeleton() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Skel className="h-7 w-36" />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Skel className="h-8 w-24 rounded-lg" />
           <Skel className="h-8 w-24 rounded-lg" />
           <Skel className="h-8 w-24 rounded-lg" />
@@ -160,9 +177,9 @@ export function TableSkeleton({ rows = 8 }: { rows?: number }) {
   return (
     <div className="space-y-4">
       {/* Search + actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Skel className="h-6 w-32" />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Skel className="h-9 w-48 rounded-lg" />
           <Skel className="h-9 w-28 rounded-lg" />
         </div>
@@ -200,14 +217,14 @@ export function TableSkeleton({ rows = 8 }: { rows?: number }) {
 export function PageSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
           <Skel className="h-6 w-40" />
           <Skel className="h-3.5 w-24" />
         </div>
         <Skel className="h-9 w-32 rounded-lg" />
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
             <Skel className="h-3.5 w-24" />

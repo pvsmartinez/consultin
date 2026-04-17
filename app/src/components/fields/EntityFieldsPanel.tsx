@@ -187,7 +187,7 @@ export default function EntityFieldsPanel({
         {fields.length > 0 && (
           <div className="space-y-2 mb-4">
             {fields.map(f => (
-              <div key={f.key} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-xl">
+              <div key={f.key} className="flex flex-col gap-3 rounded-xl bg-gray-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">{f.label}</p>
                   <p className="text-xs text-gray-400">
@@ -195,8 +195,9 @@ export default function EntityFieldsPanel({
                     {f.required ? ' · Obrigatório' : ''}
                   </p>
                 </div>
-                <button onClick={() => removeField(f.key)} className="text-gray-400 hover:text-red-500">
+                <button onClick={() => removeField(f.key)} className="inline-flex min-h-10 items-center gap-2 self-start rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-white hover:text-red-500 sm:self-auto">
                   <Trash size={15} />
+                  Remover
                 </button>
               </div>
             ))}
@@ -206,14 +207,14 @@ export default function EntityFieldsPanel({
         {/* Add new custom field form */}
         <div className="border border-dashed border-gray-300 rounded-xl p-4 space-y-3">
           <p className="text-sm font-medium text-gray-700">Adicionar campo personalizado</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Nome do campo</label>
               <input
                 value={newField.label ?? ''}
                 onChange={e => setNewField(p => ({ ...p, label: e.target.value }))}
                 placeholder={`ex: ${entityLabel === 'paciente' ? 'Plano de saúde' : 'Área de atuação'}`}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
             <div>
@@ -221,7 +222,7 @@ export default function EntityFieldsPanel({
               <select
                 value={newField.type}
                 onChange={e => setNewField(p => ({ ...p, type: e.target.value as CustomFieldType, optionsRaw: '' }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               >
                 {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -238,19 +239,19 @@ export default function EntityFieldsPanel({
                 onChange={e => setNewField(p => ({ ...p, optionsRaw: e.target.value }))}
                 rows={3}
                 placeholder={entityLabel === 'paciente' ? 'Particular\nUnimed\nBradesco Saúde' : 'Clínica Geral\nPediatra\nOrtodontista'}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] resize-none"
+                className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex min-h-11 items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={newField.required ?? false}
                 onChange={e => setNewField(p => ({ ...p, required: e.target.checked }))} className="rounded" />
               Campo obrigatório
             </label>
             <button type="button" onClick={addField}
-              className="flex items-center gap-2 text-sm text-[#006970] hover:text-[#004f55] font-medium">
+              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-200 px-4 py-2.5 text-sm font-medium text-[#006970] hover:bg-teal-50 hover:text-[#004f55]">
               <Plus size={15} /> Adicionar
             </button>
           </div>
@@ -259,11 +260,11 @@ export default function EntityFieldsPanel({
 
       {/* Footer: wizard nav or standalone save */}
       {isWizardMode ? (
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 mt-4">
+        <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {onBack && (
               <button type="button" onClick={onBack}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
+                className="flex min-h-11 items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-100">
                 <ArrowLeft size={15} /> Voltar
               </button>
             )}
@@ -272,7 +273,7 @@ export default function EntityFieldsPanel({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 text-white text-sm font-medium rounded-xl disabled:opacity-50 transition-all active:scale-[0.99]"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             {saving ? 'Salvando…' : 'Salvar e continuar'}
@@ -280,9 +281,9 @@ export default function EntityFieldsPanel({
           </button>
         </div>
       ) : (
-        <div className="flex justify-end">
+        <div className="flex justify-stretch sm:justify-end">
           <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+            className="min-h-11 w-full rounded-xl px-5 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-40 sm:w-auto"
             style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
           >
             {saving ? 'Salvando...' : 'Salvar configurações'}

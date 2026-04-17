@@ -23,7 +23,7 @@ export default function PacientesPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-6 py-6">
+      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-4 py-5 sm:px-6 sm:py-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-3">
             <div>
@@ -49,25 +49,25 @@ export default function PacientesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               to={buildSettingsPath('campos', 'pacientes')}
-              className="flex items-center gap-1.5 border border-gray-200 text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm px-3 py-2 rounded-lg transition"
+              className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-500 transition hover:border-gray-400 hover:text-gray-700"
               title="Personalizar campos do cadastro de pacientes"
             >
               <Sliders size={15} />
-              <span className="hidden sm:inline">Personalizar campos</span>
+              <span>Personalizar campos</span>
             </Link>
             <button
               onClick={() => setImportOpen(true)}
-              className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:border-gray-400"
             >
               <UploadSimple size={16} />
               Importar CSV
             </button>
             <button
               onClick={() => setDrawerOpen(true)}
-              className="flex items-center gap-2 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all active:scale-95"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-95"
               style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
             >
               <Plus size={16} />
@@ -171,7 +171,45 @@ export default function PacientesPage() {
             )}
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <>
+          <div className="sm:hidden divide-y divide-gray-100">
+            {patients.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => navigate(`/pacientes/${p.id}`)}
+                className="flex w-full flex-col gap-3 px-4 py-4 text-left transition hover:bg-teal-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-teal-100">
+                    <User size={18} className="text-[#006970]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">{p.name}</p>
+                    <p className="mt-1 truncate text-xs text-gray-500">{p.phone ?? 'Sem telefone cadastrado'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 rounded-2xl bg-[#f8fafb] p-3 text-sm">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">CPF</p>
+                    <p className="mt-1 text-sm text-gray-700">{p.cpf ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Nascimento</p>
+                    <p className="mt-1 text-sm text-gray-700">
+                      {p.birthDate ? formatDate(p.birthDate + 'T00:00:00') : '—'}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">Sexo</p>
+                    <p className="mt-1 text-sm text-gray-700">{p.sex ? SEX_LABELS[p.sex] : '—'}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <table className="hidden w-full text-sm sm:table">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Nome</th>
@@ -208,23 +246,24 @@ export default function PacientesPage() {
               ))}
             </tbody>
           </table>
+          </>
         )}
       </div>
 
       {!loading && total > 0 && (
-        <div className="flex items-center justify-between mt-2 px-1">
+        <div className="mt-2 flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-gray-400">
             {page * PATIENTS_PAGE_SIZE + 1}–{Math.min((page + 1) * PATIENTS_PAGE_SIZE, total)} de {total} paciente{total !== 1 ? 's' : ''}
           </p>
           {pageCount > 1 && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 sm:justify-start">
               <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
-                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-[#0ea5b0] disabled:cursor-not-allowed transition-colors">
+                className="min-h-10 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-[#0ea5b0] disabled:cursor-not-allowed disabled:text-gray-300">
                 ← Anterior
               </button>
               <span className="text-xs text-gray-500">Pág. {page + 1} / {pageCount}</span>
               <button onClick={() => setPage(p => p + 1)} disabled={page >= pageCount - 1}
-                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-[#0ea5b0] disabled:cursor-not-allowed transition-colors">
+                className="min-h-10 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-[#0ea5b0] disabled:cursor-not-allowed disabled:text-gray-300">
                 Próxima →
               </button>
             </div>

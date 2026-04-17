@@ -563,23 +563,23 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100">
+        <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <button
             onClick={step === 'upload' || step === 'processing-job' ? handleClose : () => {
               if (step === 'preview') { setStep('map'); setErrors([]) }
               else if (step === 'map') { setStep('upload'); resetAll() }
             }}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="min-h-11 rounded-lg px-3 py-2.5 text-left text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             disabled={step === 'importing' || step === 'analyzing'}
           >
             {step === 'upload' || step === 'processing-job' ? 'Fechar' : '← Voltar'}
           </button>
 
-          <div className="flex gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {step === 'map' && (
               <button
                 onClick={goToPreview}
-                className="text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99]"
                 style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 Ver prévia →
@@ -588,7 +588,7 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
             {step === 'preview' && (
               <button
                 onClick={handleImport}
-                className="flex items-center gap-2 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-all active:scale-[0.99]"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99]"
                 style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 <Check size={16} />
@@ -596,12 +596,12 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
               </button>
             )}
             {step === 'importing' && (
-              <button disabled className="bg-teal-300 text-white text-sm font-medium px-5 py-2.5 rounded-xl opacity-60">
+              <button disabled className="min-h-11 rounded-xl bg-teal-300 px-5 py-2.5 text-sm font-medium text-white opacity-60">
                 Enviando job...
               </button>
             )}
             {step === 'processing-job' && (
-              <button disabled className="bg-teal-300 text-white text-sm font-medium px-5 py-2.5 rounded-xl opacity-60">
+              <button disabled className="min-h-11 rounded-xl bg-teal-300 px-5 py-2.5 text-sm font-medium text-white opacity-60">
                 Processando no backend...
               </button>
             )}

@@ -107,7 +107,7 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
     <Modal open={true} onClose={onClose} maxWidth="md">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">
             <Bank size={18} className="text-indigo-500" />
             <div>
@@ -115,19 +115,19 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
               <p className="text-xs text-gray-400">{professional.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+          <button onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
             <X size={18} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-4 sm:p-6">
 
           {/* Banco */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Banco</label>
             <select {...register('bankCode')}
-              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-400">
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-indigo-400 focus:outline-none">
               <option value="">Selecione o banco</option>
               {BANK_LIST.map(b => (
                 <option key={b.code} value={b.code}>{b.code} — {b.name}</option>
@@ -139,9 +139,9 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
           {/* Tipo de conta */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de conta</label>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
               {ACCOUNT_TYPES.map(t => (
-                <label key={t.value} className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-700">
+                <label key={t.value} className="flex min-h-11 items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 sm:border-none sm:px-0 sm:py-0">
                   <input type="radio" value={t.value} {...register('accountType')} className="accent-indigo-500" />
                   {t.label}
                 </label>
@@ -150,7 +150,7 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
           </div>
 
           {/* Agência + Conta */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input label="Agência" {...register('agency')} error={errors.agency?.message} />
@@ -188,13 +188,13 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
           />
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+              className="min-h-11 rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700">
               Cancelar
             </button>
             <button type="submit" disabled={isSubmitting}
-              className="px-5 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+              className="min-h-11 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50">
               {isSubmitting ? 'Salvando...' : 'Salvar conta'}
             </button>
           </div>

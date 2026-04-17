@@ -53,20 +53,20 @@ export default function UpgradeModal({ quota, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-100">
+        <div className="flex items-start justify-between border-b border-gray-100 p-4 sm:p-6">
           <div>
             <h2 className="text-base font-semibold text-gray-900">{title}</h2>
             <p className="text-sm text-gray-500 mt-1 max-w-sm">{subtitle}</p>
           </div>
-          <button onClick={onClose} className="ml-4 text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={onClose} className="ml-4 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
             <X size={20} />
           </button>
         </div>
 
         {/* Plans */}
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
           {PLANS.map(plan => (
             <div
               key={plan.tier}
@@ -108,16 +108,16 @@ export default function UpgradeModal({ quota, onClose }: Props) {
         </div>
 
         {/* CTA */}
-        <div className="px-6 pb-6 flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col gap-3 px-4 pb-4 sm:flex-row sm:items-center sm:px-6 sm:pb-6">
           <button
             onClick={goToSubscription}
-            className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+            className="min-h-11 w-full rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 sm:w-auto"
           >
             Assinar agora
           </button>
           <button
             onClick={onClose}
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            className="min-h-11 rounded-lg px-4 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
             Fechar
           </button>

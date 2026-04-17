@@ -371,8 +371,8 @@ export default function AvailabilityEditor({ professionalId, clinicId }: Props) 
       </div>
 
       {/* Legend + Save */}
-      <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-3 text-[10px] text-gray-400">
+      <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3 text-[10px] text-gray-400">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-teal-400 inline-block" />
             Disponível
@@ -383,7 +383,7 @@ export default function AvailabilityEditor({ professionalId, clinicId }: Props) 
           </span>
         </div>
         <button onClick={save} disabled={saving || !professionalId}
-          className="px-4 py-1.5 text-sm text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.98]"
+          className="min-h-11 w-full rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.98] disabled:opacity-40 sm:w-auto"
           style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
           {saving ? 'Salvando...' : 'Salvar'}
         </button>

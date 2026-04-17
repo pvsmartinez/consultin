@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuthContext } from '../../contexts/AuthContext'
+import { APP_ROUTES } from '../../lib/appRoutes'
 import type { UserRole } from '../../types'
 
 interface RequireAuthProps {
@@ -25,7 +26,7 @@ export default function RequireAuth({ children, roles, permission, redirectTo = 
 
   if (loading) return null
 
-  if (!session) return <Navigate to="/login" replace />
+  if (!session) return <Navigate to={APP_ROUTES.public.login} replace />
 
   if (roles && role && !roles.includes(role)) {
     return <Navigate to={redirectTo} replace />

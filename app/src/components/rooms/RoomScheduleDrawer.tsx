@@ -51,9 +51,9 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
       />
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-96 max-w-full bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-full flex-col overflow-hidden bg-white shadow-2xl sm:w-96">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-5">
           <div className="flex items-center gap-2 min-w-0">
             <span
               className="w-3 h-3 rounded-full flex-shrink-0"
@@ -65,13 +65,13 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
             <button
               onClick={() => setEditingName(v => !v)}
               title="Editar nome e cor"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="rounded-lg p-2.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
               <PencilSimple size={15} />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="rounded-lg p-2.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
               <X size={16} />
             </button>
@@ -80,7 +80,7 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
 
         {/* Edit name/color */}
         {editingName && (
-          <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 space-y-3">
+          <div className="flex-shrink-0 space-y-3 border-b border-gray-100 bg-gray-50 px-4 py-3 sm:px-5">
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Nome da sala</label>
               <input
@@ -88,7 +88,7 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
                 onChange={e => setName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') cancelEdit() }}
                 autoFocus
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
               />
             </div>
             <div>
@@ -108,18 +108,18 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
                 ))}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={saveName}
                 disabled={updateRoom.isPending}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.98]"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 <Check size={12} /> Salvar
               </button>
               <button
                 onClick={cancelEdit}
-                className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-100"
+                className="min-h-11 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-500 hover:bg-gray-100"
               >
                 Cancelar
               </button>
@@ -128,7 +128,7 @@ export default function RoomScheduleDrawer({ roomId, onClose }: Props) {
         )}
 
         {/* Availability editor */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
             Horários disponíveis
           </p>

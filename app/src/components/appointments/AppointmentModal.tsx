@@ -345,10 +345,10 @@ export default function AppointmentModal({
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] z-40" />
-        <Dialog.Content className="fixed inset-y-0 right-0 z-50 bg-[#fcfdfd] shadow-2xl w-full max-w-xl flex flex-col focus:outline-none data-[state=open]:animate-slide-in-right border-l border-white/60">
+        <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-[#fcfdfd] shadow-2xl focus:outline-none data-[state=open]:animate-slide-in-right border-l border-white/60">
 
           {/* Drawer header */}
-          <div className="px-6 py-5 border-b border-gray-100 shrink-0 bg-white/80 backdrop-blur-sm">
+          <div className="shrink-0 border-b border-gray-100 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0] mb-2">
@@ -370,7 +370,7 @@ export default function AppointmentModal({
           </div>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
 
 
 
@@ -386,7 +386,7 @@ export default function AppointmentModal({
               {selectedPatient ? (
                 /* Selected state — show chip with clear button */
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-teal-50 border border-teal-200 rounded-xl px-3 py-2.5">
+                  <div className="flex flex-col gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-sm font-medium text-[#006970]">{selectedPatient.name}</span>
                     <button
                       type="button"
@@ -400,11 +400,11 @@ export default function AppointmentModal({
                       <X size={15} />
                     </button>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                     <button
                       type="button"
                       onClick={() => openPatientPage('detail')}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-[#0ea5b0] hover:text-[#006970] transition"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
                     >
                       <IdentificationCard size={13} />
                       Abrir ficha
@@ -412,7 +412,7 @@ export default function AppointmentModal({
                     <button
                       type="button"
                       onClick={() => openPatientPage('anamnesis')}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-[#0ea5b0] hover:text-[#006970] transition"
+                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
                     >
                       <ClipboardText size={13} />
                       Anamnese
@@ -421,7 +421,7 @@ export default function AppointmentModal({
                       <button
                         type="button"
                         onClick={() => openPatientEdit(selectedPatient.id)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-teal-200 text-[#006970] bg-teal-50 hover:bg-teal-100 transition"
+                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-[#006970] transition hover:bg-teal-100"
                       >
                         <PencilSimple size={13} />
                         Editar cadastro
@@ -440,7 +440,7 @@ export default function AppointmentModal({
                     value={patientSearch}
                     onChange={e => { setPatientSearch(e.target.value); setShowQuickPatient(false) }}
                     placeholder="Buscar por nome ou CPF..."
-                    className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                     autoComplete="off"
                   />
                   {patientSearch.trim() && !showQuickPatient && (
@@ -484,30 +484,30 @@ export default function AppointmentModal({
                     value={quickName}
                     onChange={e => setQuickName(e.target.value)}
                     placeholder="Nome *"
-                    className="w-full border border-teal-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                    className="w-full rounded-xl border border-teal-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                   />
                   <input
                     type="text"
                     value={quickCpf}
                     onChange={e => setQuickCpf(e.target.value)}
                     placeholder="CPF (opcional)"
-                    className="w-full border border-teal-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                    className="w-full rounded-xl border border-teal-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button type="button" onClick={handleQuickPatient} disabled={createPatient.isPending}
-                      className="flex-1 py-2 text-xs text-white rounded-xl disabled:opacity-40 transition-all active:scale-[0.99]"
+                      className="min-h-11 flex-1 rounded-xl py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-40"
                       style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                       {createPatient.isPending ? 'Criando...' : 'Criar e selecionar'}
                     </button>
                     <button
                       type="button"
                       onClick={openFullPatientCreate}
-                      className="px-3 py-1.5 text-xs text-[#006970] border border-teal-200 rounded-xl hover:bg-white transition"
+                      className="min-h-11 rounded-xl border border-teal-200 px-3 py-2.5 text-sm text-[#006970] transition hover:bg-white"
                     >
                       Cadastro completo
                     </button>
                     <button type="button" onClick={() => setShowQuickPatient(false)}
-                      className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">
+                      className="min-h-11 rounded-xl px-3 py-2.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700">
                       Cancelar
                     </button>
                   </div>
@@ -537,7 +537,7 @@ export default function AppointmentModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
                 <select
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                   {...register('professionalId')}
                 >
                   <option value="">Selecione o profissional...</option>
@@ -569,7 +569,7 @@ export default function AppointmentModal({
                       }
                     }
                   }}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                 >
                   <option value="">Selecionar serviço... (opcional)</option>
                   {activeServiceTypes.map(s => (
@@ -587,7 +587,7 @@ export default function AppointmentModal({
               <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Duração</label>
                 <select
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                   {...register('durationMin')}
                 >
                   {durationOptions.map(d => (
@@ -633,7 +633,7 @@ export default function AppointmentModal({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                   {...register('status')}
                 >
                   {STATUSES.map(([value, label]) => (
@@ -673,7 +673,7 @@ export default function AppointmentModal({
                       key={p.value}
                       type="button"
                       onClick={() => setReturnPreset(p.value)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      className={`min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition ${
                         returnPreset === p.value
                           ? 'bg-[#006970] text-white border-[#006970]'
                           : 'bg-white text-gray-600 border-gray-300 hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0]'
@@ -696,7 +696,7 @@ export default function AppointmentModal({
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Frequência</label>
                         <select
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                           {...register('recurrenceType')}
                         >
                           {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
@@ -760,7 +760,7 @@ export default function AppointmentModal({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
+                <div className="flex flex-col gap-3 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between">
                   <span>
                     {latestPayment
                       ? 'Você pode atualizar o status, ver o QR PIX ou seguir com o repasse ao profissional.'
@@ -783,15 +783,15 @@ export default function AppointmentModal({
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-4 pb-2 border-t border-gray-100 mt-2">
+            <div className="mt-2 flex flex-col gap-3 border-t border-gray-100 pt-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
               {isEditing && !confirmCancel && (
                 <button type="button" onClick={() => setConfirmCancel(true)}
-                  className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
+                  className="flex min-h-11 items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
                   <Trash size={15} /> Cancelar consulta
                 </button>
               )}
               {isEditing && confirmCancel && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <span className="text-sm text-red-600">Confirmar cancelamento?</span>
                   <button type="button" onClick={handleCancel}
                     className="text-sm font-medium text-red-600 hover:underline">Sim</button>
@@ -800,13 +800,13 @@ export default function AppointmentModal({
                 </div>
               )}
               {!confirmCancel && (
-                <div className="flex gap-2 ml-auto">
+                <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
                   <button type="button" onClick={onClose}
-                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                    className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-100">
                     Fechar
                   </button>
                   <button type="submit" disabled={isSubmitting}
-                    className="px-4 py-2 text-sm text-white rounded-xl disabled:opacity-50 transition-all active:scale-[0.99]"
+                    className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
                     style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                     {isSubmitting ? 'Salvando...' : 'Salvar'}
                   </button>

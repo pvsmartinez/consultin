@@ -150,7 +150,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
     <Modal open={true} onClose={onClose} maxWidth="sm">
 
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-sm">
+        <div className="border-b border-gray-100 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0] mb-2">Financeiro clínico</p>
@@ -159,13 +159,13 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                 {appointment.patient?.name} · {appointment.professional?.name}
               </p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+            <button onClick={onClose} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="space-y-5 p-4 sm:p-6">
 
           {/* Cobrança ainda não criada */}
           {!payment && (
@@ -179,20 +179,20 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                   value={customAmount}
                   onChange={e => setCustomAmount(e.target.value)}
                   placeholder="0,00"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
                 />
               </div>
 
               {/* Método */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-2">Forma de pagamento</label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {(['PIX', 'BOLETO', 'CREDIT_CARD'] as const).map(m => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setMethod(m)}
-                      className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                      className={`min-h-11 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
                         method === m
                           ? 'border-[#0ea5b0] bg-teal-50 text-[#006970]'
                           : 'border-gray-200 text-gray-500 hover:border-gray-300'
@@ -207,7 +207,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
               <button
                 onClick={handleCreateCharge}
                 disabled={createCharge.isPending || amountCents <= 0}
-                className="w-full py-2.5 text-sm font-medium rounded-xl text-white disabled:opacity-50 transition-all active:scale-[0.99]"
+                className="min-h-11 w-full rounded-xl py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
               >
                 {createCharge.isPending ? 'Gerando cobrança...' : 'Gerar cobrança'}
@@ -219,8 +219,8 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
           {payment && (
             <>
               {/* Status badge */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PAYMENT_STATUS_COLORS[payment.status]}`}>
                     {PAYMENT_STATUS_LABELS[payment.status]}
                   </span>
@@ -229,7 +229,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                   )}
                 </div>
                 <button onClick={handleSync} disabled={syncStatus.isPending}
-                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+                  className="inline-flex min-h-10 items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700">
                   <ArrowsClockwise size={13} className={syncStatus.isPending ? 'animate-spin' : ''} />
                   Atualizar
                 </button>
@@ -237,18 +237,18 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
 
               {/* Valor cobrado + breakdown financeiro */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between gap-4 text-sm">
                   <span className="text-gray-500">Paciente pagou</span>
                   <span className="font-semibold text-gray-800">{formatBRL(payment.amountCents)}</span>
                 </div>
                 {payment.transferAmountCents != null && (
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between gap-4 text-sm">
                     <span className="text-gray-500">Repasse profissional</span>
                     <span className="text-orange-600">−{formatBRL(payment.transferAmountCents)}</span>
                   </div>
                 )}
                 {payment.transferAmountCents != null && (
-                  <div className="flex items-center justify-between text-sm border-t border-gray-100 pt-1.5">
+                  <div className="flex items-center justify-between gap-4 border-t border-gray-100 pt-1.5 text-sm">
                     <span className="text-gray-700 font-medium">Saldo clínica</span>
                     <span className="font-semibold text-green-700">
                       {formatBRL(payment.amountCents - payment.transferAmountCents)}
@@ -264,10 +264,10 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
                   <img
                     src={`data:image/png;base64,${pixQrCode}`}
                     alt="QR Code PIX"
-                    className="w-40 h-40 rounded-lg"
+                    className="h-40 w-40 max-w-full rounded-lg"
                   />
                   <button onClick={copyPix}
-                    className="flex items-center gap-2 text-xs text-[#006970] hover:text-[#004f55]">
+                    className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-[#006970] hover:bg-white hover:text-[#004f55]">
                     {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
                     {copied ? 'Copiado!' : 'Copiar código PIX'}
                   </button>
@@ -281,7 +281,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
 
               {/* Repasse */}
               <div className="border-t border-gray-100 pt-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-xs font-medium text-gray-700">Repasse ao profissional</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     payment.transferStatus === 'TRANSFERRED'
@@ -302,7 +302,7 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
 
                 {canTransfer && (
                   <button onClick={handleTransfer} disabled={transfer.isPending}
-                    className="w-full py-2.5 text-sm font-medium rounded-xl text-white disabled:opacity-50 transition-all active:scale-[0.99]"
+                    className="min-h-11 w-full rounded-xl py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
                     style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                     {transfer.isPending
                       ? 'Transferindo...'

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
 import { useClinic } from './hooks/useClinic'
 import { FullScreenLoader, PageLoader } from './components/ui/PageLoader'
@@ -12,6 +12,7 @@ import AppLayout        from './components/layout/AppLayout'
 import PatientPortalLayout from './components/layout/PatientPortalLayout'
 import ErrorBoundary    from './components/ErrorBoundary'
 import { EMAIL_VERIFICATION_PATH } from './lib/emailVerification'
+import { APP_ROUTES, isProtectedAppPath } from './lib/appRoutes'
 
 // ─── Lazy route bundles ───────────────────────────────────────────────────────
 // Each import() becomes a separate JS chunk — only fetched when that "world"
@@ -47,6 +48,10 @@ function App() {
 
   // ── Unauthenticated ─────────────────────────────────────────────────────────
   if (!session) {
+    if (isProtectedAppPath(location.pathname)) {
+      return <Navigate to={APP_ROUTES.public.login} replace />
+    }
+
     return (
       <ErrorBoundary>
         <Suspense fallback={<FullScreenLoader />}>
