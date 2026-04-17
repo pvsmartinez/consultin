@@ -55,6 +55,56 @@ const TELEGRAM_CHAT_ID   = Deno.env.get('TELEGRAM_PEDRO_CHAT_ID') ?? ''
 
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0'
 
+function scheduleBackgroundWebhookJob(job: Promise<void>): boolean {
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime
+  if (!runtime?.waitUntil) return false
+
+  runtime.waitUntil(job.catch((error) => {
+    console.error('[webhook] background processing error:', error)
+  }))
+  return true
+}
+
+async function processWebhookPayload(payload: MetaWebhookPayload): Promise<void> {
+  const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
+  for (const batch of extractWebhookMessageBatches(payload, platformPhoneId)) {
+    if (batch.route === 'platform') {
+      await Promise.all(batch.messages.map(async (msg) => {
+        const parsed = parsePlatformMessageInput(msg)
+        let msgText = parsed.messageText
+        if (parsed.msgType === 'audio' && parsed.audioId) {
+          const transcribed = await transcribeAudio(parsed.audioId, { accessToken: PLATFORM_WA_TOKEN })
+          if (transcribed) {
+            msgText = `[Áudio transcrito]: ${transcribed}`
+          }
+        }
+        if (!msgText || !parsed.fromPhone) return
+        await callPlatformAgent(parsed.fromPhone, msgText, parsed.waMessageId, parsed.buttonReplyId ?? undefined)
+      }))
+      continue
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('id, whatsapp_enabled, wa_attendant_inbox, whatsapp_phone_number_id')
+      .eq('whatsapp_phone_number_id', batch.phoneNumberId)
+      .eq('whatsapp_enabled', true)
+      .maybeSingle()
+
+    if (!clinic) continue
+
+    await Promise.all([
+      ...batch.statuses.map((status) => supabase
+        .from('whatsapp_messages')
+        .update({ delivery_status: status.status })
+        .eq('wa_message_id', status.id)
+        .eq('clinic_id', clinic.id)),
+      ...batch.messages.map((msg) => processInbound(supabase, clinic, msg, batch.contacts, batch.phoneNumberId)),
+    ])
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -94,46 +144,12 @@ serve(async (req) => {
   try { payload = JSON.parse(rawBody) }
   catch { return new Response('Bad Request', { status: 400 }) }
 
-  const platformPhoneId = Deno.env.get('PLATFORM_PHONE_NUMBER_ID')
-  for (const batch of extractWebhookMessageBatches(payload, platformPhoneId)) {
-    if (batch.route === 'platform') {
-      for (const msg of batch.messages) {
-        const parsed = parsePlatformMessageInput(msg)
-        let msgText = parsed.messageText
-        if (parsed.msgType === 'audio' && parsed.audioId) {
-          const transcribed = await transcribeAudio(parsed.audioId, { accessToken: PLATFORM_WA_TOKEN })
-          if (transcribed) {
-            msgText = `[Áudio transcrito]: ${transcribed}`
-          }
-        }
-        if (!msgText || !parsed.fromPhone) continue
-        await callPlatformAgent(parsed.fromPhone, msgText, parsed.waMessageId, parsed.buttonReplyId ?? undefined)
-      }
-      continue
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
-    const { data: clinic } = await supabase
-      .from('clinics')
-      .select('id, whatsapp_enabled, wa_attendant_inbox, whatsapp_phone_number_id')
-      .eq('whatsapp_phone_number_id', batch.phoneNumberId)
-      .eq('whatsapp_enabled', true)
-      .maybeSingle()
-
-    if (!clinic) continue
-
-    for (const status of batch.statuses) {
-      await supabase
-        .from('whatsapp_messages')
-        .update({ delivery_status: status.status })
-        .eq('wa_message_id', status.id)
-        .eq('clinic_id', clinic.id)
-    }
-
-    for (const msg of batch.messages) {
-      await processInbound(supabase, clinic, msg, batch.contacts, batch.phoneNumberId)
-    }
+  const job = processWebhookPayload(payload)
+  if (scheduleBackgroundWebhookJob(job)) {
+    return new Response('OK', { status: 200 })
   }
+
+  await job
 
   // Meta requires a 200 response quickly
   return new Response('OK', { status: 200 })

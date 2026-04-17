@@ -25,11 +25,17 @@ import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { T, COL }       from '../_shared/tables.ts'
 import {
+  buildClinicCreatedReply,
+  buildClinicJoinedReply,
+  buildMembershipRequestReply,
   buildCrossClinicConflictReply,
   evaluateProfileProvisioning,
   findExactClinicNameConflict,
   mergeRoles,
+  type GuidedReply,
   resolvePlatformFastPath,
+  buildStructuredOnboardingContext,
+  extractStructuredOnboardingCapture,
 } from './logic.ts'
 
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
@@ -229,6 +235,8 @@ interface PlatformAction {
   // ── Management: availability ─────────────────────────────────────────────
   availabilitySlots?:  { weekday: number; start_time: string; end_time: string; active: boolean; room_id?: string }[]
 }
+
+interface SideEffectReplyOverride extends GuidedReply {}
 
 interface AgendaItem {
   id:               string
@@ -614,6 +622,28 @@ serve(async (req) => {
     return new Response('OK', { status: 200 })
   }
 
+  const structuredOnboardingCapture = linkedClinics.length === 0
+    ? extractStructuredOnboardingCapture(messageText)
+    : null
+
+  if (structuredOnboardingCapture && !user.linked_user_id) {
+    const updates: Record<string, unknown> = {}
+    if (structuredOnboardingCapture.personName && !user.name) updates.name = structuredOnboardingCapture.personName
+    if (structuredOnboardingCapture.email && !user.email) updates.email = structuredOnboardingCapture.email
+    if (Object.keys(updates).length > 0) {
+      await supabase.from(T.WA_PLATFORM_USERS).update(updates).eq('id', user.id)
+      user = {
+        ...user,
+        name: (updates.name as string | undefined) ?? user.name,
+        email: (updates.email as string | undefined) ?? user.email,
+      }
+    }
+  }
+
+  const structuredOnboardingContext = structuredOnboardingCapture
+    ? buildStructuredOnboardingContext(structuredOnboardingCapture)
+    : null
+
   // ── Typing indicator (fire-and-forget) ──────────────────────────────────
   if (body.waMessageId) {
     sendPlatformTypingIndicator(body.waMessageId)
@@ -644,7 +674,7 @@ serve(async (req) => {
   const action = await runAgent(
     user, linkedClinics, adminClinic, botConfig,
     history, messageText, isFirstMessage, supabase,
-    pendingRequests, userRoles, userPermissions, snapshot, primaryClinic,
+    pendingRequests, userRoles, userPermissions, snapshot, primaryClinic, structuredOnboardingContext,
   )
 
   // ── Save assistant reply ──────────────────────────────────────────────────
@@ -666,10 +696,11 @@ serve(async (req) => {
   const replyOverride = await executeSideEffect(action, user, adminClinic, linkedClinics, fromPhone, supabase, pendingRequests, userPermissions, primaryClinic)
 
   // ── Send WhatsApp reply ───────────────────────────────────────────────────
-  const finalReply = replyOverride ?? action.replyText
+  const finalReply = replyOverride?.replyText ?? action.replyText
+  const finalButtons = replyOverride?.buttons ?? (action.action === A.REPLY_WITH_BUTTONS ? action.buttons : undefined)
   if (finalReply) {
-    if (action.action === A.REPLY_WITH_BUTTONS && action.buttons && action.buttons.length > 0) {
-      await sendWAInteractive(fromPhone, finalReply, action.buttons)
+    if (finalButtons && finalButtons.length > 0) {
+      await sendWAInteractive(fromPhone, finalReply, finalButtons)
     } else {
       await sendWA(fromPhone, finalReply)
     }
@@ -694,12 +725,13 @@ async function runAgent(
   userPermissions: Record<string, boolean>,
   snapshot:        ClinicSnapshot | null,
   primaryClinic:   ClinicInfo | null,
+  structuredOnboardingContext: string | null,
   toolResult?:     string,   // generic injected result from any tool call
 ): Promise<PlatformAction> {
 
   const systemPrompt = buildSystemPrompt(
     user, linkedClinics, adminClinic, botConfig, isFirstMessage,
-    pendingRequests, userRoles, userPermissions, snapshot,
+    pendingRequests, userRoles, userPermissions, snapshot, structuredOnboardingContext,
   )
 
   const extraContext = toolResult
@@ -763,6 +795,7 @@ async function runAgent(
         user, linkedClinics, adminClinic, botConfig,
         history, messageText, isFirstMessage, supabase,
         pendingRequests, userRoles, userPermissions, snapshot, primaryClinic,
+        structuredOnboardingContext,
         result,
       )
     }
@@ -826,6 +859,7 @@ function buildSystemPrompt(
   userRoles:       string[],
   userPermissions: Record<string, boolean>,
   snapshot:        ClinicSnapshot | null,
+  structuredOnboardingContext: string | null,
 ): string {
   const hasClinic = linkedClinics.length > 0
   const clinic    = adminClinic ?? linkedClinics[0] ?? null
@@ -990,7 +1024,7 @@ function buildSystemPrompt(
   }
 
   // ── ONBOARDING MODE (no clinic yet) ───────────────────────────────────────
-  const firstMsgBlock = isFirstMessage ? [
+  const firstMsgBlock = isFirstMessage && !structuredOnboardingContext ? [
     `FIRST MESSAGE RULE (their very first contact with Consultin via WhatsApp):`,
     `Introduce yourself as Helen from Consultin. Give a one-sentence pitch of what Consultin does. Then ask what brings them — present 3 numbered options:`,
     `  1️⃣ Quero criar minha clínica`,
@@ -1026,6 +1060,7 @@ function buildSystemPrompt(
     linkedClinics.length > 0 ? `- Clinics: ${linkedClinics.map(c => `${c.name} (${c.role})`).join(', ')}` : `- Clinics: none yet`,
     joinCodeLine,
     ...pendingReqLines,
+    structuredOnboardingContext ?? '',
     ``,
     `PERSONALITY: You are Helen — friendly, a bit like a smart friend who works at Consultin. Speak PT-BR (or match the user's language if they write in English). Concise and natural (this is WhatsApp — no walls of text). One emoji per message is fine. Never robotic. Be a helpful guide, not just an FAQ.`,
     ``,
@@ -1039,6 +1074,12 @@ function buildSystemPrompt(
     `• User sends or mentions a 6-char code (letters+numbers) → Jump to FLOW B immediately, no re-introduction needed.`,
     `• "quero criar minha clínica" (directly) → Skip intro, go straight to FLOW A (ask clinic name).`,
     `• If user's name is already known (in KNOWN ABOUT THIS PERSON above) → Use it naturally in replies.`,
+    ``,
+    `STRUCTURED CAPTURE RULES:`,
+    `• If [STRUCTURED ONBOARDING CAPTURE] is present, treat those fields as already collected unless the user corrects them.`,
+    `• Ask only for missing fields. Never ask again for clinic name, person name, email, or role if they are already captured.`,
+    `• FLOW A with clinicName + personName + email already captured → go straight to search_clinics.`,
+    `• FLOW D with clinicName + personName + email + role already captured → go straight to search_clinics to identify the clinic, then continue the membership request flow.`,
     ``,
     `FLOWS:`,
     `FLOW A — New clinic: ask clinic name → search_clinics → confirm no match → ask responsible's name + email → create_clinic_now`,
@@ -1065,6 +1106,7 @@ function buildSystemPrompt(
     ] : []),
     ``,
     `RULES: 1. Never create clinic without searching first. 2. Need email before create_clinic_now. 3. Never invent IDs. 4. JSON only.`,
+    `RULES: 1. Never create clinic without searching first. 2. Need email before create_clinic_now. 3. Never invent IDs. 4. If structured onboarding fields are already provided, ask only for what is missing. 5. JSON only.`,
   ].filter(l => l !== '').join('\n')
 }
 
@@ -1080,7 +1122,7 @@ async function executeSideEffect(
   pendingRequests: StaffRequest[],
   userPermissions: Record<string, boolean>,
   primaryClinic:   ClinicInfo | null,
-): Promise<string | null> {  // returns non-null to override the AI's replyText
+): Promise<SideEffectReplyOverride | null> {  // returns non-null to override the AI's replyText
 
   // ── save_info ─────────────────────────────────────────────────────────────
   if (action.action === A.SAVE_INFO) {
@@ -1163,7 +1205,7 @@ async function executeSideEffect(
         userId: authProvision.userId,
         deleteInvitedUser: authProvision.createdNewAuthUser,
       })
-      return '😅 Não consegui preparar o acesso por e-mail com segurança. Tente novamente em instantes.'
+      return { replyText: '😅 Não consegui preparar o acesso por e-mail com segurança. Tente novamente em instantes.' }
     }
 
     const profileProvision = await provisionPrimaryProfileSafely(supabase, {
@@ -1183,7 +1225,7 @@ async function executeSideEffect(
         userId: authProvision.userId,
         deleteInvitedUser: authProvision.createdNewAuthUser,
       })
-      return profileProvision.replyText
+      return { replyText: profileProvision.replyText }
     }
 
     await supabase.from(T.WA_PLATFORM_USERS).update({
@@ -1205,31 +1247,13 @@ async function executeSideEffect(
       `*ID:* \`${newClinic.id}\``,
     ])
 
-    // 6. Override AI reply with rich onboarding welcome
-    const name = responsibleName || email
-    return [
-      `✅ Tudo pronto, *${name}*! A clínica *${clinicName}* foi criada.`,
-      ``,
-      `📧 Você vai receber um e-mail em *${email}* para definir sua senha e acessar o painel completo em ${SITE_URL.replace(/^https?:\/\//, '')}`,
-      ``,
-      `*O que você já pode fazer por aqui no WhatsApp:*`,
-      ``,
-      `👥 *Equipe* — Convidar profissionais e recepcionistas`,
-      `   _"convidar Dr. João Silva, joao@clinica.com, profissional"_`,
-      ``,
-      `🗓️ *Agenda* — Ver e gerenciar consultas`,
-      `   _"minha agenda de amanhã"_`,
-      ``,
-      `👤 *Pacientes* — Cadastrar e buscar`,
-      `   _"cadastrar paciente Maria, 11 99999-0000"_`,
-      ``,
-      `⚙️ *Configurar o bot de pacientes* — Quando você configurar o WhatsApp da clínica, posso ajustar o assistente`,
-      ``,
-      `🔑 *Código para sua equipe entrar:* \`${newClinic.join_code}\``,
-      `   Compartilhe com quem precisa acessar a clínica.`,
-      ``,
-      `O que quer fazer primeiro?`,
-    ].join('\n')
+    return buildClinicCreatedReply({
+      name: responsibleName || email,
+      clinicName,
+      email,
+      joinCode: newClinic.join_code,
+      siteUrl: SITE_URL,
+    })
   }
 
   // ── join_clinic ───────────────────────────────────────────────────────────
@@ -1256,7 +1280,7 @@ async function executeSideEffect(
 
     const authProvision = await resolveAuthUserForInvite(supabase, email)
     if (!authProvision.userId) {
-      return '😅 Não consegui preparar seu acesso por e-mail agora. Tente novamente em instantes.'
+      return { replyText: '😅 Não consegui preparar seu acesso por e-mail agora. Tente novamente em instantes.' }
     }
 
     const profileProvision = await provisionPrimaryProfileSafely(supabase, {
@@ -1278,7 +1302,7 @@ async function executeSideEffect(
           console.error('[platform-agent] deleteUser join rollback error:', error)
         }
       }
-      return profileProvision.replyText
+      return { replyText: profileProvision.replyText }
     }
 
     await supabase.from(T.WA_PLATFORM_USERS).update({
@@ -1296,20 +1320,13 @@ async function executeSideEffect(
       `*Telefone:* ${user.phone}`,
     ])
 
-    const memberName = user.name || email
-    const roleLabel  = role === 'receptionist' ? 'recepcionista' : 'profissional'
-    return [
-      `✅ Pronto, *${memberName}*! Você agora faz parte da clínica *${clinic.name}* como *${roleLabel}*.`,
-      ``,
-      `📧 Verifique seu e-mail *${email}* para definir sua senha e acessar o painel em ${SITE_URL.replace(/^https?:\/\//, '')}`,
-      ``,
-      `*O que você pode fazer aqui:*`,
-      role === 'professional'
-        ? `🗓️ _"minha agenda"_ — Ver suas consultas do dia\n✅ _"concluir consulta do João"_ — Atualizar status\n👤 _"buscar paciente Maria"_ — Encontrar paciente`
-        : `🗓️ _"agenda de hoje"_ — Ver agenda da clínica\n👤 _"cadastrar paciente novo"_ — Registrar paciente\n🗓️ _"agendar Jo\u00e3o às 14h com Dr. Ana"_ — Novo agendamento`,
-      ``,
-      `Como posso te ajudar?`,
-    ].join('\n')
+    return buildClinicJoinedReply({
+      memberName: user.name || email,
+      clinicName: clinic.name,
+      email,
+      role,
+      siteUrl: SITE_URL,
+    })
   }
 
   // ── request_clinic_membership ─────────────────────────────────────────────
@@ -1330,14 +1347,14 @@ async function executeSideEffect(
       .eq('id', clinicId)
       .maybeSingle()
 
-    if (!clinic) { console.warn('[platform-agent] request_clinic_membership: clinic not found', clinicId); return }
+    if (!clinic) { console.warn('[platform-agent] request_clinic_membership: clinic not found', clinicId); return null }
     const cl = clinic as { id: string; name: string }
 
     const { error: reqErr } = await supabase
       .from(T.CLINIC_STAFF_REQUESTS)
       .insert({ clinic_id: cl.id, requester_name: reqName, requester_email: reqEmail, requester_phone: fromPhone, role })
 
-    if (reqErr) { console.error('[platform-agent] request_clinic_membership: insert error:', reqErr); return }
+    if (reqErr) { console.error('[platform-agent] request_clinic_membership: insert error:', reqErr); return null }
 
     // Notify clinic admins via platform WA
     const adminPhones = await findAdminPhonesForClinic(supabase, cl.id)
@@ -1357,7 +1374,11 @@ async function executeSideEffect(
     for (const adminPhone of adminPhones) {
       await sendWA(adminPhone, notifyMsg)
     }
-    return null
+    return buildMembershipRequestReply({
+      staffName: reqName,
+      clinicName: cl.name,
+      role,
+    })
   }
 
   // ── approve_staff_request ─────────────────────────────────────────────────
@@ -1386,9 +1407,11 @@ async function executeSideEffect(
       })
     } catch (error) {
       console.error('[platform-agent] approve_staff_request invite error:', error)
-      return typeof error === 'object' && error && 'message' in error
-        ? String((error as { message: unknown }).message)
-        : '😅 Não consegui aprovar esse acesso com segurança agora. Tente novamente em instantes.'
+      return {
+        replyText: typeof error === 'object' && error && 'message' in error
+          ? String((error as { message: unknown }).message)
+          : '😅 Não consegui aprovar esse acesso com segurança agora. Tente novamente em instantes.',
+      }
     }
 
     await supabase
