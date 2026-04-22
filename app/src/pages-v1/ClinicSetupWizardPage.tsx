@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { gtagEvent } from '../lib/gtag'
+import { trackOnboardingComplete } from '../lib/googleAds'
 import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -398,7 +399,7 @@ function StepPronto({ clinic, onBack }: { clinic: Clinic; onBack: () => void }) 
   async function finish() {
     setSaving(true)
     try {
-      gtagEvent('onboarding_complete')
+      trackOnboardingComplete()
       await update.mutateAsync({ onboardingCompleted: true })
       // Auto-register clinic owner as professional if they don't have a record yet
       const ownerAlreadyLinked = professionals.some(p => p.userId === profile?.id)

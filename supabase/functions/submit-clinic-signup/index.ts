@@ -28,6 +28,13 @@ function json(data: unknown, status = 200): Response {
   })
 }
 
+function accountExistsResponse() {
+  return json({
+    error: 'Este e-mail já possui uma conta. Entre com sua senha para continuar.',
+    code: 'ACCOUNT_EXISTS',
+  }, 409)
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -67,6 +74,19 @@ serve(async (req: Request) => {
   const cleanEmail = email.trim().toLowerCase()
   const cleanPassword = password.trim()
 
+  const { data: existingUserId, error: existingUserError } = await admin.rpc('get_user_id_by_email', {
+    p_email: cleanEmail,
+  })
+
+  if (existingUserError) {
+    console.error('Existing user lookup error:', existingUserError)
+    return json({ error: 'Erro ao validar acesso existente. Tente novamente.' }, 500)
+  }
+
+  if (existingUserId) {
+    return accountExistsResponse()
+  }
+
   // ─── 0. Create auth user first to block duplicate clinics on double-submit ──
   const { data: createdUserData, error: createUserError } = await admin.auth.admin.createUser({
     email: cleanEmail,
@@ -78,13 +98,35 @@ serve(async (req: Request) => {
   if (createUserError || !createdUserData.user) {
     const duplicateEmail = /already|registered|exists|duplicate/i.test(createUserError?.message ?? '')
     if (duplicateEmail) {
-      return json({ error: 'Este e-mail já possui uma conta. Faça login para acessar.' }, 409)
+      return accountExistsResponse()
     }
     console.error('User creation error:', createUserError)
     return json({ error: 'Erro ao criar acesso. Tente novamente.' }, 500)
   }
 
   const userId = createdUserData.user.id
+
+  const [{ data: existingProfile }, { data: existingOwnedClinic, error: existingOwnedClinicError }] = await Promise.all([
+    admin
+      .from('user_profiles')
+      .select('clinic_id')
+      .eq('id', userId)
+      .maybeSingle(),
+    admin
+      .from('clinics')
+      .select('id')
+      .eq('owner_user_id', userId)
+      .maybeSingle(),
+  ])
+
+  if (existingOwnedClinicError) {
+    console.error('Existing clinic lookup error:', existingOwnedClinicError)
+    return json({ error: 'Erro ao validar clínica existente. Tente novamente.' }, 500)
+  }
+
+  if (existingProfile?.clinic_id || existingOwnedClinic?.id) {
+    return accountExistsResponse()
+  }
 
   // ─── 1. Create clinic ──────────────────────────────────────────────────────
   const { data: clinic, error: clinicError } = await admin
@@ -94,11 +136,16 @@ serve(async (req: Request) => {
       cnpj:  body.cnpj?.trim()  || null,
       phone: body.phone?.trim() || null,
       email: cleanEmail,
+      owner_user_id: userId,
     })
     .select('id')
     .single()
 
   if (clinicError || !clinic) {
+    const duplicateClinic = clinicError?.code === '23505' || /owner_user_id/i.test(clinicError?.message ?? '')
+    if (duplicateClinic) {
+      return accountExistsResponse()
+    }
     console.error('Clinic creation error:', clinicError)
     try {
       await admin.auth.admin.deleteUser(userId)

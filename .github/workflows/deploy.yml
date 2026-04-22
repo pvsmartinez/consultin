@@ -37,6 +37,7 @@ jobs:
           supabase functions deploy admin-users --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy public-booking --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy send-clinic-invite --project-ref nxztzehgnkdmluogxehi
+          supabase functions deploy submit-clinic-signup --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy track-public-analytics --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy whatsapp-ai-agent --project-ref nxztzehgnkdmluogxehi
 

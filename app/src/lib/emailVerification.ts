@@ -6,7 +6,7 @@ export const EMAIL_VERIFICATION_PATH = '/email-verificado'
 export function isEmailVerificationPending(session: Session | null): boolean {
   if (!session?.user?.email) return false
   if (session.user.app_metadata?.provider !== 'email') return false
-  return !session.user.user_metadata?.email_verified_at
+  return !session.user.email_confirmed_at
 }
 
 export async function sendEmailVerificationLink(email: string) {

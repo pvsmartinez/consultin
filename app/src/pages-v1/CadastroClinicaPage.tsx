@@ -12,9 +12,21 @@ import { IMaskInput } from 'react-imask'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
-import { gtagEvent } from '../lib/gtag'
-import { sendEmailVerificationLink } from '../lib/emailVerification'
+import { trackSignup } from '../lib/googleAds'
 import { Seo } from '../components/seo/Seo'
+
+type SignupFunctionError = {
+  error?: string
+  code?: string
+}
+
+function parseFunctionError(rawMessage: string): SignupFunctionError {
+  try {
+    return JSON.parse(rawMessage) as SignupFunctionError
+  } catch {
+    return { error: rawMessage }
+  }
+}
 
 const schema = z.object({
   clinicName:      z.string().min(2, 'Nome obrigatório'),
@@ -186,6 +198,9 @@ export default function CadastroClinicaPage() {
   async function onSubmit(values: FormValues) {
     setServerError(null)
     setEmailAlreadyExists(false)
+
+    const normalizedEmail = values.email.trim().toLowerCase()
+
     try {
       // Submit via Edge Function (service role insert + Telegram notification)
       const { error } = await supabase.functions.invoke('submit-clinic-signup', {
@@ -202,31 +217,38 @@ export default function CadastroClinicaPage() {
 
       if (error) {
         // Parse body — supabase.functions returns raw body text as error.message
-        let msg: string = error.message ?? ''
-        try { msg = (JSON.parse(msg) as { error?: string }).error ?? msg } catch { /* not JSON */ }
-        if (msg.includes('já possui uma conta')) {
+        const parsed = parseFunctionError(error.message ?? '')
+        const msg = parsed.error ?? error.message ?? ''
+
+        if (parsed.code === 'ACCOUNT_EXISTS' || msg.includes('já possui uma conta')) {
+          const { error: existingSignInError } = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password: values.password,
+          })
+
+          if (!existingSignInError) {
+            navigate('/agenda', { replace: true })
+            return
+          }
+
           setEmailAlreadyExists(true)
-          return
+          throw new Error('Esse e-mail já existe. Use a senha correta para entrar na sua conta.')
         }
+
         throw new Error(msg)
       }
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email:    values.email.trim().toLowerCase(),
+        email:    normalizedEmail,
         password: values.password,
       })
       if (signInError) {
         throw new Error('Conta criada, mas não foi possível entrar automaticamente. Faça login com seu e-mail e senha.')
       }
 
-      const { error: verificationError } = await sendEmailVerificationLink(values.email.trim().toLowerCase())
-      if (verificationError) {
-        console.error('Email verification send failed:', verificationError)
-      }
-
       trackPublicEvent('clinic_signup_submit')
-      gtagEvent('sign_up', { method: 'clinic_form' })
-      navigate('/', { replace: true })
+      trackSignup({ method: 'clinic_form' })
+      navigate('/agenda', { replace: true })
     } catch (e: unknown) {
       setServerError((e as Error).message ?? 'Erro ao enviar solicitação. Tente novamente.')
     }
@@ -415,8 +437,8 @@ export default function CadastroClinicaPage() {
                 <div className="text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <p className="text-amber-800 font-medium">Este e-mail já possui uma conta.</p>
                   <p className="text-amber-700 mt-0.5">
-                    <Link to="/login" className="underline font-medium">Faça login</Link>
-                    {' '}para acessar sua clínica.
+                    Digite a senha correta para entrar agora ou
+                    {' '}<Link to="/login" className="underline font-medium">vá para o login</Link>.
                   </p>
                 </div>
               )}
