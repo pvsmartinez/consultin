@@ -2,6 +2,7 @@ import { gtagEvent } from './gtag'
 
 const GOOGLE_ADS_CONVERSION_IDS = {
   generateLead: 'AW-18041761033/oZP3CIKEqZwcEIna_ZpD',
+  signup: 'AW-18041761033/Qs7_CPSlgaEcEIna_ZpD',
   onboardingComplete: 'AW-18041761033/PzsXCLuEqZwcEIna_ZpD',
 } as const
 
@@ -21,6 +22,7 @@ export const trackGenerateLead = (params?: Record<string, unknown>) => {
 
 export const trackSignup = (params?: Record<string, unknown>) => {
   gtagEvent('sign_up', params)
+  trackAdsConversion(GOOGLE_ADS_CONVERSION_IDS.signup)
 }
 
 export const trackOnboardingComplete = (params?: Record<string, unknown>) => {

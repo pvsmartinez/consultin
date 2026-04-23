@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   migrate:
@@ -40,6 +40,5 @@ jobs:
           supabase functions deploy submit-clinic-signup --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy track-public-analytics --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy whatsapp-ai-agent --project-ref nxztzehgnkdmluogxehi
-
   # Vercel deploys automatically via GitHub integration on the same push.
   # No explicit step needed — it runs in parallel with this job.

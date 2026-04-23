@@ -85,6 +85,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
   login_cta_clicks_7d: number
   signup_cta_clicks_7d: number
   whatsapp_cta_clicks_7d: number
+  clinic_signup_submits_7d: number
   clinic_signup_submits_30d: number
   top_pages_30d: Array<{ path: string; views: number }>
 }> {
@@ -109,6 +110,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
   let signupPageViews7d = 0
   let loginCtaClicks7d = 0
   let signupCtaClicks7d = 0
+  let clinicSignupSubmits7d = 0
   let clinicSignupSubmits30d = 0
   let whatsappCtaClicks7d = 0
 
@@ -129,6 +131,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
     if (row.event_name === 'login_cta_click' && in7d) loginCtaClicks7d += 1
     if (row.event_name === 'signup_cta_click' && in7d) signupCtaClicks7d += 1
     if (row.event_name === 'whatsapp_cta_click' && in7d) whatsappCtaClicks7d += 1
+    if (row.event_name === 'clinic_signup_submit' && in7d) clinicSignupSubmits7d += 1
     if (row.event_name === 'clinic_signup_submit') clinicSignupSubmits30d += 1
   }
 
@@ -146,6 +149,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
     login_cta_clicks_7d: loginCtaClicks7d,
     signup_cta_clicks_7d: signupCtaClicks7d,
     whatsapp_cta_clicks_7d: whatsappCtaClicks7d,
+    clinic_signup_submits_7d: clinicSignupSubmits7d,
     clinic_signup_submits_30d: clinicSignupSubmits30d,
     top_pages_30d: topPages,
   }
