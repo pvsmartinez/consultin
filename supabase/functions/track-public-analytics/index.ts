@@ -18,6 +18,7 @@ const ALLOWED_EVENTS = new Set([
   'page_view',
   'login_cta_click',
   'signup_cta_click',
+  'whatsapp_cta_click',
   'clinic_signup_submit',
 ])
 
@@ -59,7 +60,7 @@ function sanitizeText(value: unknown, maxLength: number): string | null {
 function sanitizeMetadata(value: unknown): Record<string, string | number | boolean | null> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
-  const entries = Object.entries(value as Record<string, unknown>).slice(0, 12)
+  const entries = Object.entries(value as Record<string, unknown>).slice(0, 24)
   const result: Record<string, string | number | boolean | null> = {}
 
   for (const [key, raw] of entries) {

@@ -20,6 +20,26 @@ O **Consultin** é uma solução completa de gerenciamento voltada para pequenas
 
 > Tecnologias a serem definidas conforme evolução do projeto.
 
+## Operação Interna
+
+### Mapping de campanhas públicas
+
+Resumo operacional atual do Google Ads do Consultin:
+
+- `Consultin - Clinicas` → final URL principal em `/para-clinicas`
+- `Consultin - Profissional Liberal` → final URL principal em `/software-para-consultorios`
+- `Consultin - Performance Max` → final URL principal em `/sistema-para-clinicas`
+
+Leitura importante:
+
+- `Profissional Liberal` mantém sitelinks por persona (`/para-medicos`, `/para-psicologos`, `/para-nutricionistas`) porque eles já têm clique e CTR reais; não foi feita convergência para uma LP única nesta rodada.
+- O painel admin agora deve ler o funil por `landingPath`, para não misturar tráfego de sitelink/persona com a campanha principal.
+- O fluxo de atribuição pública usa `seo-pages.js` nas LPs estáticas e `publicAttribution.ts` no SPA/signup para preservar `utm_*`, `gclid` e afins até o cadastro.
+
+Documento detalhado:
+
+- [docs/public-campaign-lp-mapping-2026-04-22.md](docs/public-campaign-lp-mapping-2026-04-22.md)
+
 ## Como Contribuir
 
 1. Faça um fork do repositório.

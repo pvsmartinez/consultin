@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo,
   Stethoscope, Bell, ClipboardText, UsersThree, Buildings, UsersFour, ToggleRight, ToggleLeft,
   CheckCircle,
   GlobeHemisphereWest,
+  ArrowRight,
 } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
 import type { ClinicModule } from '../hooks/useClinicModules'
@@ -21,7 +23,9 @@ import NotificacoesTab from '../pages-v1/settings/NotificacoesTab'
 import UsuariosTab from '../pages-v1/settings/UsuariosTab'
 import AnamnesisTab from '../pages-v1/settings/AnamnesisTab'
 import PaginaPublicaTab from '../pages-v1/settings/PaginaPublicaTab'
-import type { SettingsEntity } from '../lib/settingsNavigation'
+import { trackOnboardingComplete } from '../lib/googleAds'
+import { APP_ROUTES } from '../lib/appRoutes'
+import { buildSettingsPath, type SettingsEntity, type SettingsTab } from '../lib/settingsNavigation'
 
 // ─── Module cards ─────────────────────────────────────────────────────────────
 
@@ -139,6 +143,37 @@ const TABS: TabDef[] = [
   { id: 'whatsapp',        label: 'WhatsApp',          icon: WhatsappLogo, moduleRequired: 'whatsapp' },
 ]
 
+interface SetupItem {
+  title: string
+  description: string
+  tab: SettingsTab
+  entity?: SettingsEntity
+}
+
+const SETUP_ITEMS: SetupItem[] = [
+  {
+    title: 'Dados da clínica',
+    description: 'Revise nome, contato e endereço para deixar notificações e relatórios corretos.',
+    tab: 'dados',
+  },
+  {
+    title: 'Agenda da clínica',
+    description: 'Defina duração padrão e horários de funcionamento para evitar conflitos logo no início.',
+    tab: 'agenda',
+  },
+  {
+    title: 'Formulários',
+    description: 'Deixe só os campos que sua clínica realmente usa no cadastro de pacientes e profissionais.',
+    tab: 'campos',
+    entity: 'pacientes',
+  },
+  {
+    title: 'Equipe e acessos',
+    description: 'Convide recepção e profissionais quando estiver pronto para operar com mais gente.',
+    tab: 'usuarios',
+  },
+]
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
   dados:           DadosTab,
@@ -159,11 +194,13 @@ const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
 
 export default function ConfiguracoesPage() {
   const location = useLocation()
-  const { data: clinic, isLoading: clinicLoading } = useClinic()
+  const navigate = useNavigate()
+  const { data: clinic, isLoading: clinicLoading, update } = useClinic()
   const { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, enableModule, disableModule } = useClinicModules()
   const [activeTab, setActiveTab] = useState<Tab>('dados')
   const [fieldEntity, setFieldEntity] = useState<SettingsEntity>('pacientes')
   const [toggling, setToggling] = useState<ClinicModule | null>(null)
+  const [finishingSetup, setFinishingSetup] = useState(false)
 
   // Support ?tab=xxx&entity=yyy or state.tab navigation from other pages
   useEffect(() => {
@@ -178,6 +215,8 @@ export default function ConfiguracoesPage() {
       setFieldEntity(entityParam)
     }
   }, [location.search, location.state])
+
+  const setupRequested = new URLSearchParams(location.search).get('setup') === '1'
 
   const moduleActiveMap: Record<ClinicModule, boolean> = {
     rooms:     hasRooms,
@@ -209,6 +248,32 @@ export default function ConfiguracoesPage() {
   }, [activeTab, modules, visibleTabs])
 
   const TabComponent = TAB_CONTENT[activeTab]
+  const showSetupGuide = !!clinic && (!clinic.onboardingCompleted || setupRequested)
+
+  async function handleFinishSetup() {
+    if (!clinic || finishingSetup) return
+
+    if (clinic.onboardingCompleted) {
+      navigate(APP_ROUTES.staff.settings, { replace: true })
+      return
+    }
+
+    setFinishingSetup(true)
+    try {
+      await update.mutateAsync({ onboardingCompleted: true })
+      trackOnboardingComplete({ source: 'settings_setup_guide' })
+      toast.success('Configuração inicial concluída.')
+      navigate(APP_ROUTES.staff.settings, { replace: true })
+    } catch {
+      toast.error('Não foi possível concluir a configuração inicial.')
+    } finally {
+      setFinishingSetup(false)
+    }
+  }
+
+  function handleOpenSetupItem(item: SetupItem) {
+    navigate(buildSettingsPath(item.tab, item.entity), { replace: true })
+  }
 
   if (clinicLoading) {
     return (
@@ -239,6 +304,57 @@ export default function ConfiguracoesPage() {
           Configure sua agenda, ative módulos adicionais e personalize a experiência.
         </p>
       </section>
+
+      {showSetupGuide && (
+        <section className="rounded-[28px] border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-cyan-50 px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">
+            Setup essencial
+          </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-2xl font-bold tracking-tight text-gray-900 mb-2">Você já pode usar a agenda. Configure só o básico.</h2>
+              <p className="text-sm text-gray-600">
+                O primeiro acesso agora cai direto no produto. Se quiser organizar o essencial, estes atalhos resolvem o básico sem travar o uso.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to={APP_ROUTES.staff.home}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+              >
+                Voltar para a agenda
+              </Link>
+              <button
+                type="button"
+                onClick={handleFinishSetup}
+                disabled={finishingSetup}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#006970] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#00535a] disabled:opacity-50"
+              >
+                {clinic.onboardingCompleted ? 'Fechar guia' : finishingSetup ? 'Concluindo...' : 'Concluir configuração inicial'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {SETUP_ITEMS.map(item => (
+              <button
+                key={`${item.tab}-${item.entity ?? 'none'}`}
+                type="button"
+                onClick={() => handleOpenSetupItem(item)}
+                className="rounded-2xl border border-white bg-white/90 p-4 text-left shadow-sm transition hover:border-teal-200 hover:shadow"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-gray-500">{item.description}</p>
+                  </div>
+                  <ArrowRight size={18} className="mt-0.5 shrink-0 text-[#0ea5b0]" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Modules section */}
       <section>

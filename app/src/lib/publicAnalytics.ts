@@ -1,4 +1,5 @@
 import { supabaseUrl } from '../services/supabase'
+import { getPublicAttributionMetadata } from './publicAttribution'
 
 const TRACK_ENDPOINT = `${supabaseUrl}/functions/v1/track-public-analytics`
 const SESSION_KEY = 'consultin-public-session'
@@ -50,12 +51,15 @@ function send(body: string) {
 export function trackPublicEvent(eventName: PublicAnalyticsEventName, metadata?: PublicAnalyticsMetadata) {
   if (typeof window === 'undefined') return
 
+  const attribution = getPublicAttributionMetadata()
+
   const payload = JSON.stringify({
     eventName,
     pagePath: window.location.pathname,
     referrer: document.referrer || null,
     metadata: {
       sessionId: getSessionId(),
+      ...attribution,
       ...metadata,
     },
   })

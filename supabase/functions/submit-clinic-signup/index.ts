@@ -21,6 +21,47 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const ATTRIBUTION_KEYS = [
+  'utmSource',
+  'utmMedium',
+  'utmCampaign',
+  'utmContent',
+  'utmTerm',
+  'gclid',
+  'gbraid',
+  'wbraid',
+  'fbclid',
+  'msclkid',
+  'ttclid',
+  'landingPath',
+  'landingSearch',
+  'landingReferrer',
+  'pagePath',
+  'pageSearch',
+  'persona',
+] as const
+
+function sanitizeText(value: unknown, maxLength: number) {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  return trimmed.slice(0, maxLength)
+}
+
+function sanitizeAttribution(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+
+  const input = value as Record<string, unknown>
+  const output: Record<string, string> = {}
+
+  for (const key of ATTRIBUTION_KEYS) {
+    const cleaned = sanitizeText(input[key], key.endsWith('Search') || key.endsWith('Referrer') ? 512 : 255)
+    if (cleaned) output[key] = cleaned
+  }
+
+  return output
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -52,6 +93,7 @@ serve(async (req: Request) => {
     phone?: string
     message?: string
     isSoloPractitioner?: boolean
+    attribution?: Record<string, unknown>
   }
 
   try {
@@ -61,6 +103,7 @@ serve(async (req: Request) => {
   }
 
   const { clinicName, responsibleName, email, password } = body
+  const signupAttribution = sanitizeAttribution(body.attribution)
   if (!clinicName?.trim() || !responsibleName?.trim() || !email?.trim() || !password?.trim()) {
     return json({ error: 'clinicName, responsibleName, email e password são obrigatórios' }, 400)
   }
@@ -132,11 +175,12 @@ serve(async (req: Request) => {
   const { data: clinic, error: clinicError } = await admin
     .from('clinics')
     .insert({
-      name:  clinicName.trim(),
-      cnpj:  body.cnpj?.trim()  || null,
-      phone: body.phone?.trim() || null,
-      email: cleanEmail,
+      name:               clinicName.trim(),
+      cnpj:               body.cnpj?.trim()  || null,
+      phone:              body.phone?.trim() || null,
+      email:              cleanEmail,
       owner_user_id: userId,
+      signup_attribution: signupAttribution,
     })
     .select('id')
     .single()

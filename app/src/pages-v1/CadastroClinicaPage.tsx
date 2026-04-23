@@ -12,6 +12,7 @@ import { IMaskInput } from 'react-imask'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
+import { buildAttributedPath, getPublicAttributionMetadata } from '../lib/publicAttribution'
 import { trackSignup } from '../lib/googleAds'
 import { Seo } from '../components/seo/Seo'
 
@@ -190,6 +191,11 @@ export default function CadastroClinicaPage() {
   const [showPassword, setShowPassword] = useState(false)
   const personaIndex = PERSONA_SLIDE[params.get('persona') ?? ''] ?? 0
   const activePersona = slides[personaIndex]
+  const loginPath = buildAttributedPath('/login')
+
+  const buildSignupAttribution = () => getPublicAttributionMetadata({
+    persona: params.get('persona') ?? undefined,
+  })
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -200,6 +206,7 @@ export default function CadastroClinicaPage() {
     setEmailAlreadyExists(false)
 
     const normalizedEmail = values.email.trim().toLowerCase()
+    const attribution = buildSignupAttribution()
 
     try {
       // Submit via Edge Function (service role insert + Telegram notification)
@@ -212,6 +219,7 @@ export default function CadastroClinicaPage() {
           cnpj:                values.cnpj    || undefined,
           phone:               values.phone   || undefined,
           isSoloPractitioner:  isSolo,
+          attribution,
         },
       })
 
@@ -246,7 +254,10 @@ export default function CadastroClinicaPage() {
         throw new Error('Conta criada, mas não foi possível entrar automaticamente. Faça login com seu e-mail e senha.')
       }
 
-      trackPublicEvent('clinic_signup_submit')
+      trackPublicEvent('clinic_signup_submit', {
+        ...attribution,
+        signupMode: isSolo ? 'solo_practitioner' : 'clinic',
+      })
       trackSignup({ method: 'clinic_form' })
       navigate('/agenda', { replace: true })
     } catch (e: unknown) {
@@ -438,7 +449,7 @@ export default function CadastroClinicaPage() {
                   <p className="text-amber-800 font-medium">Este e-mail já possui uma conta.</p>
                   <p className="text-amber-700 mt-0.5">
                     Digite a senha correta para entrar agora ou
-                    {' '}<Link to="/login" className="underline font-medium">vá para o login</Link>.
+                    {' '}<Link to={loginPath} className="underline font-medium">vá para o login</Link>.
                   </p>
                 </div>
               )}
@@ -477,7 +488,7 @@ export default function CadastroClinicaPage() {
 
             <p className="mt-4 text-center text-sm text-gray-500">
               Já tem acesso?{' '}
-              <Link to="/login" className="text-blue-600 hover:underline font-medium">
+              <Link to={loginPath} className="text-blue-600 hover:underline font-medium">
                 Fazer login
               </Link>
             </p>

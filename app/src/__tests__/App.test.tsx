@@ -43,10 +43,6 @@ vi.mock('../routes/PublicRoutes', () => ({
   default: () => <div data-testid="public-routes" />,
 }))
 
-vi.mock('../routes/OnboardingRoutes', () => ({
-  default: () => <div data-testid="onboarding-routes" />,
-}))
-
 vi.mock('../routes/PatientRoutes', () => ({
   default: () => <div data-testid="patient-routes" />,
 }))
@@ -61,7 +57,7 @@ vi.mock('../lib/emailVerification', () => ({
 
 import App from '../App'
 
-function buildAuth(overrides: Partial<ReturnType<typeof baseAuth>> = {}) {
+function buildAuth(overrides: Record<string, unknown> = {}) {
   return {
     ...baseAuth(),
     ...overrides,
@@ -117,5 +113,19 @@ describe('App auth route normalization', () => {
 
     expect(await screen.findByTestId('public-routes')).toBeInTheDocument()
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/cadastro-clinica')
+  })
+
+  it('keeps signed-in admins inside the regular staff app even before initial setup is marked complete', async () => {
+    mockUseAuthContext.mockReturnValue(buildAuth({
+      session: { user: { id: 'user-1' } },
+      profile: { clinicId: 'clinic-1' },
+      role: 'admin',
+    }))
+    mockUseClinic.mockReturnValue({ data: { onboardingCompleted: false } })
+
+    renderApp('/agenda')
+
+    expect(await screen.findByTestId('app-layout')).toBeInTheDocument()
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/agenda')
   })
 })

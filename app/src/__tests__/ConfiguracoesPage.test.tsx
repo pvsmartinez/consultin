@@ -113,4 +113,20 @@ describe('ConfiguracoesPage', () => {
 
     expect(await screen.findByText('CamposTab:profissionais')).toBeInTheDocument()
   })
+
+  it('shows the lightweight setup guide when setup is still pending', () => {
+    useClinicMock.mockReturnValue({
+      data: { ...clinicFixture, onboardingCompleted: false },
+      isLoading: false,
+      update: { mutateAsync: vi.fn() },
+    })
+
+    renderWithProviders(<ConfiguracoesPage />, {
+      routerProps: { initialEntries: ['/configuracoes?setup=1'] },
+    })
+
+    expect(screen.getByText('Você já pode usar a agenda. Configure só o básico.')).toBeInTheDocument()
+    expect(screen.getByText('Revise nome, contato e endereço para deixar notificações e relatórios corretos.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /equipe e acessos/i })).toBeInTheDocument()
+  })
 })

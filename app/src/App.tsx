@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
-import { useClinic } from './hooks/useClinic'
 import { FullScreenLoader, PageLoader } from './components/ui/PageLoader'
 
 // ─── Eager imports — rendered outside of route transitions ───────────────────
@@ -18,14 +17,12 @@ import { APP_ROUTES, isProtectedAppPath } from './lib/appRoutes'
 // Each import() becomes a separate JS chunk — only fetched when that "world"
 // first activates, dramatically reducing the initial bundle.
 const PublicRoutes      = lazy(() => import('./routes/PublicRoutes'))
-const OnboardingRoutes  = lazy(() => import('./routes/OnboardingRoutes'))
 const PatientRoutes     = lazy(() => import('./routes/PatientRoutes'))
 const StaffRoutes       = lazy(() => import('./routes/StaffRoutes'))
 
 function App() {
   const location = useLocation()
   const { session, profile, role, isSuperAdmin, loading, recoveryMode } = useAuthContext()
-  const { data: clinic } = useClinic()
   const isPublicProfileRoute = location.pathname.startsWith('/p/')
   const isStandalonePublicRoute = isPublicProfileRoute || location.pathname === EMAIL_VERIFICATION_PATH
 
@@ -73,17 +70,6 @@ function App() {
             <PatientRoutes />
           </Suspense>
         </PatientPortalLayout>
-      </ErrorBoundary>
-    )
-  }
-
-  // ── Clinic setup wizard (admin of a brand-new clinic) ───────────────────────
-  if (role === 'admin' && !isSuperAdmin && clinic && !clinic.onboardingCompleted) {
-    return (
-      <ErrorBoundary>
-        <Suspense fallback={<FullScreenLoader />}>
-          <OnboardingRoutes />
-        </Suspense>
       </ErrorBoundary>
     )
   }

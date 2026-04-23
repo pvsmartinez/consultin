@@ -51,6 +51,42 @@ interface PublicSiteEventRow {
   created_at: string
   event_name: string
   page_path: string
+  metadata: Record<string, unknown> | null
+}
+
+interface LandingAnalyticsRow {
+  path: string
+  signup_page_views: number
+  signup_cta_clicks: number
+  clinic_signup_submits: number
+  whatsapp_cta_clicks: number
+  clinics_created: number
+}
+
+interface SignupAttributionClinicRow {
+  created_at: string
+  signup_attribution: Record<string, unknown> | null
+}
+
+function readMetadataText(metadata: Record<string, unknown> | null | undefined, key: string, maxLength = 200) {
+  if (!metadata) return null
+  const value = metadata[key]
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.slice(0, maxLength)
+}
+
+function getLandingPath(row: PublicSiteEventRow) {
+  return readMetadataText(row.metadata, 'landingPath', 200)
+    ?? readMetadataText(row.metadata, 'pagePath', 200)
+    ?? row.page_path
+}
+
+function getClinicLandingPath(row: SignupAttributionClinicRow) {
+  return readMetadataText(row.signup_attribution, 'landingPath', 200)
+    ?? readMetadataText(row.signup_attribution, 'pagePath', 200)
+    ?? '/unknown'
 }
 
 function json(data: unknown, status = 200): Response {
@@ -88,6 +124,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
   clinic_signup_submits_7d: number
   clinic_signup_submits_30d: number
   top_pages_30d: Array<{ path: string; views: number }>
+  signup_landings_30d: LandingAnalyticsRow[]
 }> {
   const now = Date.now()
   const since7d = new Date(now - 7 * 24 * 60 * 60 * 1000)
@@ -95,7 +132,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
 
   const { data, error } = await client
     .from('public_site_events')
-    .select('created_at, event_name, page_path')
+    .select('created_at, event_name, page_path, metadata')
     .gte('created_at', since30d.toISOString())
     .order('created_at', { ascending: false })
     .limit(5000)
@@ -104,6 +141,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
 
   const rows = (data ?? []) as PublicSiteEventRow[]
   const pageCounts = new Map<string, number>()
+  const landingCounts = new Map<string, LandingAnalyticsRow>()
 
   let pageViews7d = 0
   let loginPageViews7d = 0
@@ -117,9 +155,24 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
   for (const row of rows) {
     const createdAt = new Date(row.created_at).getTime()
     const in7d = createdAt >= since7d.getTime()
+    const landingPath = getLandingPath(row)
+
+    if (!landingCounts.has(landingPath)) {
+      landingCounts.set(landingPath, {
+        path: landingPath,
+        signup_page_views: 0,
+        signup_cta_clicks: 0,
+        clinic_signup_submits: 0,
+        whatsapp_cta_clicks: 0,
+        clinics_created: 0,
+      })
+    }
+
+    const landing = landingCounts.get(landingPath)!
 
     if (row.event_name === 'page_view') {
       pageCounts.set(row.page_path, (pageCounts.get(row.page_path) ?? 0) + 1)
+      if (row.page_path === '/cadastro-clinica') landing.signup_page_views += 1
 
       if (in7d) {
         pageViews7d += 1
@@ -129,16 +182,60 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
     }
 
     if (row.event_name === 'login_cta_click' && in7d) loginCtaClicks7d += 1
-    if (row.event_name === 'signup_cta_click' && in7d) signupCtaClicks7d += 1
-    if (row.event_name === 'whatsapp_cta_click' && in7d) whatsappCtaClicks7d += 1
-    if (row.event_name === 'clinic_signup_submit' && in7d) clinicSignupSubmits7d += 1
-    if (row.event_name === 'clinic_signup_submit') clinicSignupSubmits30d += 1
+    if (row.event_name === 'signup_cta_click') {
+      landing.signup_cta_clicks += 1
+      if (in7d) signupCtaClicks7d += 1
+    }
+    if (row.event_name === 'whatsapp_cta_click') {
+      landing.whatsapp_cta_clicks += 1
+      if (in7d) whatsappCtaClicks7d += 1
+    }
+    if (row.event_name === 'clinic_signup_submit') {
+      landing.clinic_signup_submits += 1
+      if (in7d) clinicSignupSubmits7d += 1
+      clinicSignupSubmits30d += 1
+    }
+  }
+
+  const { data: createdClinics, error: createdClinicsError } = await client
+    .from('clinics')
+    .select('created_at, signup_attribution')
+    .gte('created_at', since30d.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(5000)
+
+  if (createdClinicsError) throw new Error(createdClinicsError.message)
+
+  for (const clinic of (createdClinics ?? []) as SignupAttributionClinicRow[]) {
+    const landingPath = getClinicLandingPath(clinic)
+
+    if (!landingCounts.has(landingPath)) {
+      landingCounts.set(landingPath, {
+        path: landingPath,
+        signup_page_views: 0,
+        signup_cta_clicks: 0,
+        clinic_signup_submits: 0,
+        whatsapp_cta_clicks: 0,
+        clinics_created: 0,
+      })
+    }
+
+    landingCounts.get(landingPath)!.clinics_created += 1
   }
 
   const topPages = Array.from(pageCounts.entries())
     .sort((left, right) => right[1] - left[1])
     .slice(0, 8)
     .map(([path, views]) => ({ path, views }))
+
+  const signupLandings = Array.from(landingCounts.values())
+    .filter((item) => item.signup_page_views > 0 || item.signup_cta_clicks > 0 || item.clinic_signup_submits > 0 || item.whatsapp_cta_clicks > 0 || item.clinics_created > 0)
+    .sort((left, right) => {
+      const leftScore = left.clinics_created * 20 + left.clinic_signup_submits * 8 + left.signup_cta_clicks * 3 + left.signup_page_views + left.whatsapp_cta_clicks
+      const rightScore = right.clinics_created * 20 + right.clinic_signup_submits * 8 + right.signup_cta_clicks * 3 + right.signup_page_views + right.whatsapp_cta_clicks
+      return rightScore - leftScore
+    })
+    .slice(0, 10)
 
   return {
     since_7d: since7d.toISOString(),
@@ -152,6 +249,7 @@ async function listPublicAnalytics(client: ReturnType<typeof createClient>): Pro
     clinic_signup_submits_7d: clinicSignupSubmits7d,
     clinic_signup_submits_30d: clinicSignupSubmits30d,
     top_pages_30d: topPages,
+    signup_landings_30d: signupLandings,
   }
 }
 

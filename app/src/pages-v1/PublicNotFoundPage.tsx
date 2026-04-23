@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
 import { Seo } from '../components/seo/Seo'
+import { buildAttributedPath } from '../lib/publicAttribution'
 
 export default function PublicNotFoundPage() {
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+
   return (
     <>
       <Seo
@@ -27,7 +30,7 @@ export default function PublicNotFoundPage() {
               Ir para a home
             </Link>
             <Link
-              to="/cadastro-clinica"
+              to={signupPath}
               className="inline-flex items-center rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
             >
               Criar conta grátis

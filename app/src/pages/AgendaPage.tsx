@@ -7,7 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, DoorOpen, UserCircle, X, Lock, Clock, CalendarBlank, Buildings, UsersFour, WhatsappLogo, CurrencyDollar, CheckCircle } from '@phosphor-icons/react'
+import { Plus, DoorOpen, UserCircle, X, Lock, Clock, CalendarBlank, Buildings, UsersFour, WhatsappLogo, CurrencyDollar, CheckCircle, Gear } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -181,7 +181,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [roomsDrawerOpen, setRoomsDrawerOpen]     = useState(false)
 
-  const { role, isSuperAdmin, session, profile } = useAuthContext()
+  const { role, isSuperAdmin, session, profile, hasPermission } = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
   const { hasRooms, hasStaff, hasWhatsApp, hasFinancial, enableModule, disableModule } = useClinicModules()
   const { data: rooms = [] }              = useRooms()
@@ -291,6 +291,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const hasSeenEvents = useRef(false)
   if (events.length > 0) hasSeenEvents.current = true
   const showWelcome = !isLoading && !hasSeenEvents.current && events.length === 0 && !isPersonalView
+  const canManageSettings = hasPermission('canManageSettings')
 
   function handleDateSelect(arg: { start: Date; end: Date; startStr: string; endStr: string; allDay: boolean; resource?: { id: string } }) {
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
@@ -579,6 +580,15 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           >
             <Plus size={16} /> Agendar primeira consulta
           </button>
+
+          {canManageSettings && (
+            <button
+              onClick={() => navigate(buildSettingsPath('dados'))}
+              className="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 transition-all active:scale-95 hover:border-gray-300 hover:bg-gray-50"
+            >
+              <Gear size={16} /> Revisar dados e horários
+            </button>
+          )}
 
           {/* Module extras */}
           <div className="mt-4 w-full max-w-lg">

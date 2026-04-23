@@ -34,6 +34,7 @@ export default function StaffRoutes() {
     <Routes>
       {/* v2: Agenda is the home */}
       <Route path="/" element={<Navigate to={APP_ROUTES.staff.home} replace />} />
+      <Route path={APP_ROUTES.onboarding.wizard} element={<Navigate to={`${APP_ROUTES.staff.settings}?setup=1`} replace />} />
       <Route path={APP_ROUTES.staff.legacyToday} element={<Navigate to={APP_ROUTES.staff.home} replace />} />
       <Route path={APP_ROUTES.staff.legacyDashboard} element={<Navigate to={APP_ROUTES.staff.home} replace />} />
 

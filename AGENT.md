@@ -32,25 +32,26 @@ Consultin is designed to be **the simplest possible clinic management tool** —
 customizable so each clinic only sees what it actually needs. No clutter, no "enterprise"
 features forced on a 2-dentist office.
 
-### Clinic Setup Wizard (Onboarding)
+### Initial Setup
 
-When a clinic is freshly created (`clinics.onboarding_completed = false`), the app
-redirects to `/onboarding` instead of `/dashboard`. This is a **linear 5-step wizard**
-shown exactly once. After completion, `onboarding_completed` is set to `true`.
+Fresh clinics should land in the product immediately. The first post-signup experience is
+the regular agenda, not a blocking wizard.
 
-The wizard is **backed by the same components as `SettingsPage`** — same config blobs,
-same DB calls — just presented as a guided first-time flow with a friendly framing.
-Every step can be revisited at any time via `/configuracoes`.
+`clinics.onboarding_completed` is still kept as a lightweight product signal, but it now
+controls only optional guidance inside `/configuracoes`. It must never block access to the
+agenda or other staff routes.
 
-**Wizard steps:**
+The initial setup guidance should point users to the same existing settings tabs:
 
-| #   | Step                      | What happens                                                                                                                                                                   |
-| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | **Bem-vindo**             | Confirm/edit clinic name, CNPJ, phone, e-mail, address. Future placeholder for billing/subscription info.                                                                      |
-| 2   | **Sua equipe**            | Toggle which built-in professional fields the clinic needs (specialty, council ID, phone, email). Add custom professional fields (e.g. "Registro CREMERS", "Área de atuação"). |
-| 3   | **Cadastro de pacientes** | Toggle built-in patient fields (CPF, RG, address, etc.). Add custom patient fields for the clinic's specialty (e.g. "Convênio", "Alergias", "Nº prontuário").                  |
-| 4   | **Agendamentos**          | Slot duration (15/20/30/45/60 min) + working days/hours per day.                                                                                                               |
-| 5   | **Pronto!**               | Summary + CTA "Abrir minha agenda". Sets `onboarding_completed = true`.                                                                                                        |
+| Area            | Where to configure                                                     |
+| --------------- | ---------------------------------------------------------------------- |
+| Clinic data     | `/configuracoes?tab=dados`                                             |
+| Schedule basics | `/configuracoes?tab=agenda`                                            |
+| Form fields     | `/configuracoes?tab=campos&entity=pacientes` or `entity=profissionais` |
+| Team and access | `/configuracoes?tab=usuarios`                                          |
+
+`/onboarding` remains only as a compatibility alias and should redirect to the setup-focused
+view of `/configuracoes`.
 
 ### Field Customization Architecture
 
@@ -77,12 +78,12 @@ column of the `patients` / `professionals` row.
 
 ```
 After login:
-  clinic.onboardingCompleted === false  →  redirect to /onboarding
-  clinic.onboardingCompleted === true   →  redirect to /dashboard
+  profile missing                       → show OnboardingPage (invite / patient / no-access flow)
+  clinic.onboardingCompleted === false  → keep access to normal staff routes
 ```
 
-The `/onboarding` route redirects to `/dashboard` if already completed.
-Implemented as a guard in `App.tsx` or `AuthContext`.
+The `/onboarding` route should behave as a compatibility alias to the setup-focused settings
+experience, not as a mandatory first-run blocker.
 
 ---
 
@@ -506,7 +507,7 @@ curl -s 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/admin/users?page=1&per
 6. **Multi-tenancy** — every DB query is automatically scoped by Supabase RLS policies. Never manually filter by `clinic_id` from the client.
 7. **Typecheck** — run `npm run typecheck` after every non-trivial change. Zero errors is the bar.
 8. **Commits** — use Conventional Commits (`feat:`, `fix:`, `chore:`, etc.), messages in English.
-9. **Onboarding guard** — any new route/redirect logic must respect `clinic.onboardingCompleted`. Clinics with `false` must land on `/onboarding` first, never on `/dashboard` or feature pages.
+9. **Initial setup** — `clinic.onboardingCompleted` may drive optional setup guidance, but must not block clinic staff from reaching the agenda or other normal app routes.
 10. **Field visibility** — never render a built-in patient/professional form field without first checking `fieldConfig[key] !== false`. Always pass `customPatientFields` / `customProfessionalFields` from the clinic to the form component.
 11. **RLS auth calls** — in any `USING` / `WITH CHECK` clause, always write `(select auth.uid())` not `auth.uid()`. Same for `auth.email()`, `auth.jwt()`, `current_setting()`. Bare calls are re-evaluated per row and will trigger the Supabase "Auth RLS Initialization Plan" lint warning.
 

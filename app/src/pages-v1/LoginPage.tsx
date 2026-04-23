@@ -1,6 +1,7 @@
 import { AuthScreen } from '@pvsmartinez/shared'
 import { Stethoscope, ArrowLeft } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
+import { buildAttributedPath } from '../lib/publicAttribution'
 import { supabase } from '../services/supabase'
 import { Seo } from '../components/seo/Seo'
 import WhatsAppOtpPanel from '../components/auth/WhatsAppOtpPanel'
@@ -54,6 +55,8 @@ const CONSULTIN_THEME = {
 }
 
 export default function LoginPage() {
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+
   return (
     <>
       <Seo
@@ -83,7 +86,7 @@ export default function LoginPage() {
             <WhatsAppOtpPanel />
             <p style={{ fontSize: 12, color: 'var(--ui-text-muted)', margin: 0 }}>
               É uma clínica?{' '}
-              <Link to="/cadastro-clinica" style={{ color: 'var(--ui-info-text)', fontWeight: 500, textDecoration: 'none' }}>
+              <Link to={signupPath} style={{ color: 'var(--ui-info-text)', fontWeight: 500, textDecoration: 'none' }}>
                 Solicite seu acesso
               </Link>
             </p>

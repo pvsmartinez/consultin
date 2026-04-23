@@ -20,14 +20,13 @@ Defined in `app/src/routes/PublicRoutes.tsx`.
 | `/p/:slug/agendar`  | Public booking page | Dynamic public booking route                      |
 | `*`                 | Public not found    | Uses public 404 page                              |
 
-### Onboarding
+### Initial Setup Alias
 
-Defined in `app/src/routes/OnboardingRoutes.tsx`.
+Defined in `app/src/routes/StaffRoutes.tsx`.
 
-| Route         | Purpose                   | Notes                                                         |
-| ------------- | ------------------------- | ------------------------------------------------------------- |
-| `/onboarding` | Clinic setup wizard       | Used when admin has clinic with `onboardingCompleted = false` |
-| `*`           | Redirect to `/onboarding` | Fallback inside onboarding world                              |
+| Route         | Purpose                               | Notes                                                     |
+| ------------- | ------------------------------------- | --------------------------------------------------------- |
+| `/onboarding` | Compatibility alias for initial setup | Redirects to `/configuracoes?setup=1` for logged-in staff |
 
 ### Staff
 
@@ -73,16 +72,17 @@ Defined in `app/src/routes/PatientRoutes.tsx`.
 
 Defined in `app/src/App.tsx`.
 
-| Condition                        | Destination                     |
-| -------------------------------- | ------------------------------- |
-| Unauthenticated                  | Public routes                   |
-| `recoveryMode`                   | `NovaSenhaPage`                 |
-| Public path starts with `/p/`    | Public routes                   |
-| Logged in without profile        | `OnboardingPage`                |
-| Patient role                     | Patient portal routes           |
-| Admin with incomplete onboarding | Onboarding routes               |
-| Superadmin without clinic        | `https://admin.pmatz.com`       |
-| All other staff/admin            | Staff routes inside `AppLayout` |
+| Condition                         | Destination                     |
+| --------------------------------- | ------------------------------- |
+| Unauthenticated                   | Public routes                   |
+| `recoveryMode`                    | `NovaSenhaPage`                 |
+| Public path starts with `/p/`     | Public routes                   |
+| Signed-in admin with fresh clinic | Normal staff routes             |
+| Logged in without profile         | `OnboardingPage`                |
+| Patient role                      | Patient portal routes           |
+| Admin with incomplete onboarding  | Onboarding routes               |
+| Superadmin without clinic         | `https://admin.pmatz.com`       |
+| All other staff/admin             | Staff routes inside `AppLayout` |
 
 ## Special Redirects
 

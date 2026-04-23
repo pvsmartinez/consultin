@@ -34,7 +34,7 @@
 - **Auth** — usar `useAuthContext()` do `AuthContext.tsx`; nunca acessar `supabase.auth` direto em componentes.
 - **Multi-tenancy** — RLS do Supabase isola os dados por clínica. Nunca filtrar manualmente por `clinic_id` no cliente.
 - **LGPD** — nunca logar CPF, nomes ou dados de saúde em plaintext.
-- **Onboarding guard** — toda lógica de redirect deve respeitar `clinic.onboardingCompleted`. Clínica com `false` vai para `/onboarding`, nunca direto ao dashboard.
+- **Initial setup** — clínicas novas entram direto na agenda. Use `clinic.onboardingCompleted` apenas para guias leves em `/configuracoes`, nunca para bloquear o uso do app.
 - **Field visibility** — nunca renderizar campo de paciente/profissional sem checar `fieldConfig[key] !== false`.
 - **Commits** — Conventional Commits (`feat:`, `fix:`, `chore:`...), mensagens em inglês.
 

@@ -2,6 +2,7 @@ import { useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Seo } from '../components/seo/Seo'
 import { trackPublicEvent } from '../lib/publicAnalytics'
+import { buildAttributedPath } from '../lib/publicAttribution'
 import { trackGenerateLead, trackWhatsappCtaClick } from '../lib/googleAds'
 import { SEO_DEFAULT_IMAGE, SEO_SITE_URL } from '../lib/seo'
 import {
@@ -141,6 +142,8 @@ const homeStructuredData = {
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const loginPath = buildAttributedPath('/login')
+  const signupPath = buildAttributedPath('/cadastro-clinica')
 
   return (
     <nav
@@ -166,13 +169,13 @@ function Navbar() {
 
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/login"
+          <Link to={loginPath}
             data-analytics-event="login_cta_click"
             data-analytics-placement="navbar-desktop"
             className="text-sm text-gray-600 hover:text-blue-600 font-medium transition px-3 py-2">
             Entrar
           </Link>
-          <Link to="/cadastro-clinica"
+          <Link to={signupPath}
             data-analytics-event="signup_cta_click"
             data-analytics-placement="navbar-desktop"
             className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition shadow-sm">
@@ -202,8 +205,8 @@ function Navbar() {
           <a href="#precos" className="block rounded-xl px-3 py-3.5 text-base font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" onClick={() => setMenuOpen(false)}>Preços</a>
           <a href="#especialidades" className="block rounded-xl px-3 py-3.5 text-base font-medium text-gray-700 transition hover:bg-blue-50 hover:text-blue-700" onClick={() => setMenuOpen(false)}>Especialidades</a>
           <div className="grid gap-2 pt-2">
-            <Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700">Entrar</Link>
-            <Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="navbar-mobile" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white">Cadastrar</Link>
+            <Link to={loginPath} data-analytics-event="login_cta_click" data-analytics-placement="navbar-mobile" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700">Entrar</Link>
+            <Link to={signupPath} data-analytics-event="signup_cta_click" data-analytics-placement="navbar-mobile" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white">Cadastrar</Link>
           </div>
         </div>
       )}
@@ -213,6 +216,11 @@ function Navbar() {
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function Hero() {
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+  const managerSignupPath = buildAttributedPath('/cadastro-clinica?persona=gestor')
+  const professionalSignupPath = buildAttributedPath('/cadastro-clinica?persona=profissional')
+  const receptionSignupPath = buildAttributedPath('/cadastro-clinica?persona=recepcao')
+
   return (
     <section className="pt-24 pb-16 md:pt-32 md:pb-24 bg-gradient-to-br from-blue-50 via-white to-indigo-50 overflow-hidden">
       <div className="max-w-6xl mx-auto px-4">
@@ -239,7 +247,7 @@ function Hero() {
 
             {/* Main CTAs */}
             <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link to="/cadastro-clinica"
+              <Link to={signupPath}
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement="hero-primary"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 sm:w-auto">
@@ -272,15 +280,15 @@ function Hero() {
             {/* Profile type selector */}
             <div className="grid gap-3 sm:flex sm:flex-wrap">
               <p className="w-full text-xs font-medium text-gray-400 uppercase tracking-wider">Entrar com contexto pronto</p>
-              <Link to="/cadastro-clinica?persona=gestor" data-analytics-event="signup_cta_click" data-analytics-placement="persona-manager" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700">
+              <Link to={managerSignupPath} data-analytics-event="signup_cta_click" data-analytics-placement="persona-manager" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700">
                 <Buildings size={18} className="text-blue-500" />
                 Sou gestor de clínica
               </Link>
-              <Link to="/cadastro-clinica?persona=profissional" data-analytics-event="signup_cta_click" data-analytics-placement="persona-professional" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700">
+              <Link to={professionalSignupPath} data-analytics-event="signup_cta_click" data-analytics-placement="persona-professional" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700">
                 <UserCircle size={18} className="text-indigo-500" />
                 Atendo sozinho
               </Link>
-              <Link to="/cadastro-clinica?persona=recepcao" data-analytics-event="signup_cta_click" data-analytics-placement="persona-patient" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700">
+              <Link to={receptionSignupPath} data-analytics-event="signup_cta_click" data-analytics-placement="persona-patient" className="group flex min-h-12 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:border-teal-400 hover:bg-teal-50 hover:text-teal-700">
                 <Heartbeat size={18} className="text-teal-500" />
                 Quero configurar para a recepção
               </Link>
@@ -497,6 +505,8 @@ const assistantCommands = [
 ]
 
 function AssistantShowcase() {
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+
   return (
     <section id="funcionalidades" className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
@@ -530,7 +540,7 @@ function AssistantShowcase() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
-                to="/cadastro-clinica"
+                to={signupPath}
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement="assistant-section"
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"
@@ -795,6 +805,8 @@ const plans = [
 ]
 
 function Pricing() {
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+
   return (
     <section id="precos" className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
@@ -872,7 +884,7 @@ function Pricing() {
               </ul>
 
               <Link
-                to="/cadastro-clinica"
+                to={signupPath}
                 data-analytics-event="signup_cta_click"
                 data-analytics-placement={`pricing-${plan.name.toLowerCase()}`}
                 className={`inline-flex min-h-12 w-full items-center justify-center rounded-xl py-3 text-sm font-semibold transition ${
@@ -1196,6 +1208,8 @@ function FAQSection() {
 
 // ─── Final CTA ───────────────────────────────────────────────────────────────
 function FinalCTA() {
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+
   return (
     <section className="py-24 bg-gradient-to-br from-blue-600 to-indigo-700">
       <div className="max-w-3xl mx-auto px-4 text-center">
@@ -1211,7 +1225,7 @@ function FinalCTA() {
           e tome decisões com dados — não com papel.
         </p>
         <div className="flex flex-col justify-center gap-4 sm:flex-row sm:flex-wrap">
-          <Link to="/cadastro-clinica"
+          <Link to={signupPath}
             data-analytics-event="signup_cta_click"
             data-analytics-placement="final-cta"
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-8 py-4 text-sm font-bold text-blue-700 shadow-lg transition hover:bg-blue-50">
@@ -1235,6 +1249,9 @@ function FinalCTA() {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
+  const loginPath = buildAttributedPath('/login')
+  const signupPath = buildAttributedPath('/cadastro-clinica')
+
   return (
     <footer className="bg-gray-950 text-gray-400 py-12">
       <div className="max-w-6xl mx-auto px-4">
@@ -1265,8 +1282,8 @@ function Footer() {
             <div>
               <p className="text-white font-medium mb-3">Acesso</p>
               <ul className="space-y-2">
-                <li><Link to="/login" data-analytics-event="login_cta_click" data-analytics-placement="footer" className="inline-block py-1.5 transition hover:text-white">Entrar</Link></li>
-                <li><Link to="/cadastro-clinica" data-analytics-event="signup_cta_click" data-analytics-placement="footer" className="inline-block py-1.5 transition hover:text-white">Cadastrar clínica</Link></li>
+                <li><Link to={loginPath} data-analytics-event="login_cta_click" data-analytics-placement="footer" className="inline-block py-1.5 transition hover:text-white">Entrar</Link></li>
+                <li><Link to={signupPath} data-analytics-event="signup_cta_click" data-analytics-placement="footer" className="inline-block py-1.5 transition hover:text-white">Cadastrar clínica</Link></li>
               </ul>
             </div>
             <div>

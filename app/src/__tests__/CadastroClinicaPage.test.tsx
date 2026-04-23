@@ -32,6 +32,7 @@ vi.mock('../services/supabase', () => ({
   },
 }))
 const mockTrackSignup = vi.fn()
+const mockTrackPublicEvent = vi.fn()
 vi.mock('../lib/googleAds', () => ({
   trackSignup: (...args: unknown[]) => mockTrackSignup(...args),
   trackGenerateLead: vi.fn(),
@@ -40,7 +41,7 @@ vi.mock('../lib/googleAds', () => ({
 }))
 
 vi.mock('../lib/publicAnalytics', () => ({
-  trackPublicEvent: vi.fn(),
+  trackPublicEvent: (...args: unknown[]) => mockTrackPublicEvent(...args),
 }))
 vi.mock('../lib/gtag', () => ({
   gtagEvent: vi.fn(),
@@ -62,6 +63,8 @@ function renderPage() {
 describe('CadastroClinicaPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.sessionStorage.clear()
+    window.history.replaceState({}, '', '/cadastro-clinica?utm_source=google&utm_campaign=search-brand&gclid=test-gclid')
   })
 
   it('renders the signup form with key fields', () => {
@@ -121,12 +124,23 @@ describe('CadastroClinicaPage', () => {
           clinicName: 'Clínica Dr. Silva',
           email: 'dr@clinica.com',
           password: 'senha1234',
+          attribution: expect.objectContaining({
+            utmSource: 'google',
+            utmCampaign: 'search-brand',
+            gclid: 'test-gclid',
+            pagePath: '/cadastro-clinica',
+          }),
         }),
       }))
       expect(mockSignInWithPassword).toHaveBeenCalledWith({
         email: 'dr@clinica.com',
         password: 'senha1234',
       })
+      expect(mockTrackPublicEvent).toHaveBeenCalledWith('clinic_signup_submit', expect.objectContaining({
+        utmSource: 'google',
+        utmCampaign: 'search-brand',
+        gclid: 'test-gclid',
+      }))
       expect(mockTrackSignup).toHaveBeenCalledWith({ method: 'clinic_form' })
       expect(mockNavigate).toHaveBeenCalledWith('/agenda', { replace: true })
     })
