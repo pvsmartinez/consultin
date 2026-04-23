@@ -35,6 +35,7 @@ jobs:
         run: |
           supabase functions deploy admin-stats --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy admin-users --project-ref nxztzehgnkdmluogxehi
+          supabase functions deploy ga4-analytics --project-ref nxztzehgnkdmluogxehi --no-verify-jwt
           supabase functions deploy public-booking --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy send-clinic-invite --project-ref nxztzehgnkdmluogxehi
           supabase functions deploy submit-clinic-signup --project-ref nxztzehgnkdmluogxehi
