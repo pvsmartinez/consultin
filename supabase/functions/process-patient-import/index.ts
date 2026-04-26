@@ -2,8 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,7 +93,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-function normalizeHeader(header: string) {
+export function normalizeHeader(header: string) {
   return header
     .toLowerCase()
     .trim()
@@ -101,12 +101,12 @@ function normalizeHeader(header: string) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
-function autoDetect(header: string): string {
+export function autoDetect(header: string): string {
   const normalized = normalizeHeader(header)
   return AUTO_DETECT[header.toLowerCase().trim()] ?? AUTO_DETECT[normalized] ?? ''
 }
 
-function normalizeSex(value: string): string | null {
+export function normalizeSex(value: string): string | null {
   const lower = value.trim().toLowerCase()
   if (['m', 'masc', 'masculino', 'male'].includes(lower)) return 'M'
   if (['f', 'fem', 'feminino', 'female'].includes(lower)) return 'F'
@@ -118,7 +118,7 @@ function pad(value: number) {
   return String(value).padStart(2, '0')
 }
 
-function normalizeDate(value: string): string | null {
+export function normalizeDate(value: string): string | null {
   const input = value.trim()
   if (!input) return null
 
@@ -134,21 +134,21 @@ function normalizeDate(value: string): string | null {
   return null
 }
 
-function normalizeCpf(value: string | null) {
+export function normalizeCpf(value: string | null) {
   const digits = (value ?? '').replace(/\D/g, '')
   return digits.length === 11 ? digits : null
 }
 
-function normalizePhone(value: string | null) {
+export function normalizePhone(value: string | null) {
   const digits = (value ?? '').replace(/\D/g, '')
   return digits.length >= 10 ? digits : null
 }
 
-function safeString(value: unknown): string {
+export function safeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function isEmpty(value: string | null | undefined) {
+export function isEmpty(value: string | null | undefined) {
   return !value || value.trim() === ''
 }
 
