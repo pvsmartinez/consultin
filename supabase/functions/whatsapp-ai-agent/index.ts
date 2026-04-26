@@ -37,9 +37,9 @@
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY')!
+const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') ?? ''
 const OPENROUTER_BASE    = 'https://openrouter.ai/api/v1'
 const SITE_URL           = 'https://consultin.pmatz.com'
 
@@ -469,7 +469,7 @@ async function handleStaffMessage(
  * Site shortcut links to inject into the staff system prompt.
  * The AI will share these contextually when the user asks to view/manage something.
  */
-function buildStaffLinks(publicPage: ClinicPublicPageContext | null): string {
+export function buildStaffLinks(publicPage: ClinicPublicPageContext | null): string {
   return [
     '\n=== ATALHOS DO SITE ===',
     'Quando o usuário quiser ver ou gerenciar algo no site, envie o link direto (junto com a resposta):',
@@ -490,7 +490,7 @@ function buildStaffLinks(publicPage: ClinicPublicPageContext | null): string {
 /**
  * Site shortcut links to inject into the patient system prompt.
  */
-function buildPatientLinks(publicPage: ClinicPublicPageContext | null): string {
+export function buildPatientLinks(publicPage: ClinicPublicPageContext | null): string {
   return [
     '\n=== ATALHOS DO SITE ===',
     'Quando relevante, envie o link direto para o paciente acessar no site:',
@@ -506,7 +506,7 @@ function buildPatientLinks(publicPage: ClinicPublicPageContext | null): string {
  * Returns a notice string to inject into the system prompt when the clinic is
  * near or over their monthly appointment quota. Empty string if not applicable.
  */
-function buildQuotaNotice(clinic: ClinicRow): string {
+export function buildQuotaNotice(clinic: ClinicRow): string {
   const LIMITS: Record<string, number | null> = { trial: null, basic: 40, professional: 100, unlimited: null }
   const tier  = clinic.subscription_tier ?? 'trial'
   const limit = LIMITS[tier] ?? null
@@ -628,7 +628,7 @@ async function callLLM(
  * Returns { start: Date, days: number } for the requested range.
  * Default: today, 1 day.
  */
-function detectRequestedDateRange(message: string): { start: Date; days: number } {
+export function detectRequestedDateRange(message: string): { start: Date; days: number } {
   const now = new Date()
   const today = new Date(now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }))
   const single = (d: Date) => ({ start: d, days: 1 })
@@ -809,7 +809,7 @@ async function findAvailableSlots(
   return results.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
 }
 
-function matchesWeekParity(parity: string | null, date: Date): boolean {
+export function matchesWeekParity(parity: string | null, date: Date): boolean {
   if (!parity || parity === 'every') return true
   const startOfYear = new Date(date.getFullYear(), 0, 1)
   const weekNum     = Math.ceil(
