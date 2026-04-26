@@ -361,6 +361,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   }
 
   async function handleEventDrop(arg: { event: { id: string; startStr: string; endStr: string; start: Date | null; extendedProps: Record<string, unknown>; getResources: () => Array<{ id: string }> }; revert: () => void }) {
+    if (update.isPending) { arg.revert(); return }
     const appt = arg.event.extendedProps.appointment as Appointment
     const newStart = arg.event.start!
     const diffMs = new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()
@@ -392,6 +393,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   }
 
   async function handleEventResize(arg: { event: { end: Date | null; extendedProps: Record<string, unknown> }; revert: () => void }) {
+    if (update.isPending) { arg.revert(); return }
     const appt = arg.event.extendedProps.appointment as Appointment
     const newEnd = arg.event.end!
     const dayKey = DAY_ORDER[newEnd.getDay() as 0|1|2|3|4|5|6]

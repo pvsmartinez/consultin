@@ -18,7 +18,7 @@ export default function PacientesPage() {
   const [page, setPage] = useState(0)
   const debouncedSearch = useDebounce(search, 300)
   useEffect(() => { setPage(0) }, [debouncedSearch])
-  const { patients, loading, refetch, total, pageCount } = usePatients(debouncedSearch, page)
+  const { patients, loading, refetch, total, pageCount, error } = usePatients(debouncedSearch, page)
   const visibleCount = patients.length
 
   return (
@@ -102,6 +102,13 @@ export default function PacientesPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">Carregando...</div>
+        ) : error ? (
+          <div className="p-8 text-center text-sm text-red-500">
+            Erro ao carregar pacientes.{' '}
+            <button onClick={() => refetch()} className="underline hover:text-red-700">
+              Tentar novamente
+            </button>
+          </div>
         ) : patients.length === 0 ? (
           <div className="py-16 flex flex-col items-center gap-3 text-center px-6">
             {search ? (

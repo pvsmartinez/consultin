@@ -277,7 +277,13 @@ export default function AppointmentModal({
         })
         const results = await Promise.allSettled(creates)
         const created = results.filter(r => r.status === 'fulfilled').length
-        toast.success(`${created} de ${count} consultas agendadas`)
+        const failed  = count - created
+        if (failed > 0) {
+          toast.error(`${failed} consulta(s) não puderam ser agendadas — verifique conflito de horário`)
+        }
+        if (created > 0) {
+          toast.success(`${created} de ${count} consultas agendadas`)
+        }
       } else {
         await create.mutateAsync({ ...basePayload, startsAt, endsAt })
         toast.success('Consulta agendada')

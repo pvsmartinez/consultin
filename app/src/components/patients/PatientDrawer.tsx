@@ -183,6 +183,7 @@ export default function PatientDrawer({ open, patientId, initialValues, stacked 
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar paciente.')
+    } finally {
       setSaving(false)
     }
   }
