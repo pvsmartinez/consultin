@@ -22,8 +22,10 @@ export const QK = {
   // ── Appointments ──────────────────────────────────────────────
   appointments: {
     /** Prefix — invalidates every ['appointments', ...] entry */
-    all:      ()                                                                            => ['appointments']                              as const,
-    list:     (clinicId: string | null | undefined, from: string, to: string, ids: string[] | 'all') => ['appointments', clinicId, from, to, ids] as const,
+    all:        ()                                                                                        => ['appointments']                              as const,
+    /** Prefix — invalidates all appointment lists for a specific clinic */
+    forClinic:  (clinicId: string | null | undefined)                                                    => ['appointments', clinicId]                    as const,
+    list:       (clinicId: string | null | undefined, from: string, to: string, ids: string[] | 'all')   => ['appointments', clinicId, from, to, ids]     as const,
     today:    (clinicId: string | null | undefined)                 => ['today-appointments', clinicId]      as const,
     /** Prefix — invalidates every ['today-appointments', ...] entry */
     todayAll: ()                                                    => ['today-appointments']                as const,

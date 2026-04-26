@@ -305,8 +305,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const next = profileFromRow(data as unknown as Record<string, unknown>)
     setProfile(next)
     setCachedProfile(next)
-    qc.clear()
-    qc.setQueryData(QK.patients.clinics(session.user.id, next.clinicId), undefined)
+    // Invalidate clinic-scoped data selectively instead of clearing the entire cache.
+    // qc.clear() would drop auth/profile entries we just set, causing a blank-screen flash.
+    qc.invalidateQueries({ queryKey: QK.appointments.all() })
+    qc.invalidateQueries({ queryKey: QK.appointments.todayAll() })
+    qc.invalidateQueries({ queryKey: QK.patients.all() })
+    qc.invalidateQueries({ queryKey: ['professionals'] })
+    qc.invalidateQueries({ queryKey: QK.financial.all() })
+    qc.invalidateQueries({ queryKey: QK.rooms.list(next.clinicId) })
+    qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
+    qc.removeQueries({ queryKey: QK.patients.clinics(session.user.id, profile.clinicId) })
   }
 
   return (

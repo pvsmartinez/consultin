@@ -133,7 +133,12 @@ export interface AppointmentInput {
 export function useAppointmentMutations() {
   const qc = useQueryClient()
   const { profile } = useAuthContext()
-  const invalidate = () => qc.invalidateQueries({ queryKey: QK.appointments.all() })
+  const clinicId = profile?.clinicId
+  // Invalidate only the current clinic's appointment lists, not every clinic in the cache.
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: QK.appointments.forClinic(clinicId) })
+    qc.invalidateQueries({ queryKey: QK.appointments.today(clinicId) })
+  }
 
   const create = useMutation({
     mutationFn: async (input: AppointmentInput) => {
