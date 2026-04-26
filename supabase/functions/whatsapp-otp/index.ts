@@ -198,7 +198,7 @@ async function getPhoneForEmail(
   return rawPhone
 }
 
-async function sha256(text: string): Promise<string> {
+export async function sha256(text: string): Promise<string> {
   const data    = new TextEncoder().encode(text)
   const digest  = await crypto.subtle.digest('SHA-256', data)
   return Array.from(new Uint8Array(digest))
@@ -206,7 +206,7 @@ async function sha256(text: string): Promise<string> {
     .join('')
 }
 
-function maskPhone(phone: string): string {
+export function maskPhone(phone: string): string {
   // "+5511985390121" → "+55 (11) 9****-0121"
   const digits = phone.replace(/\D/g, '')
   if (digits.length < 8) return phone

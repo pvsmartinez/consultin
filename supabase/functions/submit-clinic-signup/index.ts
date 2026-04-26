@@ -41,14 +41,14 @@ const ATTRIBUTION_KEYS = [
   'persona',
 ] as const
 
-function sanitizeText(value: unknown, maxLength: number) {
+export function sanitizeText(value: unknown, maxLength: number) {
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
   if (!trimmed) return undefined
   return trimmed.slice(0, maxLength)
 }
 
-function sanitizeAttribution(value: unknown) {
+export function sanitizeAttribution(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
   const input = value as Record<string, unknown>
