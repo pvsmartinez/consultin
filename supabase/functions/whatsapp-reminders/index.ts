@@ -15,9 +15,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { format, addDays } from 'https://esm.sh/date-fns@3'
 import { toZonedTime, fromZonedTime } from 'https://esm.sh/date-fns-tz@3'
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const SELF_URL     = Deno.env.get('SUPABASE_URL')!.replace('https://', 'https://') // same base
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const SELF_URL     = SUPABASE_URL
 
 const TZ = 'America/Sao_Paulo'
 
@@ -131,11 +131,9 @@ serve(async (req) => {
       // Custom free-text template: interpolate variables and send as plain text.
       // Works when the patient has an active 24-hour session; this is the common case
       // for reminder recipients who already confirmed/chatted with the clinic.
-      const messageText = customText
-        .replace(/\{\{nome\}\}/g, patient.name)
-        .replace(/\{\{data\}\}/g, dateStr)
-        .replace(/\{\{hora\}\}/g, timeStr)
-        .replace(/\{\{profissional\}\}/g, profName)
+      const messageText = buildReminderText(customText, {
+        nome: patient.name, data: dateStr, hora: timeStr, profissional: profName,
+      })
 
       sendPayload = {
         clinicId:  appt.clinic_id,
@@ -352,8 +350,20 @@ async function checkAndNotifyQuota(
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Interpolates {{nome}}, {{data}}, {{hora}}, {{profissional}} in a reminder template */
+export function buildReminderText(
+  template: string,
+  vars: { nome: string; data: string; hora: string; profissional: string },
+): string {
+  return template
+    .replace(/\{\{nome\}\}/g, vars.nome)
+    .replace(/\{\{data\}\}/g, vars.data)
+    .replace(/\{\{hora\}\}/g, vars.hora)
+    .replace(/\{\{profissional\}\}/g, vars.profissional)
+}
+
 /** Normalize Brazilian phone to E.164 (no +, just digits: 5511991234567) */
-function normalizePhone(raw: string): string | null {
+export function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, '')
   // Already has country code (55)
   if (digits.startsWith('55') && digits.length >= 12) return digits

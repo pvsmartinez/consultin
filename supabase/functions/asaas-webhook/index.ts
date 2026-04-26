@@ -40,7 +40,7 @@ const CORS = {
 }
 
 /** Mapa de eventos Asaas → status interno */
-const EVENT_TO_STATUS: Record<string, string> = {
+export const EVENT_TO_STATUS: Record<string, string> = {
   PAYMENT_RECEIVED:  'RECEIVED',
   PAYMENT_CONFIRMED: 'CONFIRMED',
   PAYMENT_OVERDUE:   'OVERDUE',
@@ -48,7 +48,7 @@ const EVENT_TO_STATUS: Record<string, string> = {
   PAYMENT_REFUNDED:  'REFUNDED',
 }
 
-const EVENT_TO_SUBSCRIPTION_UPDATE: Partial<Record<string, {
+export const EVENT_TO_SUBSCRIPTION_UPDATE: Partial<Record<string, {
   subscriptionStatus: 'ACTIVE' | 'OVERDUE'
   paymentsEnabled: boolean
 }>> = {
@@ -57,7 +57,7 @@ const EVENT_TO_SUBSCRIPTION_UPDATE: Partial<Record<string, {
   PAYMENT_OVERDUE:   { subscriptionStatus: 'OVERDUE', paymentsEnabled: false },
 }
 
-async function syncClinicSubscriptionStatus(
+export async function syncClinicSubscriptionStatus(
   supabase: ReturnType<typeof createClient>,
   event: string,
   payment: { subscription?: string | null; externalReference?: string | null },
