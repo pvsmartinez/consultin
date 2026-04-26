@@ -95,7 +95,8 @@ describe('useAppointmentMutations', () => {
       charge_amount_cents: 15000,
       professional_fee_cents: 5000,
     }))
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments', 'clinic-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['today-appointments', 'clinic-1'] })
   })
 
   it('updates an appointment payload and invalidates appointments', async () => {
@@ -144,7 +145,8 @@ describe('useAppointmentMutations', () => {
       service_type_id: 'service-2',
     }))
     expect(eqMock).toHaveBeenCalledWith('id', 'appt-1')
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments', 'clinic-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['today-appointments', 'clinic-1'] })
   })
 
   it('cancels an appointment by setting cancelled status', async () => {
