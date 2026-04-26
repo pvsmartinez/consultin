@@ -90,7 +90,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   // Conditional: Equipe, Salas, WhatsApp driven by active modules + permissions
   // Settings always visible to admins
   const operationalItems = [
-    { to: '/agenda',         icon: CalendarBlank,   label: 'Agenda',       show: true },
+    { to: isProfessional ? '/minha-agenda' : '/agenda', icon: CalendarBlank,   label: isProfessional ? 'Minha Agenda' : 'Agenda', show: true },
     { to: '/pacientes',      icon: Users,           label: 'Pacientes',    show: hasPermission('canViewPatients') },
     { to: '/equipe',         icon: UsersFour,       label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
     { to: '/salas',          icon: Buildings,       label: 'Salas',        show: hasRooms },
@@ -162,7 +162,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 }`}
               >
                 {renderNavIcon(icon, active)}
-                <span className="flex-1 truncate">{isProfessional && to === '/agenda' ? 'Minha Agenda' : label}</span>
+                <span className="flex-1 truncate">{label}</span>
                 {to === '/whatsapp' && notifBadge > 0 && (
                   <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                     {notifBadge > 99 ? '99+' : notifBadge}
@@ -378,7 +378,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     }`}
                   >
                     {renderNavIcon(icon, isRouteActive(location.pathname, to))}
-                    <span className="flex-1">{isProfessional && to === '/agenda' ? 'Minha Agenda' : label}</span>
+                    <span className="flex-1">{label}</span>
                     {to === '/whatsapp' && notifBadge > 0 && (
                       <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                         {notifBadge > 99 ? '99+' : notifBadge}

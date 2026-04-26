@@ -20,7 +20,7 @@ export default function FinanceiroPage() {
   const [chargingAppointment, setChargingAppointment] = useState<Appointment | null>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
 
-  const { data = [], isLoading } = useFinancial(month)
+  const { data = [], isLoading, isError } = useFinancial(month)
   const { data: clinic }         = useClinic()
 
   const totalCharged = data.reduce((s, r) => s + (r.chargeAmountCents ?? 0), 0)
@@ -96,6 +96,8 @@ export default function FinanceiroPage() {
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {isLoading ? (
                 <p className="text-center text-gray-400 text-sm py-12">Carregando...</p>
+              ) : isError ? (
+                <p className="text-center text-red-400 text-sm py-12">Erro ao carregar dados. Tente novamente.</p>
               ) : data.length === 0 ? (
                 <p className="text-center text-gray-400 text-sm py-12">Nenhuma consulta neste mês.</p>
               ) : (
