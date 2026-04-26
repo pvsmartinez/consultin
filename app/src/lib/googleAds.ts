@@ -2,7 +2,7 @@ import { gtagEvent } from './gtag'
 
 const GOOGLE_ADS_CONVERSION_IDS = {
   generateLead: 'AW-18041761033/oZP3CIKEqZwcEIna_ZpD',
-  signup: 'AW-18041761033/Qs7_CPSlgaEcEIna_ZpD',
+  signup: 'AW-18041761033/e8mDCPf8iqMcEIna_ZpD',
   onboardingComplete: 'AW-18041761033/PzsXCLuEqZwcEIna_ZpD',
 } as const
 
