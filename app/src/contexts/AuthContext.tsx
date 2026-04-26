@@ -241,6 +241,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cached && cached.id === session.user.id) {
         setProfile(cached)
         setLoading(false)
+      } else {
+        // No valid cached profile (new user or cleared cache).
+        // Show loading screen while fetchStartupData runs so App.tsx never
+        // briefly renders <OnboardingPage /> with "no-access" for new signups.
+        setLoading(true)
       }
 
       try {
