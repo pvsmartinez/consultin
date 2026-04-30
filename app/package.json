@@ -13,6 +13,7 @@
     "test:core": "vitest run src/__tests__/*.test.ts src/__tests__/use*.test.tsx",
     "test:pages": "vitest run src/__tests__/*.test.tsx --exclude=src/__tests__/flow-*.test.tsx --exclude=src/__tests__/use*.test.tsx --maxWorkers=50% --testTimeout=10000",
     "test:fast": "npm run test:core",
+    "test:funnel": "vitest run src/__tests__/flow-funnel.test.tsx --maxWorkers=1 --testTimeout=15000",
     "test:flow": "vitest run src/__tests__/flow-*.test.tsx --maxWorkers=1 --testTimeout=15000",
     "test:full": "vitest run --maxWorkers=50% --testTimeout=10000",
     "test:related": "vitest related",
