@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Seo } from '../components/seo/Seo'
 import { trackPublicEvent } from '../lib/publicAnalytics'
 import { buildAttributedPath } from '../lib/publicAttribution'
-import { trackGenerateLead, trackWhatsappCtaClick } from '../lib/googleAds'
+import { trackWhatsappCtaClick } from '../lib/googleAds'
 import { SEO_DEFAULT_IMAGE, SEO_SITE_URL } from '../lib/seo'
 import {
   Stethoscope, CalendarBlank, Users, CurrencyDollar,
@@ -25,9 +25,7 @@ function trackLandingClick(event: MouseEvent<HTMLElement>) {
 
   if (eventName === 'login_cta_click' || eventName === 'signup_cta_click' || eventName === 'whatsapp_cta_click') {
     trackPublicEvent(eventName, { placement })
-    if (eventName === 'signup_cta_click') {
-      trackGenerateLead({ placement: placement ?? undefined })
-    } else if (eventName === 'whatsapp_cta_click') {
+    if (eventName === 'whatsapp_cta_click') {
       trackWhatsappCtaClick({ placement: placement ?? undefined })
     }
   }

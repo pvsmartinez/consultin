@@ -13,7 +13,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
 import { buildAttributedPath, getPublicAttributionMetadata } from '../lib/publicAttribution'
-import { trackSignup } from '../lib/googleAds'
+import { trackSignup, trackGenerateLead } from '../lib/googleAds'
 import { Seo } from '../components/seo/Seo'
 
 type SignupFunctionError = {
@@ -192,6 +192,11 @@ export default function CadastroClinicaPage() {
   const personaIndex = PERSONA_SLIDE[params.get('persona') ?? ''] ?? 0
   const activePersona = slides[personaIndex]
   const loginPath = buildAttributedPath('/login')
+
+  // generate_lead: user reached the signup form (real intent, not just a landing click)
+  useEffect(() => {
+    trackGenerateLead({ placement: 'cadastro_page', persona: params.get('persona') ?? undefined })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildSignupAttribution = () => getPublicAttributionMetadata({
     persona: params.get('persona') ?? undefined,

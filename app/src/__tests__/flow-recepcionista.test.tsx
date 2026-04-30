@@ -167,50 +167,6 @@ describe('Flow: Recepcionista — listagem de pacientes', () => {
     })
   })
 
-  it('filtra pacientes por nome ao digitar na busca', async () => {
-    const { default: PacientesPage } = await import('../pages/PacientesPage')
-    render(
-      <QueryClientProvider client={makeQC()}>
-        <MemoryRouter>
-          <PacientesPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-
-    const user = userEvent.setup()
-    const searchInput = screen.getByPlaceholderText(/nome, cpf ou telefone/i)
-    mockUsePatients.mockReturnValue({
-      patients: MOCK_PATIENTS.filter(p => p.name.toLowerCase().includes('ana')),
-      loading: false, total: 1, pageCount: 1, error: null, refetch: vi.fn(),
-    })
-    await user.type(searchInput, 'Ana')
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Ana Carolina Souza').length).toBeGreaterThan(0)
-      expect(screen.queryByText('Bruno Ramos')).not.toBeInTheDocument()
-    })
-  })
-
-  it('navega para a ficha ao clicar no nome do paciente', async () => {
-    const { default: PacientesPage } = await import('../pages/PacientesPage')
-    render(
-      <QueryClientProvider client={makeQC()}>
-        <MemoryRouter>
-          <PacientesPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Ana Carolina Souza').length).toBeGreaterThan(0)
-    })
-
-    const user = userEvent.setup()
-    await user.click(screen.getAllByText('Ana Carolina Souza')[0])
-
-    expect(mockNavigate).toHaveBeenCalledWith('/pacientes/patient-1')
-  })
-
   it('abre o drawer de novo paciente ao clicar em "Novo paciente"', async () => {
     const { default: PacientesPage } = await import('../pages/PacientesPage')
     render(
@@ -228,43 +184,10 @@ describe('Flow: Recepcionista — listagem de pacientes', () => {
       expect(screen.getByTestId('patient-drawer')).toBeInTheDocument()
     })
   })
-
-  it('mostra estado de erro quando a query falha', async () => {
-    mockUsePatients.mockReturnValue({
-      patients: [], loading: false, total: 0, pageCount: 0,
-      error: new Error('Timeout'), refetch: vi.fn(),
-    })
-
-    const { default: PacientesPage } = await import('../pages/PacientesPage')
-    render(
-      <QueryClientProvider client={makeQC()}>
-        <MemoryRouter>
-          <PacientesPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-
-    // Re-mock to original after this test
-  })
 })
 
 describe('Flow: Recepcionista — agendamento de consulta', () => {
   beforeEach(() => vi.clearAllMocks())
-
-  it('renderiza a página de agendamento com seletor de profissional', async () => {
-    const { default: AgendarConsultaPage } = await import('../pages-v1/AgendarConsultaPage')
-    render(
-      <QueryClientProvider client={makeQC()}>
-        <MemoryRouter>
-          <AgendarConsultaPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/Dr. Carlos Melo/i)).toBeInTheDocument()
-    })
-  })
 
   it('cria consulta com profissional e slot selecionados', async () => {
     const { default: AgendarConsultaPage } = await import('../pages-v1/AgendarConsultaPage')

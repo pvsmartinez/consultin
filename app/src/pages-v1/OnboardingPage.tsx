@@ -4,6 +4,7 @@ import { IMaskInput } from 'react-imask'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useMyInvite, useClinicsPublic, useAcceptInvite } from '../hooks/useInvites'
+import { trackSignup } from '../lib/googleAds'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OnboardingPage — shown when the user is authenticated but has no user_profile.
@@ -64,6 +65,7 @@ export default function OnboardingPage() {
         name:     inviteName,
         email:    session.user.email,
       })
+      trackSignup({ method: 'invite_accept' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao confirmar acesso.')
       setLoading(false)

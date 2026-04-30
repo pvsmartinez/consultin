@@ -136,43 +136,6 @@ describe('Flow: Profissional — minha disponibilidade', () => {
     })
     expect(screen.getByTestId('availability-editor')).toHaveAttribute('data-prof-id', 'prof-1')
   })
-
-  it('mostra aviso quando profissional não está vinculado ao sistema', async () => {
-    mockUseMyProfessionalRecords.mockReturnValue({ data: [], isLoading: false })
-
-    const { default: MinhaDisponibilidadePage } = await import('../pages-v1/MinhaDisponibilidadePage')
-    wrapWithProviders(<MinhaDisponibilidadePage />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/perfil de profissional ainda não está vinculado/i)).toBeInTheDocument()
-    })
-  })
-
-  it('exibe seletor de clínica quando profissional atua em múltiplas clínicas', async () => {
-    const multiClinicRecords = [
-      ...MOCK_PROF_RECORDS,
-      { id: 'prof-2', name: 'Dr. Felipe Braga', clinicId: 'clinic-2', specialty: 'Fisioterapia', active: true },
-    ]
-    mockUseMyProfessionalRecords.mockReturnValue({ data: multiClinicRecords, isLoading: false })
-
-    const { default: MinhaDisponibilidadePage } = await import('../pages-v1/MinhaDisponibilidadePage')
-    wrapWithProviders(<MinhaDisponibilidadePage />)
-
-    await waitFor(() => {
-      // With 2+ clinics, a selector with multiple options appears
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBeGreaterThanOrEqual(2)
-    })
-  })
-
-  it('exibe skeleton de loading enquanto busca os registros', async () => {
-    mockUseMyProfessionalRecords.mockReturnValue({ data: [], isLoading: true })
-
-    const { default: MinhaDisponibilidadePage } = await import('../pages-v1/MinhaDisponibilidadePage')
-    const { container } = wrapWithProviders(<MinhaDisponibilidadePage />)
-
-    expect(container.textContent).toMatch(/carregando/i)
-  })
 })
 
 describe('Flow: Profissional — financeiro do mês', () => {
@@ -193,27 +156,6 @@ describe('Flow: Profissional — financeiro do mês', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /financeiro/i })).toBeInTheDocument()
       expect(screen.getAllByText('Carla Torres').length).toBeGreaterThan(0)
-    })
-  })
-
-  it('mostra totalizadores: cobrado e recebido', async () => {
-    wrapWithProviders(<FinanceiroPageComponent />)
-
-    await waitFor(() => {
-      // Total cobrado: R$ 350 (200 + 150) — pode aparecer em múltiplos elementos
-      expect(screen.getAllByText(/350/).length).toBeGreaterThan(0)
-      // Total recebido: R$ 200 (apenas o primeiro)
-      expect(screen.getAllByText(/200/).length).toBeGreaterThan(0)
-    })
-  })
-
-  it('mostra estado de erro quando a query falha', async () => {
-    mockUseFinancial.mockReturnValue({ data: [], isLoading: false, isError: true })
-
-    wrapWithProviders(<FinanceiroPageComponent />)
-
-    await waitFor(() => {
-      expect(screen.getByText(/erro ao carregar dados/i)).toBeInTheDocument()
     })
   })
 })

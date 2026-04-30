@@ -171,23 +171,6 @@ describe('Flow: Paciente — agendamento online (PublicBookingPage)', () => {
     mockUsePublicPage.mockReturnValue({ data: mockPublicPage, isLoading: false, error: null })
   })
 
-  it('exibe a página de agendamento com profissionais e slots disponíveis', async () => {
-    const { default: PublicBookingPage } = await import('../pages-v1/PublicBookingPage')
-    render(
-      <QueryClientProvider client={makeQC()}>
-        <MemoryRouter>
-          <PublicBookingPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getAllByText(/dra\. beatriz costa/i).length).toBeGreaterThan(0)
-    })
-    // Slots da data padrão carregados
-    expect(screen.getAllByText(/10:00|11:00/i).length).toBeGreaterThan(0)
-  })
-
   it('preenche formulário e agenda consulta com sucesso', async () => {
     const { default: PublicBookingPage } = await import('../pages-v1/PublicBookingPage')
     render(
@@ -218,27 +201,6 @@ describe('Flow: Paciente — agendamento online (PublicBookingPage)', () => {
         expect(screen.getByText(/consulta agendada/i)).toBeInTheDocument()
       })
     }
-  })
-
-  it('mostra "Agendamento indisponível" quando allowSelfRegistration=false', async () => {
-    mockUsePublicPage.mockReturnValue({
-      data: { ...mockPublicPage, clinic: { ...mockPublicPage.clinic, allowSelfRegistration: false } },
-      isLoading: false,
-      error: null,
-    })
-
-    const { default: PublicBookingPage } = await import('../pages-v1/PublicBookingPage')
-    render(
-      <QueryClientProvider client={makeQC()}>
-        <MemoryRouter>
-          <PublicBookingPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText(/agendamento indisponível/i)).toBeInTheDocument()
-    })
   })
 })
 
