@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { invokeSupabaseFunction } from '@pvsmartinez/shared'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -107,13 +108,13 @@ export function useCreateInvite() {
 
       // 2. Send invite email via edge function (best-effort — don't throw on failure)
       try {
-        const { data: emailResult } = await supabase.functions.invoke<{
+        const emailResult = await invokeSupabaseFunction<{
           sent: boolean
           reason?: string
           email: string
-        }>('send-clinic-invite', {
-          method: 'POST',
-          body:   { inviteId: invite.id },
+        }>(supabase, 'send-clinic-invite', {
+          body: { inviteId: invite.id },
+          fallbackMessage: 'Falha ao enviar convite por e-mail',
         })
         return {
           invite,
@@ -134,15 +135,14 @@ export function useCreateInvite() {
 export function useResendInviteEmail() {
   return useMutation({
     mutationFn: async (inviteId: string): Promise<{ sent: boolean; reason?: string }> => {
-      const { data, error } = await supabase.functions.invoke<{
+      const data = await invokeSupabaseFunction<{
         sent: boolean
         reason?: string
         email: string
-      }>('send-clinic-invite', {
-        method: 'POST',
-        body:   { inviteId },
+      }>(supabase, 'send-clinic-invite', {
+        body: { inviteId },
+        fallbackMessage: 'Falha ao reenviar convite',
       })
-      if (error) throw error
       return { sent: data?.sent ?? false, reason: data?.reason }
     },
     onSuccess: (result) => {

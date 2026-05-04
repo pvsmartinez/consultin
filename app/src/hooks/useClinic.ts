@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { invokeSupabaseFunction } from '@pvsmartinez/shared'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -220,11 +221,14 @@ export function useResendInvite() {
   const { profile } = useAuthContext()
   return useMutation({
     mutationFn: async (inviteId: string): Promise<{ sent: boolean; reason?: string }> => {
-      const { data, error } = await supabase.functions.invoke<{ sent: boolean; reason?: string; email: string }>(
+      const data = await invokeSupabaseFunction<{ sent: boolean; reason?: string; email: string }>(
+        supabase,
         'send-clinic-invite',
-        { body: { inviteId } },
+        {
+          body: { inviteId },
+          fallbackMessage: 'Falha ao reenviar convite',
+        },
       )
-      if (error) throw error
       return { sent: data?.sent ?? false, reason: data?.reason }
     },
     onSuccess: (result) => {

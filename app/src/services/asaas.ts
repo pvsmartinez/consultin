@@ -11,8 +11,8 @@
 
 import { supabase } from './supabase'
 import {
+  fetchSupabaseFunction,
   getSupabaseAccessToken,
-  readSupabaseFunctionResponseError,
 } from '@pvsmartinez/shared'
 
 // ─── Base URL for our Edge Function proxy ────────────────────────────────────
@@ -24,18 +24,15 @@ async function callEdge<T>(
   body?: unknown,
 ): Promise<T> {
   const accessToken = await getSupabaseAccessToken(supabase.auth)
-  const res = await fetch(`${EDGE_BASE}${path}`, {
+
+  return fetchSupabaseFunction<T>(`${EDGE_BASE}${path}`, {
     method,
     headers: {
-      'Content-Type': 'application/json',
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
-    body: body != null ? JSON.stringify(body) : undefined,
+    body,
+    fallbackMessage: 'Falha ao executar operação no Asaas',
   })
-  if (!res.ok) {
-    throw await readSupabaseFunctionResponseError(res, `Asaas error ${res.status}`)
-  }
-  return res.json() as Promise<T>
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

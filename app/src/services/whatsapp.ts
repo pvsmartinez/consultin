@@ -6,10 +6,10 @@
  * Read operations (sessions, messages) use the normal supabase client + RLS.
  */
 
-import { supabase, supabaseUrl, supabaseAnonKey } from './supabase'
+import { supabase, supabaseAnonKey } from './supabase'
 import {
   getSupabaseAccessToken,
-  readSupabaseFunctionResponseError,
+  invokeSupabaseFunction,
   requireSupabaseAccessToken,
 } from '@pvsmartinez/shared'
 import type { WhatsAppSession, WhatsAppMessage, WhatsAppTemplate } from '../types'
@@ -125,29 +125,17 @@ export async function sendAttendantMessage(params: {
 }): Promise<void> {
   const { clinicId, sessionId, to, text } = params
 
-  // Get Supabase project URL from the client config
-  const projectUrl = supabaseUrl
-
-  const res = await fetch(`${projectUrl}/functions/v1/whatsapp-send`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      // Use the anon key — the Edge Function accepts it and uses service role internally
-      Authorization: `Bearer ${supabaseAnonKey}`,
-    },
-    body: JSON.stringify({
+  await invokeSupabaseFunction(supabase, 'whatsapp-send', {
+    body: {
       clinicId,
       sessionId,
       sentBy: 'attendant',
       to,
       type: 'text',
       text: { body: text },
-    }),
+    },
+    fallbackMessage: 'Failed to send message',
   })
-
-  if (!res.ok) {
-    throw await readSupabaseFunctionResponseError(res, 'Failed to send message')
-  }
 }
 
 // ─── Templates ────────────────────────────────────────────────────────────────
@@ -185,18 +173,13 @@ export async function updateTemplate(
 export async function storeWhatsAppToken(clinicId: string, token: string): Promise<void> {
   const authToken = await getSupabaseAccessToken(supabase.auth) ?? supabaseAnonKey
 
-  const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-store-token`, {
-    method: 'POST',
+  await invokeSupabaseFunction(supabase, 'whatsapp-store-token', {
+    body: { clinicId, token },
     headers: {
-      'Content-Type': 'application/json',
-      Authorization:  `Bearer ${authToken}`,
+      Authorization: `Bearer ${authToken}`,
     },
-    body: JSON.stringify({ clinicId, token }),
+    fallbackMessage: 'Failed to store token',
   })
-
-  if (!res.ok) {
-    throw await readSupabaseFunctionResponseError(res, 'Failed to store token')
-  }
 }
 
 export async function completeEmbeddedSignup(params: {
@@ -207,20 +190,13 @@ export async function completeEmbeddedSignup(params: {
 }): Promise<{ phoneDisplay: string | null }> {
   const authToken = await requireSupabaseAccessToken(supabase.auth, 'Usuário não autenticado')
 
-  const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-embedded-signup`, {
-    method:  'POST',
+  return invokeSupabaseFunction<{ phoneDisplay: string | null }>(supabase, 'whatsapp-embedded-signup', {
+    body: params,
     headers: {
-      'Content-Type': 'application/json',
-      Authorization:  `Bearer ${authToken}`,
+      Authorization: `Bearer ${authToken}`,
     },
-    body: JSON.stringify(params),
+    fallbackMessage: 'Falha ao conectar WhatsApp',
   })
-
-  if (!res.ok) {
-    throw await readSupabaseFunctionResponseError(res, 'Falha ao conectar WhatsApp')
-  }
-
-  return res.json() as Promise<{ phoneDisplay: string | null }>
 }
 
 // ─── Realtime subscription ────────────────────────────────────────────────────
