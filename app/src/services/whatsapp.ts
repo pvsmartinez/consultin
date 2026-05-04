@@ -7,6 +7,11 @@
  */
 
 import { supabase, supabaseUrl, supabaseAnonKey } from './supabase'
+import {
+  getSupabaseAccessToken,
+  readSupabaseFunctionResponseError,
+  requireSupabaseAccessToken,
+} from '@pvsmartinez/shared'
 import type { WhatsAppSession, WhatsAppMessage, WhatsAppTemplate } from '../types'
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
@@ -141,8 +146,7 @@ export async function sendAttendantMessage(params: {
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }))
-    throw new Error(err.error ?? 'Failed to send message')
+    throw await readSupabaseFunctionResponseError(res, 'Failed to send message')
   }
 }
 
@@ -179,8 +183,7 @@ export async function updateTemplate(
  * The actual DB write goes through an Edge Function that has service-role access.
  */
 export async function storeWhatsAppToken(clinicId: string, token: string): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession()
-  const authToken = session?.access_token ?? supabaseAnonKey
+  const authToken = await getSupabaseAccessToken(supabase.auth) ?? supabaseAnonKey
 
   const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-store-token`, {
     method: 'POST',
@@ -192,8 +195,7 @@ export async function storeWhatsAppToken(clinicId: string, token: string): Promi
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }))
-    throw new Error(err.error ?? 'Failed to store token')
+    throw await readSupabaseFunctionResponseError(res, 'Failed to store token')
   }
 }
 
@@ -203,21 +205,19 @@ export async function completeEmbeddedSignup(params: {
   wabaId:        string
   phoneNumberId: string
 }): Promise<{ phoneDisplay: string | null }> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Usuário não autenticado')
+  const authToken = await requireSupabaseAccessToken(supabase.auth, 'Usuário não autenticado')
 
   const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-embedded-signup`, {
     method:  'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization:  `Bearer ${session.access_token}`,
+      Authorization:  `Bearer ${authToken}`,
     },
     body: JSON.stringify(params),
   })
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Erro desconhecido' })) as { error?: string }
-    throw new Error(err.error ?? 'Falha ao conectar WhatsApp')
+    throw await readSupabaseFunctionResponseError(res, 'Falha ao conectar WhatsApp')
   }
 
   return res.json() as Promise<{ phoneDisplay: string | null }>

@@ -9,25 +9,16 @@ import { z } from 'zod'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { IMaskInput } from 'react-imask'
+import {
+  invokeSupabaseFunction,
+  SupabaseFunctionInvocationError,
+} from '@pvsmartinez/shared'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
 import { buildAttributedPath, getPublicAttributionMetadata } from '../lib/publicAttribution'
 import { trackSignup, trackGenerateLead } from '../lib/googleAds'
 import { Seo } from '../components/seo/Seo'
-
-type SignupFunctionError = {
-  error?: string
-  code?: string
-}
-
-function parseFunctionError(rawMessage: string): SignupFunctionError {
-  try {
-    return JSON.parse(rawMessage) as SignupFunctionError
-  } catch {
-    return { error: rawMessage }
-  }
-}
 
 const schema = z.object({
   clinicName:      z.string().min(2, 'Nome obrigatório'),
@@ -214,26 +205,27 @@ export default function CadastroClinicaPage() {
     const attribution = buildSignupAttribution()
 
     try {
-      // Submit via Edge Function (service role insert + Telegram notification)
-      const { error } = await supabase.functions.invoke('submit-clinic-signup', {
-        body: {
-          clinicName:          values.clinicName,
-          responsibleName:     isSolo ? values.clinicName : (values.responsibleName || values.clinicName),
-          email:               values.email,
-          password:            values.password,
-          cnpj:                values.cnpj    || undefined,
-          phone:               values.phone   || undefined,
-          isSoloPractitioner:  isSolo,
-          attribution,
-        },
-      })
+      try {
+        await invokeSupabaseFunction<Record<string, never> | null>(supabase, 'submit-clinic-signup', {
+          body: {
+            clinicName:          values.clinicName,
+            responsibleName:     isSolo ? values.clinicName : (values.responsibleName || values.clinicName),
+            email:               values.email,
+            password:            values.password,
+            cnpj:                values.cnpj    || undefined,
+            phone:               values.phone   || undefined,
+            isSoloPractitioner:  isSolo,
+            attribution,
+          },
+          fallbackMessage: 'Erro ao enviar solicitacao. Tente novamente.',
+        })
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Erro ao enviar solicitação. Tente novamente.'
+        const accountAlreadyExists =
+          error instanceof SupabaseFunctionInvocationError &&
+          (error.code === 'ACCOUNT_EXISTS' || msg.includes('já possui uma conta'))
 
-      if (error) {
-        // Parse body — supabase.functions returns raw body text as error.message
-        const parsed = parseFunctionError(error.message ?? '')
-        const msg = parsed.error ?? error.message ?? ''
-
-        if (parsed.code === 'ACCOUNT_EXISTS' || msg.includes('já possui uma conta')) {
+        if (accountAlreadyExists) {
           const { error: existingSignInError } = await supabase.auth.signInWithPassword({
             email: normalizedEmail,
             password: values.password,

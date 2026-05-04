@@ -1,4 +1,4 @@
-import { gtagEvent } from './gtag'
+import { createGtagConversionTracker, gtagEvent } from '@pvsmartinez/shared'
 
 const GOOGLE_ADS_CONVERSION_IDS = {
   generateLead: 'AW-18041761033/oZP3CIKEqZwcEIna_ZpD',
@@ -6,28 +6,21 @@ const GOOGLE_ADS_CONVERSION_IDS = {
   onboardingComplete: 'AW-18041761033/PzsXCLuEqZwcEIna_ZpD',
 } as const
 
-const trackAdsConversion = (sendTo: string, params?: Record<string, unknown>) => {
-  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return
-
-  window.gtag('event', 'conversion', {
-    send_to: sendTo,
-    ...params,
-  })
-}
+const trackAdsConversion = createGtagConversionTracker(GOOGLE_ADS_CONVERSION_IDS)
 
 export const trackGenerateLead = (params?: Record<string, unknown>) => {
   gtagEvent('generate_lead', params)
-  trackAdsConversion(GOOGLE_ADS_CONVERSION_IDS.generateLead)
+  trackAdsConversion('generateLead')
 }
 
 export const trackSignup = (params?: Record<string, unknown>) => {
   gtagEvent('sign_up', params)
-  trackAdsConversion(GOOGLE_ADS_CONVERSION_IDS.signup)
+  trackAdsConversion('signup')
 }
 
 export const trackOnboardingComplete = (params?: Record<string, unknown>) => {
   gtagEvent('onboarding_complete', params)
-  trackAdsConversion(GOOGLE_ADS_CONVERSION_IDS.onboardingComplete)
+  trackAdsConversion('onboardingComplete')
 }
 
 export const trackWhatsappCtaClick = (params?: Record<string, unknown>) => {

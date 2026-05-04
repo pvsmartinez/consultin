@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, ChangeEvent } from 'react'
 import { UploadSimple, Check, Warning, Sparkle, Robot } from '@phosphor-icons/react'
+import { invokeSupabaseFunction } from '@pvsmartinez/shared'
 import { toast } from 'sonner'
 import { Modal } from '@pvsmartinez/shared/ui'
 import { supabase } from '../services/supabase'
@@ -23,6 +24,11 @@ interface FieldDef {
   key: string
   label: string
   required?: boolean
+}
+
+interface ImportPatientsResponse {
+  mapping?: Record<string, string>
+  customFields?: Array<Record<string, unknown>>
 }
 
 const PATIENT_FIELDS: FieldDef[] = [
@@ -206,10 +212,10 @@ export default function ImportModal({ open, onClose, onImported }: Props) {
     if (needsAi) {
       try {
         const sampleRows = parsed.rows.slice(0, 5)
-        const { data, error } = await supabase.functions.invoke('import-patients', {
+        const data = await invokeSupabaseFunction<ImportPatientsResponse>(supabase, 'import-patients', {
           body: { headers: parsed.headers, sampleRows }
         })
-        if (!error && data?.mapping) {
+        if (data?.mapping) {
           const aiMapping: Record<string, string> = data.mapping
           Object.entries(aiMapping).forEach(([fieldKey, csvHeader]) => {
             if (!localMapping[fieldKey] && csvHeader && parsed.headers.includes(csvHeader)) {

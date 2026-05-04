@@ -10,6 +10,10 @@
  */
 
 import { supabase } from './supabase'
+import {
+  getSupabaseAccessToken,
+  readSupabaseFunctionResponseError,
+} from '@pvsmartinez/shared'
 
 // ─── Base URL for our Edge Function proxy ────────────────────────────────────
 const EDGE_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asaas`
@@ -19,20 +23,17 @@ async function callEdge<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
   body?: unknown,
 ): Promise<T> {
-  const { data: { session } } = await supabase.auth.getSession()
+  const accessToken = await getSupabaseAccessToken(supabase.auth)
   const res = await fetch(`${EDGE_BASE}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
     body: body != null ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
-    const text = await res.text()
-    let msg = `Asaas error ${res.status}`
-    try { msg = JSON.parse(text)?.errors?.[0]?.description ?? msg } catch { /* ok */ }
-    throw new Error(msg)
+    throw await readSupabaseFunctionResponseError(res, `Asaas error ${res.status}`)
   }
   return res.json() as Promise<T>
 }

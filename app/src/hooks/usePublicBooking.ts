@@ -1,3 +1,4 @@
+import { invokeSupabaseFunction } from '@pvsmartinez/shared'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { publicSupabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
@@ -35,7 +36,7 @@ export function usePublicBookingSlots(
     enabled: !!slug && !!date,
     staleTime: 30_000,
     queryFn: async () => {
-      const { data, error } = await publicSupabase.functions.invoke('public-booking', {
+      const data = await invokeSupabaseFunction<{ ok: true; slots?: PublicBookingSlot[] }>(publicSupabase, 'public-booking', {
         body: {
           action: 'slots',
           slug,
@@ -43,9 +44,9 @@ export function usePublicBookingSlots(
           professionalId: professionalId || undefined,
           serviceTypeId: serviceTypeId || undefined,
         },
+        requireOk: true,
+        fallbackMessage: 'Erro ao buscar horários',
       })
-      if (error) throw new Error(error.message)
-      if (!data?.ok) throw new Error(data?.error || 'Erro ao buscar horários')
       return (data.slots ?? []) as PublicBookingSlot[]
     },
   })
@@ -54,22 +55,21 @@ export function usePublicBookingSlots(
 export function useSubmitPublicBooking() {
   return useMutation({
     mutationFn: async (input: SubmitPublicBookingInput) => {
-      const { data, error } = await publicSupabase.functions.invoke('public-booking', {
-        body: {
-          action: 'book',
-          ...input,
-        },
-      })
-      if (error) throw new Error(error.message)
-      if (!data?.ok) throw new Error(data?.error || 'Erro ao criar agendamento')
-      return data as {
+      return invokeSupabaseFunction<{
         ok: true
         appointmentId: string
         patientId: string
         patientName: string
         startsAt: string
         professionalName: string
-      }
+      }>(publicSupabase, 'public-booking', {
+        body: {
+          action: 'book',
+          ...input,
+        },
+        requireOk: true,
+        fallbackMessage: 'Erro ao criar agendamento',
+      })
     },
   })
 }

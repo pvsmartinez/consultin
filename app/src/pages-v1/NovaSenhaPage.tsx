@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Eye, EyeSlash, Stethoscope, CheckCircle } from '@phosphor-icons/react'
+import { getSupabaseSession } from '@pvsmartinez/shared'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
 
@@ -34,7 +35,7 @@ export default function NovaSenhaPage() {
     try {
       // Ensure there is a valid session before calling updateUser.
       // If the OTP session expired or was never established, abort early.
-      const { data: { session: activeSession } } = await supabase.auth.getSession()
+      const activeSession = await getSupabaseSession(supabase.auth)
       if (!activeSession) {
         setError('Sessão expirada. Solicite um novo código e tente novamente.')
         setLoading(false)
