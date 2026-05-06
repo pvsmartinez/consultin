@@ -12,6 +12,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,11 @@ function renderPageWithHash(hash = '') {
     value: { hash },
     writable: true,
   })
-  return render(<NovaSenhaPage />)
+  return render(
+    <MemoryRouter>
+      <NovaSenhaPage />
+    </MemoryRouter>
+  )
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -61,7 +66,7 @@ describe('NovaSenhaPage', () => {
   describe('in reset mode (no type=invite)', () => {
     it('renders the "Criar nova senha" heading', () => {
       renderPageWithHash('')
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/criar nova senha/i)
+      expect(screen.getByRole('heading', { name: /criar nova senha/i })).toBeInTheDocument()
     })
 
     it('renders password and confirm inputs', () => {
@@ -74,7 +79,7 @@ describe('NovaSenhaPage', () => {
   describe('in invite mode (type=invite in hash)', () => {
     it('renders the "Bem-vindo! Crie sua senha" heading', () => {
       renderPageWithHash('#access_token=tok&type=invite')
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/bem-vindo.*crie sua senha/i)
+      expect(screen.getByRole('heading', { name: /bem-vindo.*crie sua senha/i })).toBeInTheDocument()
     })
 
     it('renders invite-specific subtitle', () => {
@@ -184,7 +189,7 @@ describe('NovaSenhaPage', () => {
       const passwordInput = screen.getAllByPlaceholderText(/mínimo 6 caracteres/i)[0]
 
       expect(passwordInput).toHaveAttribute('type', 'password')
-      await user.click(screen.getByRole('button', { name: '' })) // eye toggle
+      await user.click(screen.getByRole('button', { name: /mostrar senha/i }))
       expect(passwordInput).toHaveAttribute('type', 'text')
     })
   })

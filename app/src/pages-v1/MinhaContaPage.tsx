@@ -4,13 +4,13 @@ import {
   Camera,
   Key,
   Link,
-  Eye,
-  EyeSlash,
   CheckCircle,
 } from '@phosphor-icons/react'
 import type { UserIdentity } from '@supabase/supabase-js'
+import { PasswordChangeForm } from '@pvsmartinez/shared'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
+import { CONSULTIN_AUTH_THEME } from '../lib/authUi'
 
 type Tab = 'dados' | 'senha' | 'acessos'
 
@@ -23,35 +23,6 @@ function Initials({ name }: { name: string }) {
   return (
     <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center text-xl font-semibold text-[#006970] select-none">
       {initials}
-    </div>
-  )
-}
-
-function PasswordInput({
-  label, value, onChange, show, onToggle, placeholder,
-}: {
-  label: string; value: string; onChange: (v: string) => void
-  show: boolean; onToggle: () => void; placeholder?: string
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <div className="relative">
-        <input
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          {show ? <EyeSlash size={16} /> : <Eye size={16} />}
-        </button>
-      </div>
     </div>
   )
 }
@@ -111,42 +82,7 @@ export default function MinhaContaPage() {
     }
   }
 
-  // ─── Senha ────────────────────────────────────────────────────────────────
-  const [oldPw,     setOldPw]     = useState('')
-  const [newPw,     setNewPw]     = useState('')
-  const [confirmPw, setConfirmPw] = useState('')
-  const [showOld,   setShowOld]   = useState(false)
-  const [showNew,   setShowNew]   = useState(false)
-  const [showConf,  setShowConf]  = useState(false)
-  const [savingSenha, setSavingSenha] = useState(false)
-
   const hasEmailProvider = session?.user.identities?.some(i => i.provider === 'email') ?? false
-
-  const handleSaveSenha = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!session?.user.email) return
-    if (newPw.length < 8) { toast.error('Nova senha deve ter pelo menos 8 caracteres.'); return }
-    if (newPw !== confirmPw) { toast.error('Confirmação da senha não confere.'); return }
-    setSavingSenha(true)
-    try {
-      // Verify old password by re-authenticating
-      const { error: authErr } = await supabase.auth.signInWithPassword({
-        email: session.user.email,
-        password: oldPw,
-      })
-      if (authErr) { toast.error('Senha antiga incorreta.'); return }
-
-      const { error: updateErr } = await supabase.auth.updateUser({ password: newPw })
-      if (updateErr) throw updateErr
-
-      setOldPw(''); setNewPw(''); setConfirmPw('')
-      toast.success('Senha alterada com sucesso!')
-    } catch (err: unknown) {
-      toast.error((err as Error).message ?? 'Erro ao alterar senha.')
-    } finally {
-      setSavingSenha(false)
-    }
-  }
 
   // ─── Acessos ──────────────────────────────────────────────────────────────
   const identities: UserIdentity[] = session?.user.identities ?? []
@@ -292,43 +228,13 @@ export default function MinhaContaPage() {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSaveSenha} className="space-y-4">
-              <p className="text-sm text-gray-500 mb-2">
-                Confirme sua senha atual e escolha uma nova.
-              </p>
-              <PasswordInput
-                label="Senha atual"
-                value={oldPw}
-                onChange={setOldPw}
-                show={showOld}
-                onToggle={() => setShowOld(v => !v)}
-                placeholder="••••••••"
-              />
-              <PasswordInput
-                label="Nova senha"
-                value={newPw}
-                onChange={setNewPw}
-                show={showNew}
-                onToggle={() => setShowNew(v => !v)}
-                placeholder="Mínimo 8 caracteres"
-              />
-              <PasswordInput
-                label="Confirmar nova senha"
-                value={confirmPw}
-                onChange={setConfirmPw}
-                show={showConf}
-                onToggle={() => setShowConf(v => !v)}
-                placeholder="Repita a nova senha"
-              />
-              <button
-                type="submit"
-                disabled={savingSenha || !oldPw || !newPw || !confirmPw}
-                className="w-full text-white rounded-xl py-2.5 text-sm font-medium transition-all active:scale-[0.99] disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
-              >
-                {savingSenha ? 'Salvando...' : 'Alterar senha'}
-              </button>
-            </form>
+            <PasswordChangeForm
+              supabase={supabase}
+              email={session.user.email ?? ''}
+              theme={CONSULTIN_AUTH_THEME}
+              variant="panel"
+              minPasswordLength={8}
+            />
           )}
         </div>
       )}
