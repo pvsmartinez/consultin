@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
+import type { FieldErrors } from 'react-hook-form'
 import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -46,6 +47,22 @@ const schema = z.object({
   recurrenceCount:  z.string(),
 })
 type FormValues = z.infer<typeof schema>
+
+const FIRST_ERROR_MESSAGE: Record<keyof FormValues, string> = {
+  patientId: 'Selecione um paciente',
+  professionalId: 'Selecione um profissional',
+  date: 'Preencha a data da consulta',
+  startTime: 'Preencha o horário da consulta',
+  durationMin: 'Defina a duração da consulta',
+  status: 'Defina o status da consulta',
+  notes: 'Revise as observações da consulta',
+  roomId: 'Revise a sala da consulta',
+  serviceTypeId: 'Revise o tipo de atendimento',
+  chargeAmount: 'Revise o valor cobrado',
+  professionalFee: 'Revise o repasse ao profissional',
+  recurrenceType: 'Revise a recorrência',
+  recurrenceCount: 'Revise a quantidade de recorrências',
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function defaultTimeSlot(): string {
@@ -346,6 +363,18 @@ export default function AppointmentModal({
 
   const activeProfessionals = professionals.filter(p => p.active)
   const activeRooms         = rooms.filter(r => r.active)
+  const canAutoHideProfessional = !hasStaff && activeProfessionals.length <= 1
+  const hasActiveProfessional = activeProfessionals.length > 0
+
+  function onInvalid(errors: FieldErrors<FormValues>) {
+    const firstErrorKey = Object.keys(errors)[0] as keyof FormValues | undefined
+    if (!firstErrorKey) return
+    if (firstErrorKey === 'professionalId') {
+      toast.error(hasActiveProfessional ? 'Selecione um profissional para salvar a consulta' : 'Cadastre ou ative um profissional antes de agendar')
+      return
+    }
+    toast.error(FIRST_ERROR_MESSAGE[firstErrorKey] ?? 'Revise os dados obrigatórios da consulta')
+  }
 
   return (
     <Dialog.Root open={open} onOpenChange={v => !v && onClose()}>
@@ -377,10 +406,7 @@ export default function AppointmentModal({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-
-
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
 
             {/* Patient */}
             <div>
@@ -528,7 +554,7 @@ export default function AppointmentModal({
 
             {/* Professional — hidden when staff module is disabled (owner = sole professional),
                 static text when only one active, dropdown when multiple */}
-            {!hasStaff ? (
+            {canAutoHideProfessional ? (
               <input type="hidden" {...register('professionalId')} />
             ) : activeProfessionals.length === 1 ? (
               <div>
@@ -554,6 +580,12 @@ export default function AppointmentModal({
                   ))}
                 </select>
                 {errors.professionalId && <p className="text-xs text-red-500 mt-1">{errors.professionalId.message}</p>}
+              </div>
+            )}
+
+            {!hasActiveProfessional && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Cadastre ou ative pelo menos um profissional para conseguir salvar consultas.
               </div>
             )}
 
@@ -811,7 +843,7 @@ export default function AppointmentModal({
                     className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-100">
                     Fechar
                   </button>
-                  <button type="submit" disabled={isSubmitting}
+                  <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
                     className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
                     style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
                     {isSubmitting ? 'Salvando...' : 'Salvar'}
