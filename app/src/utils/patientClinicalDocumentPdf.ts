@@ -10,7 +10,7 @@ interface PatientClinicalDocumentContext {
   clinic: Pick<Clinic, 'name' | 'phone' | 'email' | 'address' | 'city' | 'state' | 'documentTemplates' | 'documentSigning'> | null
 }
 
-function resolveBodySource(
+export function resolvePatientClinicalDocumentBodySource(
   item: PatientClinicalItem,
   clinic: Pick<Clinic, 'documentTemplates'> | null,
 ) {
@@ -25,13 +25,13 @@ function resolveBodySource(
   return ''
 }
 
-function buildBody(
+export function buildPatientClinicalDocumentBody(
   item: PatientClinicalItem,
   patient: Pick<Patient, 'name' | 'cpf' | 'birthDate'>,
   clinic: Pick<Clinic, 'name' | 'phone' | 'city' | 'state' | 'documentTemplates' | 'documentSigning'> | null,
   issueDate: string,
 ) {
-  const source = resolveBodySource(item, clinic)
+  const source = resolvePatientClinicalDocumentBodySource(item, clinic)
   if (!source) return ''
 
   return interpolateClinicalDocumentTemplate(source, {
@@ -55,7 +55,7 @@ function createDocument({ item, patient, clinic }: PatientClinicalDocumentContex
   const contentWidth = pageWidth - margin * 2
   const reviewNotes = item.metadata.reviewNotes?.trim()
   const issueDate = item.issuedOn ? formatDate(`${item.issuedOn}T00:00:00`) : formatDate(new Date().toISOString())
-  const body = buildBody(item, patient, clinic, issueDate)
+  const body = buildPatientClinicalDocumentBody(item, patient, clinic, issueDate)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
@@ -131,5 +131,5 @@ export function hasPrintableClinicalContent(
   item: PatientClinicalItem,
   clinic?: Pick<Clinic, 'documentTemplates'> | null,
 ) {
-  return Boolean(resolveBodySource(item, clinic ?? null).trim())
+  return Boolean(resolvePatientClinicalDocumentBodySource(item, clinic ?? null).trim())
 }

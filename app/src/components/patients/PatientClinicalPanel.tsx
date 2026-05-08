@@ -27,7 +27,12 @@ import type {
 } from '../../types'
 import { getClinicDocumentTemplate } from '../../utils/clinicalDocumentTemplates'
 import { formatDate, formatDateTime } from '../../utils/date'
-import { downloadPatientClinicalDocumentPdf, hasPrintableClinicalContent, printPatientClinicalDocument } from '../../utils/patientClinicalDocumentPdf'
+import {
+  buildPatientClinicalDocumentBody,
+  downloadPatientClinicalDocumentPdf,
+  hasPrintableClinicalContent,
+  printPatientClinicalDocument,
+} from '../../utils/patientClinicalDocumentPdf'
 
 const buttonClass =
   'inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 transition hover:bg-gray-50'
@@ -44,6 +49,25 @@ function printablePlaceholder(
   clinicTemplates?: Clinic['documentTemplates'],
 ) {
   return getClinicDocumentTemplate(clinicTemplates, itemType)
+}
+
+function shouldReplacePrintableBodyWithTemplate({
+  currentBody,
+  currentItemType,
+  nextItemType,
+  clinicTemplates,
+}: {
+  currentBody: string | undefined
+  currentItemType: PatientClinicalItem['itemType']
+  nextItemType: PatientClinicalItem['itemType']
+  clinicTemplates?: Clinic['documentTemplates']
+}) {
+  const trimmedBody = currentBody?.trim() ?? ''
+  if (!trimmedBody) return true
+
+  const currentTemplate = printablePlaceholder(currentItemType, clinicTemplates).trim()
+  const nextTemplate = printablePlaceholder(nextItemType, clinicTemplates).trim()
+  return trimmedBody === currentTemplate || trimmedBody === nextTemplate
 }
 
 function emptyClinicalItem(
@@ -178,9 +202,14 @@ function ClinicalItemForm({
             itemType: event.target.value as PatientClinicalItem['itemType'],
             metadata: {
               ...value.metadata,
-              printableBody: value.metadata.printableBody?.trim()
-                ? value.metadata.printableBody
-                : printablePlaceholder(event.target.value as PatientClinicalItem['itemType'], clinicTemplates),
+              printableBody: shouldReplacePrintableBodyWithTemplate({
+                currentBody: value.metadata.printableBody,
+                currentItemType: value.itemType,
+                nextItemType: event.target.value as PatientClinicalItem['itemType'],
+                clinicTemplates,
+              })
+                ? printablePlaceholder(event.target.value as PatientClinicalItem['itemType'], clinicTemplates)
+                : value.metadata.printableBody,
             },
           })}
         />
@@ -368,11 +397,13 @@ function ProsthesisForm({
 
 function ClinicalItemCard({
   item,
+  previewBody,
   onEdit,
   onDelete,
   deleting,
 }: {
   item: PatientClinicalItem
+  previewBody: string
   onEdit: (item: PatientClinicalItem) => void
   onDelete: (item: PatientClinicalItem) => void
   deleting: boolean
@@ -427,8 +458,11 @@ function ClinicalItemCard({
       )}
 
       {item.description && <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap">{item.description}</p>}
-      {item.metadata.printableBody && (
-        <p className="mt-2 text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{item.metadata.printableBody}</p>
+      {previewBody && (
+        <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Prévia para impressão</p>
+          <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{previewBody}</p>
+        </div>
       )}
       {item.notes && <p className="mt-2 text-sm text-gray-500 whitespace-pre-wrap">{item.notes}</p>}
     </div>
@@ -791,6 +825,12 @@ export default function PatientClinicalPanel({
             </div>
             <ClinicalItemCard
               item={item}
+              previewBody={buildPatientClinicalDocumentBody(
+                item,
+                patient,
+                clinic,
+                item.issuedOn ? formatDate(`${item.issuedOn}T00:00:00`) : formatDate(new Date().toISOString()),
+              )}
               onEdit={startEditClinical}
               onDelete={current => setConfirmDelete({ kind: 'item', id: current.id, label: current.title })}
               deleting={deletingItemId === item.id}

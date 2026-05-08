@@ -51,6 +51,14 @@ vi.mock('../hooks/useAppointments', () => ({
   usePatientAppointments: () => ({
     appointments: [
       {
+        id: 'appt-2',
+        startsAt: '2035-05-10T10:00:00Z',
+        endsAt:   '2035-05-10T10:30:00Z',
+        status:   'scheduled',
+        professional: { id: 'prof-1', name: 'Dr. Silva', specialty: 'Cardiologia' },
+        notes: 'Check-up futuro',
+      },
+      {
         id: 'appt-1',
         startsAt: '2025-05-10T10:00:00Z',
         endsAt:   '2025-05-10T10:30:00Z',
@@ -145,6 +153,16 @@ describe('PatientDetailPage', () => {
     renderPage()
     expect(screen.getAllByText(/Dr\. Silva/i).length).toBeGreaterThan(0)
     expect(screen.getByTestId('clinical-panel')).toBeInTheDocument()
+  })
+
+  it('separates upcoming appointments from appointment history', () => {
+    renderPage()
+
+    expect(screen.getByText(/próximas consultas/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/histórico/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/check-up futuro/i)).toBeInTheDocument()
+    expect(screen.getByText(/agendado/i)).toBeInTheDocument()
+    expect(screen.getByText(/realizado/i)).toBeInTheDocument()
   })
 
   it('renders a back/navigate-up link to the patient list', () => {
