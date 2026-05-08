@@ -2,6 +2,10 @@
  * Shared row-mappers: convert Supabase snake_case DB rows → camelCase domain types.
  * Single source of truth — import these instead of defining local mapRow functions.
  */
+import {
+  DEFAULT_CLINIC_DOCUMENT_SIGNING,
+  DEFAULT_CLINIC_DOCUMENT_TEMPLATES,
+} from '../types'
 import type { Appointment, Clinic, Patient, Professional, ServiceType } from '../types'
 
 // ─── Appointment ──────────────────────────────────────────────────────────────
@@ -80,6 +84,14 @@ export function mapClinic(r: Record<string, unknown>): Clinic {
     acceptedPaymentMethods:   (r.accepted_payment_methods as string[]) ?? ['cash','pix','credit_card','debit_card'],
     paymentTiming:            (r.payment_timing as Clinic['paymentTiming']) ?? 'flexible',
     cancellationHours:        (r.cancellation_hours as number) ?? 24,
+    documentTemplates: {
+      ...DEFAULT_CLINIC_DOCUMENT_TEMPLATES,
+      ...((r.clinical_document_templates as Partial<Clinic['documentTemplates']> | null) ?? {}),
+    },
+    documentSigning: {
+      ...DEFAULT_CLINIC_DOCUMENT_SIGNING,
+      ...((r.clinical_document_signing as Partial<Clinic['documentSigning']> | null) ?? {}),
+    },
   }
 }
 

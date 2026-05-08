@@ -9,6 +9,7 @@ import { Badge } from '@pvsmartinez/shared/ui'
 import { formatDate, formatDateTime } from '../utils/date'
 import PatientRecordsPanel from '../components/patients/PatientRecordsPanel'
 import PatientFilesPanel from '../components/patients/PatientFilesPanel'
+import PatientClinicalPanel from '../components/patients/PatientClinicalPanel'
 import AppointmentModal from '../components/appointments/AppointmentModal'
 import { toast } from 'sonner'
 import {
@@ -257,6 +258,27 @@ export default function PatientDetailPage() {
             ))}
           </ul>
         )}
+      </Section>
+
+      <Section title="Pedidos, Documentos e Próteses">
+        <PatientClinicalPanel
+          patientId={id!}
+          patient={{
+            name: patient.name,
+            cpf: patient.cpf,
+            birthDate: patient.birthDate,
+          }}
+          clinic={clinic ? {
+            name: clinic.name,
+            phone: clinic.phone,
+            email: clinic.email,
+            address: clinic.address,
+            city: clinic.city,
+            state: clinic.state,
+            documentTemplates: clinic.documentTemplates,
+            documentSigning: clinic.documentSigning,
+          } : null}
+        />
       </Section>
 
       {/* Anotações e Anexos */}

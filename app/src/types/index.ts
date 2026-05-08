@@ -4,6 +4,90 @@ export interface WorkingHours {
   end: string    // "18:00"
 }
 
+export interface ClinicDocumentTemplates {
+  examRequest: string
+  prescription: string
+  medicalCertificate: string
+  consentTerm: string
+  custom: string
+}
+
+export interface ClinicDocumentSigning {
+  signerName: string
+  signerRole: string
+  signerCouncil: string
+  stampText: string
+  footerText: string
+}
+
+export const DEFAULT_CLINIC_DOCUMENT_TEMPLATES: ClinicDocumentTemplates = {
+  examRequest: [
+    'Solicito a realização de {{document_title}} para {{patient_name}}.',
+    '',
+    'Paciente: {{patient_name}}',
+    'CPF: {{patient_cpf}}',
+    'Nascimento: {{patient_birth_date}}',
+    'Data: {{issue_date}}',
+    '',
+    'Observações clínicas:',
+    '{{item_description}}',
+  ].join('\n'),
+  prescription: [
+    'Receituário',
+    '',
+    'Paciente: {{patient_name}}',
+    'CPF: {{patient_cpf}}',
+    'Data: {{issue_date}}',
+    '',
+    'Uso conforme orientação:',
+    '- Medicamento:',
+    '- Dose:',
+    '- Frequência:',
+    '- Duração:',
+  ].join('\n'),
+  medicalCertificate: [
+    'Atesto para os devidos fins que {{patient_name}} esteve em atendimento nesta data e necessita de afastamento de suas atividades por ____ dias, a partir de {{issue_date}}.',
+    '',
+    'Observações:',
+    '{{item_description}}',
+  ].join('\n'),
+  consentTerm: [
+    'Eu, {{patient_name}}, declaro que recebi orientações claras sobre o procedimento, riscos, benefícios e cuidados posteriores, estando ciente e de acordo com sua realização.',
+    '',
+    'Procedimento / observações:',
+    '{{item_description}}',
+  ].join('\n'),
+  custom: [
+    '{{document_title}}',
+    '',
+    'Paciente: {{patient_name}}',
+    'Data: {{issue_date}}',
+    '',
+    'Conteúdo:',
+    '{{item_description}}',
+  ].join('\n'),
+}
+
+export const DEFAULT_CLINIC_DOCUMENT_SIGNING: ClinicDocumentSigning = {
+  signerName: '',
+  signerRole: '',
+  signerCouncil: '',
+  stampText: '',
+  footerText: '',
+}
+
+export const CLINICAL_DOCUMENT_TEMPLATE_PLACEHOLDERS = [
+  '{{clinic_name}}',
+  '{{clinic_city_state}}',
+  '{{clinic_phone}}',
+  '{{patient_name}}',
+  '{{patient_cpf}}',
+  '{{patient_birth_date}}',
+  '{{issue_date}}',
+  '{{document_title}}',
+  '{{item_description}}',
+] as const
+
 export interface Clinic {
   id: string
   name: string
@@ -60,6 +144,9 @@ export interface Clinic {
   waAiAllowCancel: boolean
   // Booking config
   allowProfessionalSelection: boolean
+  // Clinical documents
+  documentTemplates: ClinicDocumentTemplates
+  documentSigning: ClinicDocumentSigning
 }
 
 // ─── Custom fields (clinic-defined) ──────────────────────────────────────────
@@ -626,3 +713,162 @@ export interface PatientRecord {
   fileSize: number | null
   createdAt: string
 }
+
+// ─── Patient Clinical Items (requests + documents) ──────────────────────────
+export type ClinicalItemCategory = 'request' | 'document'
+
+export type ClinicalItemType =
+  | 'exam_request'
+  | 'prescription'
+  | 'medical_certificate'
+  | 'consent_term'
+  | 'custom'
+
+export type ClinicalItemStatus = 'draft' | 'in_review' | 'requested' | 'issued' | 'completed' | 'cancelled'
+
+export interface PatientClinicalItemMetadata {
+  printableBody?: string
+  reviewNotes?: string
+}
+
+export interface PatientClinicalItem {
+  id: string
+  clinicId: string
+  patientId: string
+  createdBy: string
+  createdByName: string | null
+  category: ClinicalItemCategory
+  itemType: ClinicalItemType
+  status: ClinicalItemStatus
+  title: string
+  description: string | null
+  notes: string | null
+  requestedForDate: string | null
+  issuedOn: string | null
+  completedOn: string | null
+  metadata: PatientClinicalItemMetadata
+  createdAt: string
+  updatedAt: string
+}
+
+export type PatientClinicalItemInput = Omit<
+  PatientClinicalItem,
+  'id' | 'clinicId' | 'patientId' | 'createdBy' | 'createdByName' | 'createdAt' | 'updatedAt'
+>
+
+export const CLINICAL_ITEM_CATEGORY_LABELS: Record<ClinicalItemCategory, string> = {
+  request: 'Pedido',
+  document: 'Documento',
+}
+
+export const CLINICAL_ITEM_TYPE_LABELS: Record<ClinicalItemType, string> = {
+  exam_request: 'Pedido de exame',
+  prescription: 'Receita / remédio',
+  medical_certificate: 'Atestado',
+  consent_term: 'Termo de consentimento',
+  custom: 'Personalizado',
+}
+
+export const CLINICAL_ITEM_STATUS_LABELS: Record<ClinicalItemStatus, string> = {
+  draft: 'Rascunho',
+  in_review: 'Em revisão',
+  requested: 'Solicitado',
+  issued: 'Emitido',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+}
+
+export const CLINICAL_ITEM_STATUS_COLORS: Record<ClinicalItemStatus, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  in_review: 'bg-violet-100 text-violet-700',
+  requested: 'bg-amber-100 text-amber-700',
+  issued: 'bg-sky-100 text-sky-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-rose-100 text-rose-700',
+}
+
+export const CLINICAL_REQUEST_TYPE_OPTIONS: { value: ClinicalItemType; label: string }[] = [
+  { value: 'exam_request', label: CLINICAL_ITEM_TYPE_LABELS.exam_request },
+  { value: 'prescription', label: CLINICAL_ITEM_TYPE_LABELS.prescription },
+  { value: 'custom', label: CLINICAL_ITEM_TYPE_LABELS.custom },
+]
+
+export const CLINICAL_DOCUMENT_TYPE_OPTIONS: { value: ClinicalItemType; label: string }[] = [
+  { value: 'consent_term', label: CLINICAL_ITEM_TYPE_LABELS.consent_term },
+  { value: 'medical_certificate', label: CLINICAL_ITEM_TYPE_LABELS.medical_certificate },
+  { value: 'prescription', label: CLINICAL_ITEM_TYPE_LABELS.prescription },
+  { value: 'custom', label: CLINICAL_ITEM_TYPE_LABELS.custom },
+]
+
+export const CLINICAL_ITEM_STATUS_OPTIONS: { value: ClinicalItemStatus; label: string }[] = [
+  { value: 'draft', label: CLINICAL_ITEM_STATUS_LABELS.draft },
+  { value: 'in_review', label: CLINICAL_ITEM_STATUS_LABELS.in_review },
+  { value: 'requested', label: CLINICAL_ITEM_STATUS_LABELS.requested },
+  { value: 'issued', label: CLINICAL_ITEM_STATUS_LABELS.issued },
+  { value: 'completed', label: CLINICAL_ITEM_STATUS_LABELS.completed },
+  { value: 'cancelled', label: CLINICAL_ITEM_STATUS_LABELS.cancelled },
+]
+
+// ─── Patient Prostheses ─────────────────────────────────────────────────────
+export type ProsthesisStatus =
+  | 'planned'
+  | 'requested'
+  | 'in_production'
+  | 'ready'
+  | 'installed'
+  | 'maintenance'
+  | 'cancelled'
+
+export interface PatientProsthesis {
+  id: string
+  clinicId: string
+  patientId: string
+  createdBy: string
+  createdByName: string | null
+  name: string
+  toothRegion: string | null
+  laboratoryName: string | null
+  status: ProsthesisStatus
+  startedOn: string | null
+  dueOn: string | null
+  installedOn: string | null
+  notes: string | null
+  metadata: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export type PatientProsthesisInput = Omit<
+  PatientProsthesis,
+  'id' | 'clinicId' | 'patientId' | 'createdBy' | 'createdByName' | 'createdAt' | 'updatedAt'
+>
+
+export const PROSTHESIS_STATUS_LABELS: Record<ProsthesisStatus, string> = {
+  planned: 'Planejada',
+  requested: 'Solicitada',
+  in_production: 'Em produção',
+  ready: 'Pronta',
+  installed: 'Instalada',
+  maintenance: 'Manutenção',
+  cancelled: 'Cancelada',
+}
+
+export const PROSTHESIS_STATUS_COLORS: Record<ProsthesisStatus, string> = {
+  planned: 'bg-slate-100 text-slate-700',
+  requested: 'bg-amber-100 text-amber-700',
+  in_production: 'bg-violet-100 text-violet-700',
+  ready: 'bg-sky-100 text-sky-700',
+  installed: 'bg-emerald-100 text-emerald-700',
+  maintenance: 'bg-orange-100 text-orange-700',
+  cancelled: 'bg-rose-100 text-rose-700',
+}
+
+export const PROSTHESIS_STATUS_OPTIONS: { value: ProsthesisStatus; label: string }[] = [
+  { value: 'planned', label: PROSTHESIS_STATUS_LABELS.planned },
+  { value: 'requested', label: PROSTHESIS_STATUS_LABELS.requested },
+  { value: 'in_production', label: PROSTHESIS_STATUS_LABELS.in_production },
+  { value: 'ready', label: PROSTHESIS_STATUS_LABELS.ready },
+  { value: 'installed', label: PROSTHESIS_STATUS_LABELS.installed },
+  { value: 'maintenance', label: PROSTHESIS_STATUS_LABELS.maintenance },
+  { value: 'cancelled', label: PROSTHESIS_STATUS_LABELS.cancelled },
+]

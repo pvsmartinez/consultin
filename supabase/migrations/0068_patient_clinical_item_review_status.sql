@@ -1,0 +1,1 @@
+alter type public.clinical_item_status add value if not exists 'in_review' after 'draft';

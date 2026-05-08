@@ -16,6 +16,7 @@ vi.mock('../hooks/useClinicModules', () => ({
 }))
 
 vi.mock('../pages-v1/settings/DadosTab', () => ({ default: () => <div>DadosTab</div> }))
+vi.mock('../pages-v1/settings/DocumentosTab', () => ({ default: () => <div>DocumentosTab</div> }))
 vi.mock('../pages-v1/settings/AgendaTab', () => ({ default: () => <div>AgendaTab</div> }))
 vi.mock('../pages-v1/settings/DisponibilidadeTab', () => ({ default: () => <div>DisponibilidadeTab</div> }))
 vi.mock('../pages-v1/settings/SalasTab', () => ({ default: () => <div>SalasTab</div> }))
@@ -50,6 +51,20 @@ const clinicFixture: Clinic = {
   acceptedPaymentMethods: ['pix'],
   paymentTiming: 'after_appointment',
   cancellationHours: 24,
+  documentTemplates: {
+    examRequest: 'Pedido',
+    prescription: 'Receita',
+    medicalCertificate: 'Atestado',
+    consentTerm: 'Termo',
+    custom: 'Custom',
+  },
+  documentSigning: {
+    signerName: '',
+    signerRole: '',
+    signerCouncil: '',
+    stampText: '',
+    footerText: '',
+  },
   onboardingCompleted: true,
   createdAt: '2026-04-01T10:00:00.000Z',
   modulesEnabled: [],
@@ -112,6 +127,16 @@ describe('ConfiguracoesPage', () => {
     })
 
     expect(await screen.findByText('CamposTab:profissionais')).toBeInTheDocument()
+  })
+
+  it('renders the documents tab when requested directly', async () => {
+    useClinicMock.mockReturnValue({ data: clinicFixture, isLoading: false })
+
+    renderWithProviders(<ConfiguracoesPage />, {
+      routerProps: { initialEntries: ['/configuracoes?tab=documentos'] },
+    })
+
+    expect(await screen.findByText('DocumentosTab')).toBeInTheDocument()
   })
 
   it('shows the lightweight setup guide when setup is still pending', () => {

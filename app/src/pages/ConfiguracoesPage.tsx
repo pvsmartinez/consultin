@@ -6,12 +6,14 @@ import {
   CheckCircle,
   GlobeHemisphereWest,
   ArrowRight,
+  FileText,
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
 import type { ClinicModule } from '../hooks/useClinicModules'
 import DadosTab from '../pages-v1/settings/DadosTab'
+import DocumentosTab from '../pages-v1/settings/DocumentosTab'
 import AgendaTab from '../pages-v1/settings/AgendaTab'
 import CamposTab from '../pages-v1/settings/CamposTab'
 import DisponibilidadeTab from '../pages-v1/settings/DisponibilidadeTab'
@@ -119,7 +121,7 @@ function ModuleCard({
 
 // ─── Settings tabs ────────────────────────────────────────────────────────────
 
-type Tab = 'dados' | 'agenda' | 'servicos' | 'anamnese' | 'campos' | 'disponibilidade' | 'salas' | 'pagamento' | 'whatsapp' | 'notificacoes' | 'usuarios' | 'pagina-publica'
+type Tab = 'dados' | 'documentos' | 'agenda' | 'servicos' | 'anamnese' | 'campos' | 'disponibilidade' | 'salas' | 'pagamento' | 'whatsapp' | 'notificacoes' | 'usuarios' | 'pagina-publica'
 
 interface TabDef {
   id: Tab
@@ -130,6 +132,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { id: 'dados',           label: 'Dados da clínica', icon: Gear },
+  { id: 'documentos',      label: 'Documentos',       icon: FileText },
   { id: 'agenda',          label: 'Agenda',            icon: CalendarBlank },
   { id: 'disponibilidade', label: 'Horários',          icon: Clock },
   { id: 'notificacoes',    label: 'Notificações',      icon: Bell },
@@ -177,6 +180,7 @@ const SETUP_ITEMS: SetupItem[] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TAB_CONTENT: Record<Tab, React.ComponentType<any>> = {
   dados:           DadosTab,
+  documentos:      DocumentosTab,
   agenda:          AgendaTab,
   disponibilidade: DisponibilidadeTab,
   notificacoes:    NotificacoesTab,

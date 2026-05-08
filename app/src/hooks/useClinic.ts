@@ -67,6 +67,9 @@ function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record
     ...(defined(input.allowProfessionalSelection) && { allow_professional_selection: input.allowProfessionalSelection }),
     // v2 modules
     ...(defined(input.modulesEnabled)             && { modules_enabled:              input.modulesEnabled }),
+    // Clinical documents
+    ...(defined(input.documentTemplates)          && { clinical_document_templates:  input.documentTemplates }),
+    ...(defined(input.documentSigning)            && { clinical_document_signing:    input.documentSigning }),
   }
 }
 

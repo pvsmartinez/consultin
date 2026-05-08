@@ -85,6 +85,9 @@ vi.mock('../components/patients/PatientRecordsPanel', () => ({
 vi.mock('../components/patients/PatientFilesPanel', () => ({
   default: () => <div data-testid="files-panel" />,
 }))
+vi.mock('../components/patients/PatientClinicalPanel', () => ({
+  default: () => <div data-testid="clinical-panel" />,
+}))
 vi.mock('../components/appointments/AppointmentModal', () => ({
   default: () => <div data-testid="appointment-modal" />,
 }))
@@ -141,6 +144,7 @@ describe('PatientDetailPage', () => {
   it('renders the appointments list with a completed appointment', () => {
     renderPage()
     expect(screen.getAllByText(/Dr\. Silva/i).length).toBeGreaterThan(0)
+    expect(screen.getByTestId('clinical-panel')).toBeInTheDocument()
   })
 
   it('renders a back/navigate-up link to the patient list', () => {

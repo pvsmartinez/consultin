@@ -42,6 +42,8 @@ export const QK = {
     appointments: (patientId: string)             => ['patient-appointments', patientId]  as const,
     records:      (patientId: string)             => ['patient_records', patientId]       as const,
     files:        (patientId: string)             => ['patient-files', patientId]         as const,
+    clinicalItems:(patientId: string)             => ['patient-clinical-items', patientId] as const,
+    prostheses:   (patientId: string)             => ['patient-prostheses', patientId]    as const,
   },
 
   // ── Patient imports ──────────────────────────────────────────

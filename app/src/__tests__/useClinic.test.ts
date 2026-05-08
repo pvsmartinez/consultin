@@ -58,6 +58,8 @@ vi.mock('../utils/mappers', () => ({
     modulesEnabled:            row.modules_enabled ?? [],
     allowProfessionalSelection: row.allow_professional_selection ?? true,
     allowSelfRegistration:     row.allow_self_registration ?? false,
+    documentTemplates:         row.clinical_document_templates ?? {},
+    documentSigning:           row.clinical_document_signing ?? {},
     createdAt:                 row.created_at as string,
   }),
 }))

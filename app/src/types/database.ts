@@ -530,6 +530,8 @@ export type Database = {
           billing_override_enabled: boolean
           cancellation_hours: number
           city: string | null
+          clinical_document_signing: Json
+          clinical_document_templates: Json
           cnpj: string | null
           created_at: string
           custom_patient_fields: Json
@@ -581,6 +583,8 @@ export type Database = {
           billing_override_enabled?: boolean
           cancellation_hours?: number
           city?: string | null
+          clinical_document_signing?: Json
+          clinical_document_templates?: Json
           cnpj?: string | null
           created_at?: string
           custom_patient_fields?: Json
@@ -632,6 +636,8 @@ export type Database = {
           billing_override_enabled?: boolean
           cancellation_hours?: number
           city?: string | null
+          clinical_document_signing?: Json
+          clinical_document_templates?: Json
           cnpj?: string | null
           created_at?: string
           custom_patient_fields?: Json
@@ -801,6 +807,85 @@ export type Database = {
           },
         ]
       }
+      patient_clinical_items: {
+        Row: {
+          category: Database["public"]["Enums"]["clinical_item_category"]
+          clinic_id: string
+          completed_on: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          item_type: Database["public"]["Enums"]["clinical_item_type"]
+          metadata: Json
+          notes: string | null
+          patient_id: string
+          requested_for_date: string | null
+          issued_on: string | null
+          status: Database["public"]["Enums"]["clinical_item_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["clinical_item_category"]
+          clinic_id: string
+          completed_on?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          item_type: Database["public"]["Enums"]["clinical_item_type"]
+          metadata?: Json
+          notes?: string | null
+          patient_id: string
+          requested_for_date?: string | null
+          issued_on?: string | null
+          status?: Database["public"]["Enums"]["clinical_item_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["clinical_item_category"]
+          clinic_id?: string
+          completed_on?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          item_type?: Database["public"]["Enums"]["clinical_item_type"]
+          metadata?: Json
+          notes?: string | null
+          patient_id?: string
+          requested_for_date?: string | null
+          issued_on?: string | null
+          status?: Database["public"]["Enums"]["clinical_item_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_clinical_items_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_clinical_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_clinical_items_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_import_job_config: {
         Row: {
           key: string
@@ -895,6 +980,82 @@ export type Database = {
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_prostheses: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          created_by: string
+          due_on: string | null
+          id: string
+          installed_on: string | null
+          laboratory_name: string | null
+          metadata: Json
+          name: string
+          notes: string | null
+          patient_id: string
+          started_on: string | null
+          status: Database["public"]["Enums"]["prosthesis_status"]
+          tooth_region: string | null
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          created_by: string
+          due_on?: string | null
+          id?: string
+          installed_on?: string | null
+          laboratory_name?: string | null
+          metadata?: Json
+          name: string
+          notes?: string | null
+          patient_id: string
+          started_on?: string | null
+          status?: Database["public"]["Enums"]["prosthesis_status"]
+          tooth_region?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          created_by?: string
+          due_on?: string | null
+          id?: string
+          installed_on?: string | null
+          laboratory_name?: string | null
+          metadata?: Json
+          name?: string
+          notes?: string | null
+          patient_id?: string
+          started_on?: string | null
+          status?: Database["public"]["Enums"]["prosthesis_status"]
+          tooth_region?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_prostheses_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_prostheses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_prostheses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
             referencedColumns: ["id"]
           },
         ]
@@ -1848,6 +2009,28 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+      clinical_item_category: "request" | "document"
+      clinical_item_status:
+        | "draft"
+        | "in_review"
+        | "requested"
+        | "issued"
+        | "completed"
+        | "cancelled"
+      clinical_item_type:
+        | "exam_request"
+        | "prescription"
+        | "medical_certificate"
+        | "consent_term"
+        | "custom"
+      prosthesis_status:
+        | "planned"
+        | "requested"
+        | "in_production"
+        | "ready"
+        | "installed"
+        | "maintenance"
+        | "cancelled"
       record_type: "note" | "attachment"
       user_role: "admin" | "receptionist" | "professional" | "patient"
     }
@@ -1983,6 +2166,24 @@ export const Constants = {
         "completed",
         "cancelled",
         "no_show",
+      ],
+      clinical_item_category: ["request", "document"],
+      clinical_item_status: ["draft", "in_review", "requested", "issued", "completed", "cancelled"],
+      clinical_item_type: [
+        "exam_request",
+        "prescription",
+        "medical_certificate",
+        "consent_term",
+        "custom",
+      ],
+      prosthesis_status: [
+        "planned",
+        "requested",
+        "in_production",
+        "ready",
+        "installed",
+        "maintenance",
+        "cancelled",
       ],
       record_type: ["note", "attachment"],
       user_role: ["admin", "receptionist", "professional", "patient"],
