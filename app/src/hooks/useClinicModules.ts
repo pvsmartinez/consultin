@@ -6,7 +6,7 @@ import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from './useClinic'
 import type { Clinic } from '../types'
 
-export type ClinicModule = 'rooms' | 'staff' | 'whatsapp' | 'financial' | 'services'
+export type ClinicModule = 'rooms' | 'staff' | 'whatsapp' | 'financial' | 'services' | 'insurance'
 
 export function useClinicModules() {
   const qc = useQueryClient()
@@ -21,6 +21,7 @@ export function useClinicModules() {
   const hasWhatsApp  = modules.includes('whatsapp')
   const hasFinancial = modules.includes('financial')
   const hasServices  = modules.includes('services')
+  const hasInsurance = modules.includes('insurance')
 
   async function setModules(next: ClinicModule[]) {
     if (!clinicId) return
@@ -55,5 +56,5 @@ export function useClinicModules() {
     }
   }
 
-  return { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, enableModule, disableModule }
+  return { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, hasInsurance, enableModule, disableModule }
 }

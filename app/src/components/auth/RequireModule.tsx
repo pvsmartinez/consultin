@@ -23,6 +23,7 @@ export default function RequireModule({ children, module, redirectTo = '/agenda'
     whatsapp:  modules.hasWhatsApp,
     financial: modules.hasFinancial,
     services:  modules.hasServices,
+    insurance: modules.hasInsurance,
   }
   if (!moduleFlags[module]) return <Navigate to={redirectTo} replace />
   return <>{children}</>

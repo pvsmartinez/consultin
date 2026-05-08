@@ -17,6 +17,7 @@ import {
   APPOINTMENT_STATUS_LABELS,
   APPOINTMENT_STATUS_VARIANTS,
 } from '../types'
+import { getPatientInsuranceInfo, hasPatientInsuranceInfo, PATIENT_INSURANCE_TYPE_LABELS } from '../utils/patientInsurance'
 
 function hasCustomFieldValue(value: unknown) {
   if (value == null) return false
@@ -90,6 +91,8 @@ export default function PatientDetailPage() {
   const age = patient.birthDate
     ? Math.floor((Date.now() - new Date(patient.birthDate + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null
+  const insuranceInfo = getPatientInsuranceInfo(patient.customFields)
+  const showInsuranceSection = (clinic?.modulesEnabled?.includes('insurance') ?? false) || hasPatientInsuranceInfo(patient.customFields)
   const visibleCustomFields = (clinic?.customPatientFields ?? []).filter(field =>
     hasCustomFieldValue(patient.customFields?.[field.key])
   )
@@ -183,6 +186,19 @@ export default function PatientDetailPage() {
           <InfoRow label="Data de nascimento" value={patient.birthDate ? formatDate(patient.birthDate + 'T00:00:00') : null} />
         </dl>
       </Section>
+
+      {showInsuranceSection && (
+        <Section title="Convênio e Cobertura">
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <InfoRow
+              label="Forma de atendimento"
+              value={insuranceInfo.coverageType ? PATIENT_INSURANCE_TYPE_LABELS[insuranceInfo.coverageType] : null}
+            />
+            <InfoRow label="Convênio" value={insuranceInfo.provider} />
+            <InfoRow label="Plano" value={insuranceInfo.plan} />
+          </dl>
+        </Section>
+      )}
 
       {/* Endereço */}
       {(patient.addressStreet || patient.addressCity) && (

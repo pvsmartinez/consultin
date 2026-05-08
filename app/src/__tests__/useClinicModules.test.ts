@@ -2,7 +2,7 @@
  * Tests for useClinicModules — read/write of clinic feature toggles.
  *
  * Covers:
- *  - hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices flags
+ *  - hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, hasInsurance flags
  *  - enableModule() adds the module to the array
  *  - disableModule() removes the module from the array
  *  - enableModule() no-ops if module already enabled
@@ -65,17 +65,19 @@ describe('useClinicModules', () => {
     expect(result.current.hasWhatsApp).toBe(false)
     expect(result.current.hasFinancial).toBe(false)
     expect(result.current.hasServices).toBe(false)
+    expect(result.current.hasInsurance).toBe(false)
   })
 
   it('returns true flags for enabled modules', () => {
     vi.mocked(useClinic).mockReturnValue({
-      data: { id: 'clinic-1', modulesEnabled: ['rooms', 'financial'] },
+      data: { id: 'clinic-1', modulesEnabled: ['rooms', 'financial', 'insurance'] },
     } as ReturnType<typeof useClinic>)
 
     const { result } = renderHook(() => useClinicModules(), { wrapper: makeWrapper() })
 
     expect(result.current.hasRooms).toBe(true)
     expect(result.current.hasFinancial).toBe(true)
+    expect(result.current.hasInsurance).toBe(true)
     expect(result.current.hasStaff).toBe(false)
     expect(result.current.hasWhatsApp).toBe(false)
   })

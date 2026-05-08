@@ -17,6 +17,12 @@ import { usePatients, usePatient, useFindUserByCpf } from '../../hooks/usePatien
 import { useClinic } from '../../hooks/useClinic'
 import type { PatientInput, Sex } from '../../types'
 import { BR_STATES as BR_STATES_LIST } from '../../utils/constants'
+import {
+  getPatientInsuranceInfo,
+  hasPatientInsuranceInfo,
+  PATIENT_INSURANCE_KEYS,
+  PATIENT_INSURANCE_TYPE_OPTIONS,
+} from '../../utils/patientInsurance'
 
 const BR_STATES = BR_STATES_LIST.map(s => ({ value: s, label: s }))
 
@@ -86,6 +92,7 @@ export default function PatientDrawer({ open, patientId, initialValues, stacked 
 
   const isFieldVisible = (key: string) => clinic?.patientFieldConfig?.[key] !== false
   const customPatientFields = clinic?.customPatientFields ?? []
+  const hasInsuranceModule = clinic?.modulesEnabled?.includes('insurance') ?? false
 
   const [form, setForm]       = useState<PatientInput>(EMPTY_FORM)
   const [saving, setSaving]   = useState(false)
@@ -142,6 +149,34 @@ export default function PatientDrawer({ open, patientId, initialValues, stacked 
 
   const set = (field: keyof PatientInput, value: unknown) =>
     setForm(prev => ({ ...prev, [field]: value || null }))
+  const insuranceInfo = getPatientInsuranceInfo(form.customFields)
+  const showInsuranceSection = hasInsuranceModule || hasPatientInsuranceInfo(form.customFields)
+
+  function setInsuranceCoverageType(value: string) {
+    setForm(prev => ({
+      ...prev,
+      customFields: {
+        ...prev.customFields,
+        [PATIENT_INSURANCE_KEYS.coverageType]: value || null,
+        ...(value === 'insurance'
+          ? null
+          : {
+              [PATIENT_INSURANCE_KEYS.provider]: null,
+              [PATIENT_INSURANCE_KEYS.plan]: null,
+            }),
+      },
+    }))
+  }
+
+  function setInsuranceField(key: string, value: string) {
+    setForm(prev => ({
+      ...prev,
+      customFields: {
+        ...prev.customFields,
+        [key]: value || null,
+      },
+    }))
+  }
 
   const handleCepLookup = useCallback(async (rawCep: string) => {
     set('addressZip', rawCep)
@@ -341,6 +376,34 @@ export default function PatientDrawer({ open, patientId, initialValues, stacked 
                   <Select label="Estado" value={form.addressState ?? ''}
                     onChange={e => set('addressState', e.target.value)}
                     placeholder="UF" options={BR_STATES} />
+                </DrawerSection>
+              )}
+
+              {showInsuranceSection && (
+                <DrawerSection title="Convênio e cobertura">
+                  <Select
+                    label="Forma de atendimento"
+                    value={insuranceInfo.coverageType ?? ''}
+                    onChange={e => setInsuranceCoverageType(e.target.value)}
+                    placeholder="Selecione"
+                    options={PATIENT_INSURANCE_TYPE_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+                  />
+                  {insuranceInfo.coverageType === 'insurance' ? (
+                    <>
+                      <Input
+                        label="Convênio"
+                        value={insuranceInfo.provider ?? ''}
+                        onChange={e => setInsuranceField(PATIENT_INSURANCE_KEYS.provider, e.target.value)}
+                        placeholder="Ex: Unimed"
+                      />
+                      <Input
+                        label="Plano"
+                        value={insuranceInfo.plan ?? ''}
+                        onChange={e => setInsuranceField(PATIENT_INSURANCE_KEYS.plan, e.target.value)}
+                        placeholder="Ex: Empresarial / Premium"
+                      />
+                    </>
+                  ) : null}
                 </DrawerSection>
               )}
 

@@ -7,6 +7,7 @@ import {
   GlobeHemisphereWest,
   ArrowRight,
   FileText,
+  IdentificationCard,
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useClinic } from '../hooks/useClinic'
@@ -68,6 +69,12 @@ const MODULES: ModuleDef[] = [
     label: 'Financeiro',
     description: 'Controle de pagamentos, cobranças e fluxo de caixa da clínica.',
     icon: CurrencyDollar,
+  },
+  {
+    key: 'insurance',
+    label: 'Convênios',
+    description: 'Permite cadastrar se o paciente é particular ou convênio, além do nome do convênio e plano.',
+    icon: IdentificationCard,
   },
 ]
 
@@ -200,7 +207,7 @@ export default function ConfiguracoesPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { data: clinic, isLoading: clinicLoading, update } = useClinic()
-  const { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, enableModule, disableModule } = useClinicModules()
+  const { modules, hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasServices, hasInsurance, enableModule, disableModule } = useClinicModules()
   const [activeTab, setActiveTab] = useState<Tab>('dados')
   const [fieldEntity, setFieldEntity] = useState<SettingsEntity>('pacientes')
   const [toggling, setToggling] = useState<ClinicModule | null>(null)
@@ -228,6 +235,7 @@ export default function ConfiguracoesPage() {
     services:  hasServices,
     whatsapp:  hasWhatsApp,
     financial: hasFinancial,
+    insurance: hasInsurance,
   }
 
   async function handleModuleToggle(key: ClinicModule) {
