@@ -6,7 +6,15 @@ import {
   DEFAULT_CLINIC_DOCUMENT_SIGNING,
   DEFAULT_CLINIC_DOCUMENT_TEMPLATES,
 } from '../types'
-import type { Appointment, Clinic, Patient, Professional, ServiceType } from '../types'
+import type {
+  Appointment,
+  Clinic,
+  InventoryMaterial,
+  InventoryMovement,
+  Patient,
+  Professional,
+  ServiceType,
+} from '../types'
 
 // ─── Appointment ──────────────────────────────────────────────────────────────
 
@@ -105,6 +113,7 @@ export function mapServiceType(row: Record<string, unknown>): ServiceType {
     priceCents:      (row.price_cents as number) ?? null,
     color:           (row.color as string) ?? '#0d9488',
     active:          (row.active as boolean) ?? true,
+    inventorySuggestions: ((row.inventory_suggestions as ServiceType['inventorySuggestions'] | null) ?? []) as ServiceType['inventorySuggestions'],
     createdAt:       row.created_at as string,
   }
 }
@@ -154,5 +163,53 @@ export function mapProfessional(r: Record<string, unknown>): Professional {
     active:       r.active as boolean,
     customFields: (r.custom_fields as Record<string, unknown>) ?? {},
     createdAt:    r.created_at as string,
+  }
+}
+
+// ─── Inventory ──────────────────────────────────────────────────────────────
+
+export function mapInventoryMaterial(row: Record<string, unknown>): InventoryMaterial {
+  return {
+    id:              row.id as string,
+    clinicId:        row.clinic_id as string,
+    createdBy:       row.created_by as string,
+    name:            row.name as string,
+    category:        (row.category as string) ?? null,
+    unit:            (row.unit as string) ?? 'un',
+    sku:             (row.sku as string) ?? null,
+    currentQuantity: Number(row.current_quantity ?? 0),
+    minQuantity:     Number(row.min_quantity ?? 0),
+    idealQuantity:   row.ideal_quantity == null ? null : Number(row.ideal_quantity),
+    notes:           (row.notes as string) ?? null,
+    active:          (row.active as boolean) ?? true,
+    metadata:        (row.metadata as Record<string, unknown>) ?? {},
+    createdAt:       row.created_at as string,
+    updatedAt:       row.updated_at as string,
+  }
+}
+
+export function mapInventoryMovement(row: Record<string, unknown>): InventoryMovement {
+  const material = row.material as Record<string, unknown> | null | undefined
+
+  return {
+    id:               row.id as string,
+    clinicId:         row.clinic_id as string,
+    materialId:       row.material_id as string,
+    createdBy:        row.created_by as string,
+    movementType:     row.movement_type as InventoryMovement['movementType'],
+    quantity:         Number(row.quantity ?? 0),
+    previousQuantity: Number(row.previous_quantity ?? 0),
+    resultingQuantity:Number(row.resulting_quantity ?? 0),
+    reason:           (row.reason as string) ?? null,
+    notes:            (row.notes as string) ?? null,
+    metadata:         (row.metadata as Record<string, unknown>) ?? {},
+    createdAt:        row.created_at as string,
+    updatedAt:        row.updated_at as string,
+    material: material ? {
+      id:       material.id as string,
+      name:     material.name as string,
+      unit:     (material.unit as string) ?? 'un',
+      category: (material.category as string) ?? null,
+    } : null,
   }
 }

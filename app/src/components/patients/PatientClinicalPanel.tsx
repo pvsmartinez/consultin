@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { DownloadSimple, PencilSimple, Plus, Printer, SpinnerGap, Trash, WarningCircle } from '@phosphor-icons/react'
+import { Modal } from '@pvsmartinez/shared/ui'
 import { toast } from 'sonner'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import Input from '../ui/Input'
@@ -398,12 +399,18 @@ function ProsthesisForm({
 function ClinicalItemCard({
   item,
   previewBody,
+  canPrint,
+  onPrint,
+  onDownload,
   onEdit,
   onDelete,
   deleting,
 }: {
   item: PatientClinicalItem
   previewBody: string
+  canPrint: boolean
+  onPrint: (item: PatientClinicalItem) => void
+  onDownload: (item: PatientClinicalItem) => void
   onEdit: (item: PatientClinicalItem) => void
   onDelete: (item: PatientClinicalItem) => void
   deleting: boolean
@@ -465,6 +472,27 @@ function ClinicalItemCard({
         </div>
       )}
       {item.notes && <p className="mt-2 text-sm text-gray-500 whitespace-pre-wrap">{item.notes}</p>}
+
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+        <button
+          type="button"
+          onClick={() => onPrint(item)}
+          disabled={!canPrint}
+          className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          <Printer size={14} />
+          Imprimir
+        </button>
+        <button
+          type="button"
+          onClick={() => onDownload(item)}
+          disabled={!canPrint}
+          className={`${buttonClass} disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          <DownloadSimple size={14} />
+          PDF
+        </button>
+      </div>
     </div>
   )
 }
@@ -529,36 +557,6 @@ function ProsthesisCard({
   )
 }
 
-function Subsection({
-  title,
-  count,
-  actionLabel,
-  onCreate,
-  children,
-}: {
-  title: string
-  count: number
-  actionLabel: string
-  onCreate: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-3 rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-          <p className="text-xs text-gray-400">{count} registro{count === 1 ? '' : 's'}</p>
-        </div>
-        <button onClick={onCreate} className={buttonClass}>
-          <Plus size={14} />
-          {actionLabel}
-        </button>
-      </div>
-      {children}
-    </div>
-  )
-}
-
 function ViewSwitch({
   activeView,
   counts,
@@ -603,26 +601,112 @@ function ViewSwitch({
   )
 }
 
-function QuickActionBar({
-  actions,
+function ActionTile({
+  eyebrow,
+  title,
+  description,
+  countLabel,
+  primaryLabel,
+  onPrimary,
+  secondaryLabel = 'Ver histórico',
+  onSecondary,
+  tone = 'teal',
 }: {
-  actions: Array<{ label: string; onClick: () => void }>
+  eyebrow: string
+  title: string
+  description: string
+  countLabel?: string
+  primaryLabel?: string
+  onPrimary?: () => void
+  secondaryLabel?: string
+  onSecondary?: () => void
+  tone?: 'teal' | 'sky' | 'amber' | 'slate'
 }) {
-  if (actions.length === 0) return null
+  const toneClasses = tone === 'teal'
+    ? {
+        card: 'border-teal-200 bg-teal-50/70',
+        count: 'bg-white text-[#006970]',
+        primary: 'bg-[#006970] text-white hover:bg-[#00545a]',
+        secondary: 'border-teal-200 bg-white text-[#006970] hover:bg-teal-100',
+      }
+    : tone === 'sky'
+      ? {
+          card: 'border-sky-200 bg-sky-50/70',
+          count: 'bg-white text-sky-700',
+          primary: 'bg-sky-700 text-white hover:bg-sky-800',
+          secondary: 'border-sky-200 bg-white text-sky-700 hover:bg-sky-100',
+        }
+      : tone === 'amber'
+        ? {
+            card: 'border-amber-200 bg-amber-50/70',
+            count: 'bg-white text-amber-700',
+            primary: 'bg-amber-600 text-white hover:bg-amber-700',
+            secondary: 'border-amber-200 bg-white text-amber-700 hover:bg-amber-100',
+          }
+        : {
+            card: 'border-gray-200 bg-gray-50/80',
+            count: 'bg-white text-gray-700',
+            primary: 'bg-gray-900 text-white hover:bg-gray-800',
+            secondary: 'border-gray-200 bg-white text-gray-700 hover:bg-gray-100',
+          }
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-2xl border border-gray-200 bg-white p-3">
-      <span className="mr-2 self-center text-xs font-medium uppercase tracking-wide text-gray-400">Atalhos</span>
-      {actions.map(action => (
-        <button
-          key={action.label}
-          type="button"
-          onClick={action.onClick}
-          className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700 transition hover:border-gray-300 hover:bg-gray-100"
-        >
-          {action.label}
-        </button>
-      ))}
+    <div className={`rounded-2xl border p-4 ${toneClasses.card}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">{eyebrow}</p>
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-gray-500">{description}</p>
+        </div>
+        {countLabel ? (
+          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${toneClasses.count}`}>
+            {countLabel}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {primaryLabel && onPrimary ? (
+          <button
+            type="button"
+            onClick={onPrimary}
+            className={`inline-flex min-h-10 items-center rounded-xl px-3 py-2 text-sm font-medium transition ${toneClasses.primary}`}
+          >
+            {primaryLabel}
+          </button>
+        ) : null}
+        {onSecondary ? (
+          <button
+            type="button"
+            onClick={onSecondary}
+            className={`inline-flex min-h-10 items-center rounded-xl border px-3 py-2 text-sm font-medium transition ${toneClasses.secondary}`}
+          >
+            {secondaryLabel}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function SummaryTile({
+  label,
+  value,
+  tone = 'slate',
+}: {
+  label: string
+  value: number
+  tone?: 'slate' | 'sky' | 'amber'
+}) {
+  const toneClasses = tone === 'sky'
+    ? 'border-sky-200 bg-sky-50 text-sky-700'
+    : tone === 'amber'
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : 'border-gray-200 bg-gray-50 text-gray-700'
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClasses}`}>
+      <p className="text-sm font-semibold">{value}</p>
+      <p className="mt-1 text-xs uppercase tracking-wide opacity-80">{label}</p>
     </div>
   )
 }
@@ -650,6 +734,11 @@ export default function PatientClinicalPanel({
   const [clinicalForm, setClinicalForm] = useState<{ id: string | null; value: PatientClinicalItemInput } | null>(null)
   const [prosthesisForm, setProsthesisForm] = useState<{ id: string | null; value: PatientProsthesisInput } | null>(null)
   const [activeView, setActiveView] = useState<PanelView>('request')
+  const [historyExpandedByView, setHistoryExpandedByView] = useState<Record<PanelView, boolean>>({
+    request: false,
+    document: false,
+    prosthesis: false,
+  })
   const [confirmDelete, setConfirmDelete] = useState<
     | { kind: 'item'; id: string; label: string }
     | { kind: 'prosthesis'; id: string; label: string }
@@ -670,10 +759,31 @@ export default function PatientClinicalPanel({
   const prosthesisSaving = createProsthesis.isPending || updateProsthesis.isPending
   const deletingItemId = deleteItem.variables
   const deletingProsthesisId = deleteProsthesis.variables
+  const isClinicalModalOpen = !!clinicalForm
+  const isProsthesisModalOpen = !!prosthesisForm
 
-  function startCreateClinical(category: ClinicalItemCategory) {
+  function closeEditors() {
+    setClinicalForm(null)
+    setProsthesisForm(null)
+  }
+
+  function startCreateClinical(category: ClinicalItemCategory, itemType?: PatientClinicalItem['itemType']) {
+    const initialValue = emptyClinicalItem(category, clinic?.documentTemplates)
+    const nextItemType = itemType ?? initialValue.itemType
+
     setActiveView(category)
-    setClinicalForm({ id: null, value: emptyClinicalItem(category, clinic?.documentTemplates) })
+    setClinicalForm({
+      id: null,
+      value: {
+        ...initialValue,
+        itemType: nextItemType,
+        metadata: {
+          ...initialValue.metadata,
+          printableBody: printablePlaceholder(nextItemType, clinic?.documentTemplates),
+        },
+      },
+    })
+    setProsthesisForm(null)
   }
 
   function startEditClinical(item: PatientClinicalItem) {
@@ -693,6 +803,7 @@ export default function PatientClinicalPanel({
         metadata: item.metadata,
       },
     })
+    setProsthesisForm(null)
   }
 
   function startEditProsthesis(prosthesis: PatientProsthesis) {
@@ -711,6 +822,7 @@ export default function PatientClinicalPanel({
         metadata: prosthesis.metadata,
       },
     })
+    setClinicalForm(null)
   }
 
   async function submitClinical() {
@@ -786,25 +898,18 @@ export default function PatientClinicalPanel({
     setProsthesisForm(null)
   }
 
-  const quickActions = activeView === 'request'
-    ? [
-        { label: 'Raio X panorâmico', onClick: () => startPreset('panoramic_xray') },
-        { label: 'Receita médica', onClick: () => startPreset('prescription') },
-      ]
-    : activeView === 'document'
-      ? [
-          { label: 'Atestado de trabalho', onClick: () => startPreset('certificate') },
-          { label: 'Termo de consentimento', onClick: () => startPreset('consent') },
-        ]
-      : [
-          { label: 'Nova prótese', onClick: () => setProsthesisForm({ id: null, value: emptyProsthesis() }) },
-        ]
+  function toggleHistory(view: PanelView, expanded?: boolean) {
+    setHistoryExpandedByView(current => ({
+      ...current,
+      [view]: expanded ?? !current[view],
+    }))
+  }
 
-  function renderClinicalList(list: PatientClinicalItem[]) {
+  function renderClinicalList(list: PatientClinicalItem[], emptyMessage: string) {
     if (list.length === 0) {
       return (
         <div className="rounded-xl bg-white px-4 py-6 text-center text-sm text-gray-400">
-          Nenhum registro cadastrado ainda nesta área.
+          {emptyMessage}
         </div>
       )
     }
@@ -812,30 +917,22 @@ export default function PatientClinicalPanel({
     return (
       <div className="space-y-3">
         {list.map(item => (
-          <div key={item.id} className="space-y-2">
-            <div className="flex flex-wrap justify-end gap-2">
-              <button onClick={() => handlePrint(item)} className={buttonClass}>
-                <Printer size={14} />
-                Imprimir
-              </button>
-              <button onClick={() => handleDownload(item)} className={buttonClass}>
-                <DownloadSimple size={14} />
-                PDF
-              </button>
-            </div>
-            <ClinicalItemCard
-              item={item}
-              previewBody={buildPatientClinicalDocumentBody(
-                item,
-                patient,
-                clinic,
-                item.issuedOn ? formatDate(`${item.issuedOn}T00:00:00`) : formatDate(new Date().toISOString()),
-              )}
-              onEdit={startEditClinical}
-              onDelete={current => setConfirmDelete({ kind: 'item', id: current.id, label: current.title })}
-              deleting={deletingItemId === item.id}
-            />
-          </div>
+          <ClinicalItemCard
+            key={item.id}
+            item={item}
+            previewBody={buildPatientClinicalDocumentBody(
+              item,
+              patient,
+              clinic,
+              item.issuedOn ? formatDate(`${item.issuedOn}T00:00:00`) : formatDate(new Date().toISOString()),
+            )}
+            canPrint={hasPrintableClinicalContent(item, clinic)}
+            onPrint={handlePrint}
+            onDownload={handleDownload}
+            onEdit={startEditClinical}
+            onDelete={current => setConfirmDelete({ kind: 'item', id: current.id, label: current.title })}
+            deleting={deletingItemId === item.id}
+          />
         ))}
       </div>
     )
@@ -843,16 +940,50 @@ export default function PatientClinicalPanel({
 
   const loading = itemsQuery.isPending || prosthesesQuery.isPending
   const hasError = itemsQuery.isError || prosthesesQuery.isError
+  const requestTypeCounts = {
+    examRequest: requests.filter(item => item.itemType === 'exam_request').length,
+    prescription: requests.filter(item => item.itemType === 'prescription').length,
+    custom: requests.filter(item => item.itemType === 'custom').length,
+  }
+  const documentTypeCounts = {
+    consentTerm: documents.filter(item => item.itemType === 'consent_term').length,
+    certificate: documents.filter(item => item.itemType === 'medical_certificate').length,
+    prescription: documents.filter(item => item.itemType === 'prescription').length,
+    custom: documents.filter(item => item.itemType === 'custom').length,
+  }
+  const prosthesisSummary = {
+    active: prostheses.filter(prosthesis => ['planned', 'requested', 'in_production', 'maintenance'].includes(prosthesis.status)).length,
+    ready: prostheses.filter(prosthesis => prosthesis.status === 'ready').length,
+    installed: prostheses.filter(prosthesis => prosthesis.status === 'installed').length,
+  }
+  const visibleRequests = historyExpandedByView.request ? requests : requests.slice(0, 4)
+  const visibleDocuments = historyExpandedByView.document ? documents : documents.slice(0, 4)
+  const visibleProstheses = historyExpandedByView.prosthesis ? prostheses : prostheses.slice(0, 4)
+  const clinicalModalTitle = clinicalForm
+    ? clinicalForm.id
+      ? activeView === 'request'
+        ? 'Editar pedido ou prescricao'
+        : 'Editar documento'
+      : activeView === 'request'
+        ? 'Novo pedido ou prescricao'
+        : 'Novo documento'
+    : ''
+  const prosthesisModalTitle = prosthesisForm
+    ? prosthesisForm.id
+      ? 'Editar protese'
+      : 'Nova protese'
+    : ''
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
-        Cadastre pedidos, documentos e próteses com status e datas. PDFs, fotos e arquivos finais continuam na seção de anexos abaixo.
+      <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4">
+        <p className="text-sm font-semibold text-gray-800">Escolha uma ação clínica</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Deixe o histórico em segundo plano e comece direto pelo que a equipe mais faz no atendimento.
+        </p>
       </div>
 
       <ViewSwitch activeView={activeView} counts={counts} onChange={setActiveView} />
-
-      <QuickActionBar actions={quickActions} />
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-gray-400">
@@ -867,86 +998,200 @@ export default function PatientClinicalPanel({
       ) : (
         <>
           {activeView === 'request' && (
-            <Subsection
-              title="Pedidos e prescrições"
-              count={requests.length}
-              actionLabel="Novo pedido"
-              onCreate={() => startCreateClinical('request')}
-            >
-              {clinicalForm?.value.category === 'request' && (
-                <ClinicalItemForm
-                  category="request"
-                  clinicTemplates={clinic?.documentTemplates}
-                  value={clinicalForm.value}
-                  saving={clinicalSaving}
-                  onChange={patch => setClinicalForm(current => current ? { ...current, value: { ...current.value, ...patch } } : current)}
-                  onCancel={() => setClinicalForm(null)}
-                  onSubmit={submitClinical}
+            <>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <ActionTile
+                  eyebrow="Pedido"
+                  title="Pedido de exame"
+                  description="Abra rápido um pedido para raio X, exames laboratoriais ou avaliações complementares."
+                  countLabel={`${requestTypeCounts.examRequest} registro${requestTypeCounts.examRequest === 1 ? '' : 's'}`}
+                  primaryLabel="Novo pedido"
+                  onPrimary={() => startPreset('panoramic_xray')}
+                  onSecondary={() => toggleHistory('request', true)}
                 />
+                <ActionTile
+                  eyebrow="Prescrição"
+                  title="Receita ou remédio"
+                  description="Crie uma receita com texto oficial pronto para revisão e impressão."
+                  countLabel={`${requestTypeCounts.prescription} registro${requestTypeCounts.prescription === 1 ? '' : 's'}`}
+                  primaryLabel="Nova receita"
+                  onPrimary={() => startPreset('prescription')}
+                  onSecondary={() => toggleHistory('request', true)}
+                  tone="sky"
+                />
+                <ActionTile
+                  eyebrow="Flexível"
+                  title="Pedido personalizado"
+                  description="Quando o pedido não se encaixa em um modelo padrão, comece por aqui."
+                  countLabel={`${requestTypeCounts.custom} registro${requestTypeCounts.custom === 1 ? '' : 's'}`}
+                  primaryLabel="Novo personalizado"
+                  onPrimary={() => startCreateClinical('request', 'custom')}
+                  onSecondary={() => toggleHistory('request', true)}
+                  tone="slate"
+                />
+              </div>
+
+              {clinicalForm?.value.category === 'request' && (
+                <div className="rounded-2xl border border-teal-200 bg-teal-50/50 px-4 py-3 text-sm text-teal-900">
+                  <p className="font-medium">Editor aberto</p>
+                  <p className="mt-1 text-teal-800/80">Finalize ou feche o pedido em aberto para voltar ao histórico.</p>
+                </div>
               )}
 
-              {renderClinicalList(requests)}
-            </Subsection>
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Histórico de pedidos</h3>
+                    <p className="text-sm text-gray-500">Os registros mais recentes ficam na frente para a equipe agir rápido.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => startCreateClinical('request')} className={buttonClass}>
+                      <Plus size={14} />
+                      Novo pedido manual
+                    </button>
+                    {requests.length > 4 ? (
+                      <button type="button" onClick={() => toggleHistory('request')} className={buttonClass}>
+                        {historyExpandedByView.request ? 'Mostrar menos' : 'Ver todos'}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {renderClinicalList(visibleRequests, 'Nenhum pedido cadastrado ainda.')}
+              </div>
+            </>
           )}
 
           {activeView === 'document' && (
-            <Subsection
-              title="Documentos clínicos"
-              count={documents.length}
-              actionLabel="Novo documento"
-              onCreate={() => startCreateClinical('document')}
-            >
-              {clinicalForm?.value.category === 'document' && (
-                <ClinicalItemForm
-                  category="document"
-                  clinicTemplates={clinic?.documentTemplates}
-                  value={clinicalForm.value}
-                  saving={clinicalSaving}
-                  onChange={patch => setClinicalForm(current => current ? { ...current, value: { ...current.value, ...patch } } : current)}
-                  onCancel={() => setClinicalForm(null)}
-                  onSubmit={submitClinical}
+            <>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <ActionTile
+                  eyebrow="Documento"
+                  title="Termo de consentimento"
+                  description="Abra o modelo mais comum já pronto para revisão final e impressão."
+                  countLabel={`${documentTypeCounts.consentTerm} registro${documentTypeCounts.consentTerm === 1 ? '' : 's'}`}
+                  primaryLabel="Novo termo"
+                  onPrimary={() => startPreset('consent')}
+                  onSecondary={() => toggleHistory('document', true)}
                 />
+                <ActionTile
+                  eyebrow="Documento"
+                  title="Atestado"
+                  description="Crie rapidamente um atestado de comparecimento ou afastamento."
+                  countLabel={`${documentTypeCounts.certificate} registro${documentTypeCounts.certificate === 1 ? '' : 's'}`}
+                  primaryLabel="Novo atestado"
+                  onPrimary={() => startPreset('certificate')}
+                  onSecondary={() => toggleHistory('document', true)}
+                  tone="amber"
+                />
+                <ActionTile
+                  eyebrow="Documento"
+                  title="Receituário"
+                  description="Quando a clínica preferir emitir a prescrição como documento formal."
+                  countLabel={`${documentTypeCounts.prescription} registro${documentTypeCounts.prescription === 1 ? '' : 's'}`}
+                  primaryLabel="Novo receituário"
+                  onPrimary={() => startCreateClinical('document', 'prescription')}
+                  onSecondary={() => toggleHistory('document', true)}
+                  tone="sky"
+                />
+                <ActionTile
+                  eyebrow="Flexível"
+                  title="Personalizado"
+                  description="Termos específicos, contratos e documentos livres em um fluxo só."
+                  countLabel={`${documentTypeCounts.custom} registro${documentTypeCounts.custom === 1 ? '' : 's'}`}
+                  primaryLabel="Novo personalizado"
+                  onPrimary={() => startCreateClinical('document', 'custom')}
+                  onSecondary={() => toggleHistory('document', true)}
+                  tone="slate"
+                />
+              </div>
+
+              {clinicalForm?.value.category === 'document' && (
+                <div className="rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-3 text-sm text-sky-900">
+                  <p className="font-medium">Editor aberto</p>
+                  <p className="mt-1 text-sky-800/80">O documento esta sendo ajustado em modal para a tela continuar limpa.</p>
+                </div>
               )}
 
-              {renderClinicalList(documents)}
-            </Subsection>
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Histórico de documentos</h3>
+                    <p className="text-sm text-gray-500">Atestados, termos e emitidos mais recentes em um lugar só.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => startCreateClinical('document')} className={buttonClass}>
+                      <Plus size={14} />
+                      Novo documento manual
+                    </button>
+                    {documents.length > 4 ? (
+                      <button type="button" onClick={() => toggleHistory('document')} className={buttonClass}>
+                        {historyExpandedByView.document ? 'Mostrar menos' : 'Ver todos'}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+                {renderClinicalList(visibleDocuments, 'Nenhum documento cadastrado ainda.')}
+              </div>
+            </>
           )}
 
           {activeView === 'prosthesis' && (
-            <Subsection
-              title="Controle de próteses"
-              count={prostheses.length}
-              actionLabel="Nova prótese"
-              onCreate={() => setProsthesisForm({ id: null, value: emptyProsthesis() })}
-            >
-              {prosthesisForm && (
-                <ProsthesisForm
-                  value={prosthesisForm.value}
-                  saving={prosthesisSaving}
-                  onChange={patch => setProsthesisForm(current => current ? { ...current, value: { ...current.value, ...patch } } : current)}
-                  onCancel={() => setProsthesisForm(null)}
-                  onSubmit={submitProsthesis}
+            <>
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+                <ActionTile
+                  eyebrow="Prótese"
+                  title="Cadastrar nova prótese"
+                  description="Registre região, laboratório, prazos e acompanhe a evolução até a instalação."
+                  countLabel={`${prostheses.length} registro${prostheses.length === 1 ? '' : 's'}`}
+                  primaryLabel="Nova prótese"
+                  onPrimary={() => setProsthesisForm({ id: null, value: emptyProsthesis() })}
+                  onSecondary={() => toggleHistory('prosthesis', true)}
+                  tone="amber"
                 />
+                <SummaryTile label="Em andamento" value={prosthesisSummary.active} tone="amber" />
+                <SummaryTile label="Prontas" value={prosthesisSummary.ready} tone="sky" />
+                <SummaryTile label="Instaladas" value={prosthesisSummary.installed} />
+              </div>
+
+              {prosthesisForm && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
+                  <p className="font-medium">Editor aberto</p>
+                  <p className="mt-1 text-amber-800/80">O cadastro da protese esta em modal para nao disputar espaco com o historico.</p>
+                </div>
               )}
 
-              {prostheses.length === 0 ? (
-                <div className="rounded-xl bg-white px-4 py-6 text-center text-sm text-gray-400">
-                  Nenhuma prótese cadastrada ainda.
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">Histórico de próteses</h3>
+                    <p className="text-sm text-gray-500">Acompanhe o que está em produção, pronto ou já instalado.</p>
+                  </div>
+                  {prostheses.length > 4 ? (
+                    <button type="button" onClick={() => toggleHistory('prosthesis')} className={buttonClass}>
+                      {historyExpandedByView.prosthesis ? 'Mostrar menos' : 'Ver todos'}
+                    </button>
+                  ) : null}
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {prostheses.map(prosthesis => (
-                    <ProsthesisCard
-                      key={prosthesis.id}
-                      prosthesis={prosthesis}
-                      onEdit={startEditProsthesis}
-                      onDelete={current => setConfirmDelete({ kind: 'prosthesis', id: current.id, label: current.name })}
-                      deleting={deletingProsthesisId === prosthesis.id}
-                    />
-                  ))}
-                </div>
-              )}
-            </Subsection>
+
+                {prostheses.length === 0 ? (
+                  <div className="rounded-xl bg-white px-4 py-6 text-center text-sm text-gray-400">
+                    Nenhuma prótese cadastrada ainda.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {visibleProstheses.map(prosthesis => (
+                      <ProsthesisCard
+                        key={prosthesis.id}
+                        prosthesis={prosthesis}
+                        onEdit={startEditProsthesis}
+                        onDelete={current => setConfirmDelete({ kind: 'prosthesis', id: current.id, label: current.name })}
+                        deleting={deletingProsthesisId === prosthesis.id}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </>
       )}
@@ -960,6 +1205,52 @@ export default function PatientClinicalPanel({
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      <Modal
+        open={isClinicalModalOpen}
+        onClose={closeEditors}
+        title={clinicalModalTitle}
+        maxWidth="xl"
+      >
+        {clinicalForm ? (
+          <div className="max-h-[80vh] overflow-y-auto p-5">
+            <div className="mb-4 rounded-2xl border border-teal-100 bg-teal-50/50 px-4 py-3 text-sm text-teal-900">
+              Preencha apenas o necessario agora. O historico continua na tela principal para consulta rapida.
+            </div>
+            <ClinicalItemForm
+              category={clinicalForm.value.category}
+              clinicTemplates={clinic?.documentTemplates}
+              value={clinicalForm.value}
+              saving={clinicalSaving}
+              onChange={patch => setClinicalForm(current => current ? { ...current, value: { ...current.value, ...patch } } : current)}
+              onCancel={closeEditors}
+              onSubmit={submitClinical}
+            />
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={isProsthesisModalOpen}
+        onClose={closeEditors}
+        title={prosthesisModalTitle}
+        maxWidth="lg"
+      >
+        {prosthesisForm ? (
+          <div className="max-h-[80vh] overflow-y-auto p-5">
+            <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
+              Registre prazos e observacoes da protese sem poluir a tela principal do paciente.
+            </div>
+            <ProsthesisForm
+              value={prosthesisForm.value}
+              saving={prosthesisSaving}
+              onChange={patch => setProsthesisForm(current => current ? { ...current, value: { ...current.value, ...patch } } : current)}
+              onCancel={closeEditors}
+              onSubmit={submitProsthesis}
+            />
+          </div>
+        ) : null}
+      </Modal>
     </div>
   )
 }

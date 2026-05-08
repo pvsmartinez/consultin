@@ -12,6 +12,7 @@ import {
   Plus,
   CreditCard,
   CurrencyDollar,
+  Package,
   List,
   X,
 } from '@phosphor-icons/react'
@@ -56,7 +57,7 @@ const renderNavIcon = (Icon: NavIcon, active: boolean, size = 20) => (
 export default function AppLayout({ children }: AppLayoutProps) {
   const { signOut, hasPermission, profile, role, session } = useAuthContext()
   const { data: clinic } = useClinic()
-  const { hasRooms, hasStaff, hasWhatsApp, hasFinancial } = useClinicModules()
+  const { hasRooms, hasStaff, hasWhatsApp, hasFinancial, hasInventory } = useClinicModules()
   const navigate = useNavigate()
   const location = useLocation()
   const { unreadCount } = useClinicNotifications(navigate)
@@ -94,6 +95,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { to: '/pacientes',      icon: Users,           label: 'Pacientes',    show: hasPermission('canViewPatients') },
     { to: '/equipe',         icon: UsersFour,       label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
     { to: '/salas',          icon: Buildings,       label: 'Salas',        show: hasRooms },
+    { to: '/estoque',        icon: Package,         label: 'Estoque',      show: hasInventory && hasPermission('canManageAgenda') },
     { to: '/financeiro',     icon: CurrencyDollar,  label: 'Financeiro',   show: hasFinancial && hasPermission('canViewFinancial') },
     { to: '/whatsapp',       icon: WhatsappLogo,    label: 'Mensagens',    show: hasWhatsApp && hasPermission('canViewWhatsApp') },
   ].filter(item => item.show)

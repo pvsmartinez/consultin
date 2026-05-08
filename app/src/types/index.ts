@@ -291,6 +291,11 @@ export const APPOINTMENT_STATUS_VARIANTS: Record<AppointmentStatus, 'default' | 
 }
 
 // ─── Service Type (appointment type with price + duration + color) ──────────
+export interface ServiceTypeInventorySuggestion {
+  materialId: string
+  quantity: number
+}
+
 export interface ServiceType {
   id: string
   clinicId: string
@@ -299,10 +304,18 @@ export interface ServiceType {
   priceCents: number | null   // null = define at booking
   color: string               // hex
   active: boolean
+  inventorySuggestions?: ServiceTypeInventorySuggestion[]
   createdAt: string
 }
 
-export type ServiceTypeInput = Omit<ServiceType, 'id' | 'clinicId' | 'createdAt'>
+export interface ServiceTypeInput {
+  name: string
+  durationMinutes: number
+  priceCents: number | null
+  color: string
+  active: boolean
+  inventorySuggestions?: ServiceTypeInventorySuggestion[]
+}
 
 export const SERVICE_TYPE_COLORS = [
   '#0d9488', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
@@ -871,4 +884,74 @@ export const PROSTHESIS_STATUS_OPTIONS: { value: ProsthesisStatus; label: string
   { value: 'installed', label: PROSTHESIS_STATUS_LABELS.installed },
   { value: 'maintenance', label: PROSTHESIS_STATUS_LABELS.maintenance },
   { value: 'cancelled', label: PROSTHESIS_STATUS_LABELS.cancelled },
+]
+
+// ─── Inventory ──────────────────────────────────────────────────────────────
+export type InventoryMovementType = 'in' | 'out' | 'adjustment'
+
+export interface InventoryMaterial {
+  id: string
+  clinicId: string
+  createdBy: string
+  name: string
+  category: string | null
+  unit: string
+  sku: string | null
+  currentQuantity: number
+  minQuantity: number
+  idealQuantity: number | null
+  notes: string | null
+  active: boolean
+  metadata: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+}
+
+export type InventoryMaterialInput = Omit<
+  InventoryMaterial,
+  'id' | 'clinicId' | 'createdBy' | 'createdAt' | 'updatedAt'
+>
+
+export interface InventoryMovement {
+  id: string
+  clinicId: string
+  materialId: string
+  createdBy: string
+  movementType: InventoryMovementType
+  quantity: number
+  previousQuantity: number
+  resultingQuantity: number
+  reason: string | null
+  notes: string | null
+  metadata: Record<string, unknown>
+  createdAt: string
+  updatedAt: string
+  material: Pick<InventoryMaterial, 'id' | 'name' | 'unit' | 'category'> | null
+}
+
+export interface InventoryMovementInput {
+  materialId: string
+  movementType: InventoryMovementType
+  quantity: number
+  reason?: string | null
+  notes?: string | null
+  metadata?: Record<string, unknown>
+}
+
+export const INVENTORY_MOVEMENT_TYPE_LABELS: Record<InventoryMovementType, string> = {
+  in: 'Entrada',
+  out: 'Uso / saída',
+  adjustment: 'Ajuste',
+}
+
+export const INVENTORY_MOVEMENT_TYPE_COLORS: Record<InventoryMovementType, string> = {
+  in: 'bg-emerald-100 text-emerald-700',
+  out: 'bg-amber-100 text-amber-700',
+  adjustment: 'bg-sky-100 text-sky-700',
+}
+
+export const INVENTORY_MOVEMENT_TYPE_OPTIONS: { value: InventoryMovementType; label: string }[] = [
+  { value: 'in', label: INVENTORY_MOVEMENT_TYPE_LABELS.in },
+  { value: 'out', label: INVENTORY_MOVEMENT_TYPE_LABELS.out },
+  { value: 'adjustment', label: INVENTORY_MOVEMENT_TYPE_LABELS.adjustment },
 ]

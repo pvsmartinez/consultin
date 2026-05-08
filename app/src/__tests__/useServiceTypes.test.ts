@@ -31,6 +31,7 @@ vi.mock('../utils/mappers', () => ({
     priceCents: row.price_cents ?? null,
     color: row.color,
     active: row.active,
+    inventorySuggestions: row.inventory_suggestions ?? [],
   }),
 }))
 
@@ -62,6 +63,7 @@ describe('useServiceTypes', () => {
             price_cents: 12000,
             color: '#0ea5b0',
             active: true,
+            inventory_suggestions: [],
           }],
           error: null,
         }).then(resolve, reject)
@@ -87,6 +89,7 @@ describe('useServiceTypes', () => {
         price_cents: 12000,
         color: '#0ea5b0',
         active: true,
+        inventory_suggestions: [],
       },
       error: null,
     })
@@ -105,6 +108,7 @@ describe('useServiceTypes', () => {
         priceCents: 12000,
         color: '#0ea5b0',
         active: true,
+        inventorySuggestions: [],
       })
 
       expect(created.name).toBe('Avaliação')
@@ -114,6 +118,7 @@ describe('useServiceTypes', () => {
       clinic_id: 'clinic-1',
       duration_minutes: 45,
       price_cents: 12000,
+        inventory_suggestions: [],
     }))
     expect(invalidateSpy).toHaveBeenCalled()
   })
@@ -128,6 +133,7 @@ describe('useServiceTypes', () => {
         price_cents: 9000,
         color: '#111827',
         active: false,
+        inventory_suggestions: [],
       },
       error: null,
     })

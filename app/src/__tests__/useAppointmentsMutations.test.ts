@@ -189,8 +189,8 @@ describe('useUpdateAppointmentStatus', () => {
 
     expect(updateMock).toHaveBeenCalledWith({ status: 'completed' })
     expect(eqMock).toHaveBeenCalledWith('id', 'appt-1')
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments'] })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['today-appointments'] })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard-clinic-kpis'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments', 'clinic-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['today-appointments', 'clinic-1'] })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard-clinic-kpis', 'clinic-1'] })
   })
 })

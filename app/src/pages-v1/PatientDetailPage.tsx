@@ -65,16 +65,18 @@ function InfoRow({ label, value, copyable }: { label: string; value: string | nu
 function Section({
   title,
   description,
+  sectionId,
   children,
   className = '',
 }: {
   title: string
   description?: string
+  sectionId?: string
   children: React.ReactNode
   className?: string
 }) {
   return (
-    <div className={`rounded-2xl border border-gray-200 bg-white p-5 ${className}`.trim()}>
+    <div id={sectionId} className={`scroll-mt-24 rounded-2xl border border-gray-200 bg-white p-5 ${className}`.trim()}>
       <div className="mb-4 space-y-1">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{title}</h2>
         {description && <p className="text-sm text-gray-400">{description}</p>}
@@ -124,6 +126,48 @@ export default function PatientDetailPage() {
     )
     .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
   const historyAppointments = appointments.filter(appointment => !upcomingAppointments.some(upcoming => upcoming.id === appointment.id))
+
+  function scrollToSection(sectionId: string) {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const quickActions = [
+    {
+      title: 'Agendar retorno',
+      description: 'Abrir o agendamento com o paciente já selecionado.',
+      actionLabel: 'Agendar agora',
+      onClick: () => setScheduling(true),
+      tone: 'teal',
+    },
+    {
+      title: 'Documentos e pedidos',
+      description: 'Emitir atestado, termo, receita e pedidos sem procurar a seção.',
+      actionLabel: 'Ir para documentos',
+      onClick: () => scrollToSection('patient-clinical-section'),
+      tone: 'sky',
+    },
+    {
+      title: 'Prontuário rápido',
+      description: 'Pular direto para notas, observações clínicas e anexos de atendimento.',
+      actionLabel: 'Abrir prontuário',
+      onClick: () => scrollToSection('patient-records-section'),
+      tone: 'amber',
+    },
+    {
+      title: 'Editar cadastro',
+      description: 'Atualizar telefone, convênio, endereço e demais dados da ficha.',
+      actionLabel: 'Editar ficha',
+      onClick: () => setEditDrawerOpen(true),
+      tone: 'slate',
+    },
+  ] as const
+
+  const sidebarActions = [
+    { label: 'Consultas', onClick: () => scrollToSection('patient-appointments-section') },
+    { label: 'Documentos', onClick: () => scrollToSection('patient-clinical-section') },
+    { label: 'Prontuario', onClick: () => scrollToSection('patient-records-section') },
+    { label: 'Arquivos', onClick: () => scrollToSection('patient-files-section') },
+  ] as const
 
   function renderAppointmentsList(list: typeof appointments, emptyMessage: string) {
     if (list.length === 0) {
@@ -239,11 +283,47 @@ export default function PatientDetailPage() {
         )}
       </div>
 
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {quickActions.map(action => {
+            const toneClasses = action.tone === 'teal'
+              ? 'border-teal-200 bg-white'
+              : action.tone === 'sky'
+                ? 'border-sky-200 bg-sky-50/70'
+                : action.tone === 'amber'
+                  ? 'border-amber-200 bg-amber-50/70'
+                  : 'border-gray-200 bg-gray-50/80'
+
+            const buttonClasses = action.tone === 'teal'
+              ? 'border-teal-200 bg-teal-50 text-[#006970] hover:bg-teal-100'
+              : action.tone === 'sky'
+                ? 'border-sky-200 bg-white text-sky-700 hover:bg-sky-100'
+                : action.tone === 'amber'
+                  ? 'border-amber-200 bg-white text-amber-700 hover:bg-amber-100'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+
+            return (
+              <button
+                key={action.title}
+                type="button"
+                onClick={action.onClick}
+                className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${toneClasses}`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">Ação rápida</p>
+                <h2 className="mt-2 text-base font-semibold text-gray-900">{action.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-gray-500">{action.description}</p>
+                <span className={`mt-4 inline-flex min-h-10 items-center rounded-xl border px-3 py-2 text-sm font-medium transition ${buttonClasses}`}>
+                  {action.actionLabel}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <div className="space-y-4 xl:order-2">
-          <Section title="Consultas" description="Agenda futura e histórico recente do paciente.">
+          <Section sectionId="patient-appointments-section" title="Consultas" description="Agenda futura e histórico recente do paciente.">
         {loadingApts ? (
           <p className="text-sm text-gray-400">Carregando...</p>
         ) : appointments.length === 0 ? (
@@ -265,7 +345,7 @@ export default function PatientDetailPage() {
         )}
           </Section>
 
-          <Section title="Pedidos, Documentos e Próteses" description="Fluxo clínico do paciente e emissão de documentos.">
+          <Section sectionId="patient-clinical-section" title="Pedidos, Documentos e Próteses" description="Fluxo clínico do paciente e emissão de documentos.">
             <PatientClinicalPanel
               patientId={id!}
               patient={{
@@ -286,11 +366,11 @@ export default function PatientDetailPage() {
             />
           </Section>
 
-          <Section title="Anotações e Exames" description="Notas clínicas, registros rápidos e anexos do prontuário.">
+          <Section sectionId="patient-records-section" title="Anotações e Exames" description="Notas clínicas, registros rápidos e anexos do prontuário.">
             <PatientRecordsPanel patientId={id!} />
           </Section>
 
-          <Section title="Arquivos e Documentos" description="Uploads finais e documentos vinculados ao paciente.">
+          <Section sectionId="patient-files-section" title="Arquivos e Documentos" description="Uploads finais e documentos vinculados ao paciente.">
             {clinic ? (
               <PatientFilesPanel patientId={id!} clinicId={clinic.id} />
             ) : (
@@ -299,7 +379,22 @@ export default function PatientDetailPage() {
           </Section>
         </div>
 
-        <div className="space-y-4 xl:order-1">
+        <div className="space-y-4 self-start xl:order-1 xl:sticky xl:top-6">
+          <Section title="Navegacao Rapida" description="Atalhos para as areas mais usadas durante o atendimento.">
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-1">
+              {sidebarActions.map(action => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.onClick}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-300 hover:bg-gray-100"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </Section>
+
           <Section title="Dados Pessoais" description="Identificação básica e dados rápidos para recepção.">
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-1">
               <InfoRow label="CPF" value={patient.cpf} copyable />

@@ -5,6 +5,7 @@ import { useAuthContext } from '../contexts/AuthContext'
 import { mapServiceType } from '../utils/mappers'
 import type { ServiceType, ServiceTypeInput } from '../types'
 import type { Database } from '../types/database'
+import type { Json } from '../types/database'
 
 export function useServiceTypes() {
   const { profile } = useAuthContext()
@@ -41,6 +42,7 @@ export function useCreateServiceType() {
           price_cents:      input.priceCents ?? null,
           color:            input.color,
           active:           input.active,
+          inventory_suggestions: (input.inventorySuggestions ?? []) as unknown as Json,
         })
         .select()
         .single()
@@ -65,6 +67,7 @@ export function useUpdateServiceType() {
       if (input.priceCents       !== undefined) update.price_cents      = input.priceCents
       if (input.color            !== undefined) update.color            = input.color
       if (input.active           !== undefined) update.active           = input.active
+      if (input.inventorySuggestions !== undefined) update.inventory_suggestions = input.inventorySuggestions as unknown as Json
 
       const { data, error } = await supabase
         .from('service_types')

@@ -55,6 +55,9 @@ export const PAYMENT_METHOD_LABELS: Record<AppointmentPaymentMethod, string> = {
 
 export function useMarkPaid() {
   const qc = useQueryClient()
+  const { profile } = useAuthContext()
+  const clinicId = profile?.clinicId
+
   return useMutation({
     mutationFn: async ({
       id,
@@ -77,9 +80,17 @@ export function useMarkPaid() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.financial.all() })
-      qc.invalidateQueries({ queryKey: QK.appointments.all() })
-      qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
+      if (clinicId) {
+        qc.invalidateQueries({ queryKey: QK.financial.forClinic(clinicId) })
+        qc.invalidateQueries({ queryKey: QK.appointments.forClinic(clinicId) })
+        qc.invalidateQueries({ queryKey: QK.appointments.today(clinicId) })
+        qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIs(clinicId) })
+      } else {
+        qc.invalidateQueries({ queryKey: QK.financial.all() })
+        qc.invalidateQueries({ queryKey: QK.appointments.all() })
+        qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
+      }
+
       qc.invalidateQueries({ queryKey: QK.dashboard.profKPIsAll() })
     },
   })

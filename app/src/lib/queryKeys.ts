@@ -98,6 +98,7 @@ export const QK = {
   financial: {
     /** Prefix — invalidates every ['financial', ...] entry */
     all:           ()                                              => ['financial']                             as const,
+    forClinic:     (clinicId: string | null | undefined)           => ['financial', clinicId]                   as const,
     monthly:       (clinicId: string | null | undefined, monthStart: string)                            => ['financial', clinicId, monthStart]                as const,
     report:        (clinicId: string | null | undefined, monthStart: string, profId: string)            => ['report', clinicId, monthStart, profId]           as const,
     adminSummary:  (clinicId: string | null | undefined, referenceDate: string, profId?: string)        => ['financial-admin-summary', clinicId, referenceDate, profId ?? 'all'] as const,
@@ -109,6 +110,16 @@ export const QK = {
   // ── Clinic config ─────────────────────────────────────────────
   services: {
     types: (clinicId: string | null | undefined) => ['service-types', clinicId] as const,
+  },
+
+  inventory: {
+    materials: (clinicId: string | null | undefined) => ['inventory-materials', clinicId] as const,
+    movementsAll: (clinicId: string | null | undefined) => ['inventory-movements', clinicId] as const,
+    movements: (clinicId: string | null | undefined, materialId?: string | null, limit = 20) =>
+      ['inventory-movements', clinicId, materialId ?? 'all', limit] as const,
+    appointmentMovementsAll: (clinicId: string | null | undefined) => ['inventory-movements-appointment', clinicId] as const,
+    appointmentMovements: (clinicId: string | null | undefined, appointmentId: string | null | undefined) =>
+      ['inventory-movements-appointment', clinicId, appointmentId] as const,
   },
 
   // ── WhatsApp ──────────────────────────────────────────────────

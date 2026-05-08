@@ -7,6 +7,7 @@ import { mapAppointment } from '../utils/mappers'
 export function usePatientAppointments(patientId: string) {
   const query = useQuery({
     queryKey: QK.patients.appointments(patientId),
+    staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')

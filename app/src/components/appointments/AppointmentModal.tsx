@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { FieldErrors } from 'react-hook-form'
-import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard } from '@phosphor-icons/react'
+import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
@@ -21,14 +21,17 @@ import { useRooms } from '../../hooks/useRooms'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useServiceTypes } from '../../hooks/useServiceTypes'
+import { useAppointmentInventoryMovements, useCreateInventoryMovement, useInventoryMaterials } from '../../hooks/useInventory'
 import { useAuthContext } from '../../contexts/AuthContext'
 import PatientDrawer from '../patients/PatientDrawer'
 import {
   APPOINTMENT_STATUS_LABELS,
+  INVENTORY_MOVEMENT_TYPE_LABELS,
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
   type Appointment,
   type AppointmentStatus,
+  type ServiceTypeInventorySuggestion,
 } from '../../types'
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -133,12 +136,15 @@ export default function AppointmentModal({
   const isEditing = !!appointment
   const navigate = useNavigate()
   const { hasPermission } = useAuthContext()
-  const { hasStaff, hasFinancial } = useClinicModules()
+  const { hasStaff, hasFinancial, hasInventory } = useClinicModules()
   const { data: professionals = [] } = useProfessionals()
   const { create, update, cancel } = useAppointmentMutations()
   const { data: payments = [] } = useAppointmentPayments(appointment?.id)
   const { data: rooms = [] } = useRooms()
   const { data: serviceTypes = [] } = useServiceTypes()
+  const { data: inventoryMaterials = [] } = useInventoryMaterials(hasInventory)
+  const { data: appointmentInventoryMovements = [] } = useAppointmentInventoryMovements(appointment?.id)
+  const createInventoryMovement = useCreateInventoryMovement()
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [showExtras, setShowExtras]       = useState(false)
@@ -171,6 +177,13 @@ export default function AppointmentModal({
   const activeServiceTypes = serviceTypes.filter(s => s.active)
   const activeProfessionals = professionals.filter(p => p.active)
   const activeRooms         = rooms.filter(r => r.active)
+  const selectedServiceType = activeServiceTypes.find(s => s.id === (watch('serviceTypeId') ?? '')) ?? null
+  const selectedServiceSuggestions = selectedServiceType?.inventorySuggestions ?? []
+  const appointmentSuggestedMaterialIds = new Set(
+    appointmentInventoryMovements
+      .filter(movement => movement.metadata.source === 'appointment_service_suggestion')
+      .map(movement => movement.materialId)
+  )
   const canAutoHideProfessional = !hasStaff && activeProfessionals.length === 1
   const hasActiveProfessional = activeProfessionals.length > 0
   const [professionalModalOpen, setProfessionalModalOpen] = useState(false)
@@ -337,6 +350,39 @@ export default function AppointmentModal({
       toast.success('Paciente criado e selecionado')
     } catch {
       toast.error('Erro ao criar paciente')
+    }
+  }
+
+  async function handleSuggestedInventoryConsumption(suggestion: ServiceTypeInventorySuggestion) {
+    if (!appointment || !selectedServiceType) return
+
+    const material = inventoryMaterials.find(item => item.id === suggestion.materialId)
+    if (!material) {
+      toast.error('Material não encontrado no estoque')
+      return
+    }
+
+    try {
+      await createInventoryMovement.mutateAsync({
+        materialId: suggestion.materialId,
+        movementType: 'out',
+        quantity: suggestion.quantity,
+        reason: `Consumo sugerido: ${selectedServiceType.name}`,
+        notes: `Baixa vinculada à consulta de ${appointment.patient?.name ?? 'paciente'}`,
+        metadata: {
+          appointmentId: appointment.id,
+          serviceTypeId: selectedServiceType.id,
+          source: 'appointment_service_suggestion',
+        },
+      })
+      toast.success('Baixa registrada no estoque')
+    } catch (error) {
+      const message = error instanceof Error && error.message.includes('inventory_negative_stock')
+        ? 'Essa baixa deixaria o estoque negativo.'
+        : error instanceof Error
+          ? error.message
+          : 'Não foi possível registrar a baixa.'
+      toast.error(message)
     }
   }
 
@@ -654,6 +700,64 @@ export default function AppointmentModal({
                   ))}
                 </select>
                 {!isEditing && <p className="text-xs text-gray-400 mt-0.5">Selecionar preenche automaticamente duração e valor.</p>}
+              </div>
+            )}
+
+            {hasInventory && selectedServiceSuggestions.length > 0 && (
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-xl bg-white p-2 text-sky-700">
+                    <Package size={16} weight="fill" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-sky-900">Consumo sugerido para este atendimento</p>
+                    <p className="text-xs text-sky-800/80 mt-0.5">
+                      {isEditing
+                        ? 'Você pode registrar a baixa sugerida direto nesta consulta.'
+                        : 'Depois de salvar a consulta, a tela oferece a baixa sugerida com um clique.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {selectedServiceSuggestions.map(suggestion => {
+                    const material = inventoryMaterials.find(item => item.id === suggestion.materialId)
+                    const alreadyApplied = appointmentSuggestedMaterialIds.has(suggestion.materialId)
+                    const insufficientStock = material ? material.currentQuantity < suggestion.quantity : false
+
+                    return (
+                      <div key={suggestion.materialId} className="flex flex-col gap-3 rounded-xl border border-sky-100 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{material?.name ?? 'Material não encontrado'}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Sugerido: {suggestion.quantity} {material?.unit ?? 'un'}
+                            {material ? ` · saldo atual ${material.currentQuantity} ${material.unit}` : ''}
+                          </p>
+                        </div>
+
+                        {isEditing ? (
+                          alreadyApplied ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                              <CheckCircle size={12} weight="fill" />
+                              Baixa lançada
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={!material || insufficientStock || createInventoryMovement.isPending}
+                              onClick={() => handleSuggestedInventoryConsumption(suggestion)}
+                              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-sky-200 bg-sky-100 px-3 py-2 text-sm font-medium text-sky-900 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {insufficientStock ? 'Saldo insuficiente' : `Dar baixa (${INVENTORY_MOVEMENT_TYPE_LABELS.out})`}
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-xs font-medium text-sky-700">Disponível após salvar</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

@@ -3,9 +3,11 @@ import { Plus, PencilSimple, Trash, Check, X, CurrencyDollar, Clock, ClipboardTe
 import { toast } from 'sonner'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { useServiceTypes, useCreateServiceType, useUpdateServiceType, useDeleteServiceType } from '../../hooks/useServiceTypes'
+import { useInventoryMaterials } from '../../hooks/useInventory'
+import { useClinicModules } from '../../hooks/useClinicModules'
 import { useClinic } from '../../hooks/useClinic'
 import { SERVICE_TYPE_COLORS } from '../../types'
-import type { ServiceType, ServiceTypeInput } from '../../types'
+import type { ServiceType, ServiceTypeInput, ServiceTypeInventorySuggestion } from '../../types'
 import { formatBRL } from '../../utils/currency'
 
 interface FormState {
@@ -14,6 +16,7 @@ interface FormState {
   priceCents: string   // string for controlled input
   color: string
   active: boolean
+  inventorySuggestions: ServiceTypeInventorySuggestion[]
 }
 
 const EMPTY: FormState = {
@@ -22,12 +25,15 @@ const EMPTY: FormState = {
   priceCents: '',
   color: SERVICE_TYPE_COLORS[0],
   active: true,
+  inventorySuggestions: [],
 }
 
 const DURATION_PRESETS = [15, 20, 30, 45, 60, 90, 120]
 
 export default function ServicosTab() {
   const { data: services = [], isLoading } = useServiceTypes()
+  const { hasInventory } = useClinicModules()
+  const { data: inventoryMaterials = [] } = useInventoryMaterials(hasInventory)
   const create = useCreateServiceType()
   const update = useUpdateServiceType()
   const remove = useDeleteServiceType()
@@ -37,6 +43,8 @@ export default function ServicosTab() {
   const [editing, setEditing] = useState<ServiceType | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [confirmDelete, setConfirmDelete] = useState<ServiceType | null>(null)
+  const [selectedMaterialId, setSelectedMaterialId] = useState('')
+  const [selectedMaterialQuantity, setSelectedMaterialQuantity] = useState('1')
 
   // Resync form when editing changes
   useEffect(() => {
@@ -47,6 +55,7 @@ export default function ServicosTab() {
         priceCents: editing.priceCents != null ? String(editing.priceCents / 100) : '',
         color: editing.color,
         active: editing.active,
+        inventorySuggestions: editing.inventorySuggestions ?? [],
       })
     }
   }, [editing])
@@ -54,6 +63,8 @@ export default function ServicosTab() {
   function openNew() {
     setEditing(null)
     setForm(EMPTY)
+    setSelectedMaterialId('')
+    setSelectedMaterialQuantity('1')
     setShowForm(true)
   }
 
@@ -66,6 +77,43 @@ export default function ServicosTab() {
     setShowForm(false)
     setEditing(null)
     setForm(EMPTY)
+    setSelectedMaterialId('')
+    setSelectedMaterialQuantity('1')
+  }
+
+  function addSuggestedMaterial() {
+    if (!selectedMaterialId) {
+      toast.error('Selecione um material')
+      return
+    }
+
+    const quantity = Number(selectedMaterialQuantity)
+    if (Number.isNaN(quantity) || quantity <= 0) {
+      toast.error('Informe uma quantidade válida')
+      return
+    }
+
+    if (form.inventorySuggestions.some(item => item.materialId === selectedMaterialId)) {
+      toast.error('Esse material já foi adicionado')
+      return
+    }
+
+    setForm(current => ({
+      ...current,
+      inventorySuggestions: [
+        ...current.inventorySuggestions,
+        { materialId: selectedMaterialId, quantity },
+      ],
+    }))
+    setSelectedMaterialId('')
+    setSelectedMaterialQuantity('1')
+  }
+
+  function removeSuggestedMaterial(materialId: string) {
+    setForm(current => ({
+      ...current,
+      inventorySuggestions: current.inventorySuggestions.filter(item => item.materialId !== materialId),
+    }))
   }
 
   async function submit() {
@@ -83,6 +131,7 @@ export default function ServicosTab() {
       priceCents:      priceCentsVal,
       color:           form.color,
       active:          form.active,
+      inventorySuggestions: form.inventorySuggestions,
     }
 
     try {
@@ -122,6 +171,8 @@ export default function ServicosTab() {
     }
     setConfirmDelete(null)
   }
+
+  const activeInventoryMaterials = inventoryMaterials.filter(material => material.active)
 
   return (
     <div className="space-y-4">
@@ -228,6 +279,77 @@ export default function ServicosTab() {
             </div>
           </div>
 
+          {hasInventory && (
+            <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Materiais sugeridos desse atendimento</label>
+                <p className="text-xs text-gray-400">
+                  Esses itens aparecem na consulta como baixa sugerida com um clique. A baixa só acontece quando alguém confirmar.
+                </p>
+              </div>
+
+              {activeInventoryMaterials.length === 0 ? (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Cadastre materiais no estoque para começar a sugerir consumo por atendimento.
+                </p>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_120px_auto]">
+                  <select
+                    value={selectedMaterialId}
+                    onChange={event => setSelectedMaterialId(event.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                  >
+                    <option value="">Selecionar material...</option>
+                    {activeInventoryMaterials.map(material => (
+                      <option key={material.id} value={material.id}>
+                        {material.name} · saldo {material.currentQuantity} {material.unit}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    value={selectedMaterialQuantity}
+                    onChange={event => setSelectedMaterialQuantity(event.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                    placeholder="Qtd."
+                  />
+                  <button
+                    type="button"
+                    onClick={addSuggestedMaterial}
+                    className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-medium text-[#006970] hover:bg-teal-100"
+                  >
+                    Adicionar
+                  </button>
+                </div>
+              )}
+
+              {form.inventorySuggestions.length > 0 && (
+                <div className="space-y-2">
+                  {form.inventorySuggestions.map(item => {
+                    const material = inventoryMaterials.find(candidate => candidate.id === item.materialId)
+                    return (
+                      <div key={item.materialId} className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-700">{material?.name ?? 'Material removido'}</p>
+                          <p className="text-xs text-gray-400">Sugerir baixa de {item.quantity} {material?.unit ?? 'un'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeSuggestedMaterial(item.materialId)}
+                          className="text-xs text-rose-600 hover:text-rose-700"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={cancel} className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-800">
               <X size={14} /> Cancelar
@@ -301,6 +423,9 @@ export default function ServicosTab() {
                   )}
                   {s.priceCents == null && (
                     <span className="text-gray-300">valor flexível</span>
+                  )}
+                  {(s.inventorySuggestions?.length ?? 0) > 0 && (
+                    <span>{s.inventorySuggestions?.length} material(is) sugerido(s)</span>
                   )}
                 </div>
               </div>

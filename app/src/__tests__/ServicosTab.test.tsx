@@ -13,6 +13,12 @@ vi.mock('../hooks/useServiceTypes', () => ({
   useDeleteServiceType:   () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 vi.mock('../hooks/useClinic', () => ({ useClinic: () => ({ data: { id: 'c1' } }) }))
+vi.mock('../hooks/useClinicModules', () => ({
+  useClinicModules: () => ({ hasInventory: true }),
+}))
+vi.mock('../hooks/useInventory', () => ({
+  useInventoryMaterials: () => ({ data: [], isLoading: false }),
+}))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('../components/ui/ConfirmDialog', () => ({
   default: () => null,

@@ -24,6 +24,7 @@ export default function RequireModule({ children, module, redirectTo = '/agenda'
     financial: modules.hasFinancial,
     services:  modules.hasServices,
     insurance: modules.hasInsurance,
+    inventory: modules.hasInventory,
   }
   if (!moduleFlags[module]) return <Navigate to={redirectTo} replace />
   return <>{children}</>

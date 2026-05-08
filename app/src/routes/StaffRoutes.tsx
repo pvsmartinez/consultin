@@ -12,6 +12,7 @@ const ConfiguracoesPage   = lazy(() => import('../pages/ConfiguracoesPage'))
 
 // ─── v2 pages (migrated from v1) ─────────────────────────────────────────────
 const PatientDetailPage        = lazy(() => import('../pages/PatientDetailPage'))
+const EstoquePage              = lazy(() => import('../pages/EstoquePage'))
 const EquipePage               = lazy(() => import('../pages/EquipePage'))
 const FinanceiroPage           = lazy(() => import('../pages/FinanceiroPage'))
 const RelatoriosPage           = lazy(() => import('../pages/RelatoriosPage'))
@@ -70,6 +71,13 @@ export default function StaffRoutes() {
         <RequireAuth permission="canManageProfessionals"><EquipePage /></RequireAuth>
       } />
       <Route path={APP_ROUTES.staff.professionals} element={<Navigate to={APP_ROUTES.staff.team} replace />} />
+
+      {/* Estoque (módulo inventory) */}
+      <Route path={APP_ROUTES.staff.inventory} element={
+        <RequireModule module="inventory">
+          <RequireAuth permission="canManageAgenda"><EstoquePage /></RequireAuth>
+        </RequireModule>
+      } />
 
       {/* WhatsApp (módulo whatsapp) */}
       <Route path={APP_ROUTES.staff.whatsapp} element={

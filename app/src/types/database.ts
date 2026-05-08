@@ -680,6 +680,145 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_materials: {
+        Row: {
+          active: boolean
+          category: string | null
+          clinic_id: string
+          created_at: string
+          created_by: string
+          current_quantity: number
+          id: string
+          ideal_quantity: number | null
+          metadata: Json
+          min_quantity: number
+          name: string
+          notes: string | null
+          sku: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          clinic_id: string
+          created_at?: string
+          created_by: string
+          current_quantity?: number
+          id?: string
+          ideal_quantity?: number | null
+          metadata?: Json
+          min_quantity?: number
+          name: string
+          notes?: string | null
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          clinic_id?: string
+          created_at?: string
+          created_by?: string
+          current_quantity?: number
+          id?: string
+          ideal_quantity?: number | null
+          metadata?: Json
+          min_quantity?: number
+          name?: string
+          notes?: string | null
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_materials_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_materials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          created_by: string
+          id: string
+          material_id: string
+          metadata: Json
+          movement_type: Database["public"]["Enums"]["inventory_movement_type"]
+          notes: string | null
+          previous_quantity: number
+          quantity: number
+          reason: string | null
+          resulting_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          material_id: string
+          metadata?: Json
+          movement_type: Database["public"]["Enums"]["inventory_movement_type"]
+          notes?: string | null
+          previous_quantity?: number
+          quantity: number
+          reason?: string | null
+          resulting_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          material_id?: string
+          metadata?: Json
+          movement_type?: Database["public"]["Enums"]["inventory_movement_type"]
+          notes?: string | null
+          previous_quantity?: number
+          quantity?: number
+          reason?: string | null
+          resulting_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_log: {
         Row: {
           appointment_id: string | null
@@ -1473,6 +1612,7 @@ export type Database = {
           created_at: string
           duration_minutes: number
           id: string
+          inventory_suggestions: Json
           name: string
           price_cents: number | null
         }
@@ -1483,6 +1623,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number
           id?: string
+          inventory_suggestions?: Json
           name: string
           price_cents?: number | null
         }
@@ -1493,6 +1634,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number
           id?: string
+          inventory_suggestions?: Json
           name?: string
           price_cents?: number | null
         }
@@ -2023,6 +2165,7 @@ export type Database = {
         | "medical_certificate"
         | "consent_term"
         | "custom"
+      inventory_movement_type: "in" | "out" | "adjustment"
       prosthesis_status:
         | "planned"
         | "requested"
@@ -2176,6 +2319,7 @@ export const Constants = {
         "consent_term",
         "custom",
       ],
+      inventory_movement_type: ["in", "out", "adjustment"],
       prosthesis_status: [
         "planned",
         "requested",

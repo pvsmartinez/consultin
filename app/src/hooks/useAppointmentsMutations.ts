@@ -208,6 +208,9 @@ export function useAppointmentMutations() {
  *  without needing all appointment fields. */
 export function useUpdateAppointmentStatus() {
   const queryClient = useQueryClient()
+  const { profile } = useAuthContext()
+  const clinicId = profile?.clinicId
+
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
       const { error } = await supabase
@@ -217,6 +220,13 @@ export function useUpdateAppointmentStatus() {
       if (error) throw error
     },
     onSuccess: () => {
+      if (clinicId) {
+        queryClient.invalidateQueries({ queryKey: QK.appointments.forClinic(clinicId) })
+        queryClient.invalidateQueries({ queryKey: QK.appointments.today(clinicId) })
+        queryClient.invalidateQueries({ queryKey: QK.dashboard.clinicKPIs(clinicId) })
+        return
+      }
+
       queryClient.invalidateQueries({ queryKey: QK.appointments.all() })
       queryClient.invalidateQueries({ queryKey: QK.appointments.todayAll() })
       queryClient.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
