@@ -12,6 +12,7 @@ import { fromZonedTime } from 'date-fns-tz'
 import Input from '../ui/Input'
 import TextArea from '../ui/TextArea'
 import AppointmentPaymentModal from './AppointmentPaymentModal'
+import ProfessionalModal from '../professionals/ProfessionalModal'
 import { useProfessionals } from '../../hooks/useProfessionals'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
 import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
@@ -165,8 +166,14 @@ export default function AppointmentModal({
   const canManagePayments = isEditing && !!appointment && hasFinancial && hasPermission('canViewFinancial')
   const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
   const canManagePatients = hasPermission('canManagePatients')
+  const canManageProfessionals = hasPermission('canManageProfessionals')
 
   const activeServiceTypes = serviceTypes.filter(s => s.active)
+  const activeProfessionals = professionals.filter(p => p.active)
+  const activeRooms         = rooms.filter(r => r.active)
+  const canAutoHideProfessional = !hasStaff && activeProfessionals.length === 1
+  const hasActiveProfessional = activeProfessionals.length > 0
+  const [professionalModalOpen, setProfessionalModalOpen] = useState(false)
 
   // Build duration options — include any custom value from drag selection or existing appointment
   const durationOptions = useMemo(() => {
@@ -361,11 +368,6 @@ export default function AppointmentModal({
     }
   }
 
-  const activeProfessionals = professionals.filter(p => p.active)
-  const activeRooms         = rooms.filter(r => r.active)
-  const canAutoHideProfessional = !hasStaff && activeProfessionals.length <= 1
-  const hasActiveProfessional = activeProfessionals.length > 0
-
   function onInvalid(errors: FieldErrors<FormValues>) {
     const firstErrorKey = Object.keys(errors)[0] as keyof FormValues | undefined
     if (!firstErrorKey) return
@@ -559,33 +561,68 @@ export default function AppointmentModal({
             ) : activeProfessionals.length === 1 ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
-                <input type="hidden" {...register('professionalId')} />
-                <p className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
-                  {activeProfessionals[0].name}
-                  {activeProfessionals[0].specialty ? ` — ${activeProfessionals[0].specialty}` : ''}
-                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input type="hidden" {...register('professionalId')} />
+                  <p className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-700">
+                    {activeProfessionals[0].name}
+                    {activeProfessionals[0].specialty ? ` — ${activeProfessionals[0].specialty}` : ''}
+                  </p>
+                  {canManageProfessionals && (
+                    <button
+                      type="button"
+                      onClick={() => setProfessionalModalOpen(true)}
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-[#006970] transition hover:bg-teal-100 sm:w-auto"
+                    >
+                      Novo profissional
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Profissional *</label>
-                <select
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                  {...register('professionalId')}
-                >
-                  <option value="">Selecione o profissional...</option>
-                  {activeProfessionals.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                  <select
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                    {...register('professionalId')}
+                  >
+                    <option value="">Selecione o profissional...</option>
+                    {activeProfessionals.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {canManageProfessionals && (
+                    <button
+                      type="button"
+                      onClick={() => setProfessionalModalOpen(true)}
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-[#006970] transition hover:bg-teal-100 sm:w-auto sm:shrink-0"
+                    >
+                      Novo profissional
+                    </button>
+                  )}
+                </div>
                 {errors.professionalId && <p className="text-xs text-red-500 mt-1">{errors.professionalId.message}</p>}
               </div>
             )}
 
             {!hasActiveProfessional && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Cadastre ou ative pelo menos um profissional para conseguir salvar consultas.
+              <div className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-4 text-sm text-[#006970] space-y-3">
+                <p>Você ainda não tem profissional ativo para esta agenda.</p>
+                {canManageProfessionals ? (
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setProfessionalModalOpen(true)}
+                      className="inline-flex min-h-11 items-center justify-center rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-medium text-[#006970] transition hover:bg-teal-100"
+                    >
+                      Cadastrar profissional agora
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#006970]/80">Peça para um administrador cadastrar ou ativar um profissional para continuar.</p>
+                )}
               </div>
             )}
 
@@ -881,6 +918,14 @@ export default function AppointmentModal({
           setShowQuickPatient(false)
           setQuickName('')
           setQuickCpf('')
+        }}
+      />
+      <ProfessionalModal
+        open={professionalModalOpen}
+        onClose={() => setProfessionalModalOpen(false)}
+        onSaved={professional => {
+          setProfessionalModalOpen(false)
+          setValue('professionalId', professional.id, { shouldValidate: true, shouldDirty: true })
         }}
       />
     </Dialog.Root>

@@ -26,9 +26,10 @@ interface Props {
   open: boolean
   onClose: () => void
   professional?: Professional | null
+  onSaved?: (professional: Professional) => void
 }
 
-export default function ProfessionalModal({ open, onClose, professional }: Props) {
+export default function ProfessionalModal({ open, onClose, professional, onSaved }: Props) {
   const { create, update } = useProfessionals()
   const createInvite = useCreateInvite()
   const { data: clinic } = useClinic()
@@ -71,11 +72,12 @@ export default function ProfessionalModal({ open, onClose, professional }: Props
         userId: null,
         customFields,
       }
+      let savedProfessional: Professional
       if (isEditing) {
-        await update.mutateAsync({ id: professional!.id, ...payload })
+        savedProfessional = await update.mutateAsync({ id: professional!.id, ...payload })
         toast.success('Profissional atualizado')
       } else {
-        await create.mutateAsync(payload)
+        savedProfessional = await create.mutateAsync(payload)
         // Optionally send a system-access invite when email is provided
         if (createAccess && values.email) {
           try {
@@ -100,6 +102,7 @@ export default function ProfessionalModal({ open, onClose, professional }: Props
           toast.success('Profissional cadastrado')
         }
       }
+      onSaved?.(savedProfessional)
       onClose()
     } catch {
       toast.error('Erro ao salvar profissional')
