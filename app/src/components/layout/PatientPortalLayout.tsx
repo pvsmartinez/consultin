@@ -29,7 +29,7 @@ export default function PatientPortalLayout({ children }: PatientPortalLayoutPro
 
   if (loading) return null
   if (!role) return <Navigate to={APP_ROUTES.public.login} replace />
-  if (role !== 'patient') return <Navigate to={APP_ROUTES.staff.legacyDashboard} replace />
+  if (role !== 'patient') return <Navigate to={APP_ROUTES.staff.home} replace />
 
   return (
     <div className="min-h-dvh bg-gray-50">

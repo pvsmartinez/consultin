@@ -5,6 +5,7 @@ import RequireModule from '../components/auth/RequireModule'
 import { APP_ROUTES } from '../lib/appRoutes'
 
 // ─── v2 pages ────────────────────────────────────────────────────────────────
+const HomePage            = lazy(() => import('../pages/HomePage'))
 const AgendaPage          = lazy(() => import('../pages/AgendaPage'))
 const PacientesPage       = lazy(() => import('../pages/PacientesPage'))
 const SalasPage           = lazy(() => import('../pages/SalasPage'))
@@ -33,14 +34,17 @@ const AssinaturaPage          = lazy(() => import('../pages-v1/AssinaturaPage'))
 export default function StaffRoutes() {
   return (
     <Routes>
-      {/* v2: Agenda is the home */}
+      {/* v2: Home is the landing page, agenda stays calendar-first */}
       <Route path="/" element={<Navigate to={APP_ROUTES.staff.home} replace />} />
       <Route path={APP_ROUTES.onboarding.wizard} element={<Navigate to={`${APP_ROUTES.staff.settings}?setup=1`} replace />} />
-      <Route path={APP_ROUTES.staff.legacyToday} element={<Navigate to={APP_ROUTES.staff.home} replace />} />
+      <Route path={APP_ROUTES.staff.legacyToday} element={<Navigate to={APP_ROUTES.staff.agenda} replace />} />
       <Route path={APP_ROUTES.staff.legacyDashboard} element={<Navigate to={APP_ROUTES.staff.home} replace />} />
 
+      {/* Home */}
+      <Route path={APP_ROUTES.staff.home} element={<HomePage />} />
+
       {/* Agenda */}
-      <Route path={APP_ROUTES.staff.home} element={<AgendaPage />} />
+      <Route path={APP_ROUTES.staff.agenda} element={<AgendaPage />} />
       <Route path={APP_ROUTES.staff.myAgenda} element={<AgendaPage myOnly />} />
       <Route path={APP_ROUTES.staff.myAvailability} element={<MinhaDisponibilidadePage />} />
 

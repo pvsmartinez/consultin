@@ -14,9 +14,11 @@ import TextArea from '../ui/TextArea'
 import AppointmentPaymentModal from './AppointmentPaymentModal'
 import ProfessionalModal from '../professionals/ProfessionalModal'
 import { useProfessionals } from '../../hooks/useProfessionals'
+import { usePatientAppointments } from '../../hooks/useAppointments'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
 import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
 import { usePatients, useCreatePatient } from '../../hooks/usePatients'
+import { usePatientClinicalItems } from '../../hooks/usePatientClinicalItems'
 import { useRooms } from '../../hooks/useRooms'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -25,6 +27,7 @@ import { useAppointmentInventoryMovements, useCreateInventoryMovement, useInvent
 import { useAuthContext } from '../../contexts/AuthContext'
 import PatientDrawer from '../patients/PatientDrawer'
 import {
+  APPOINTMENT_STATUS_COLORS,
   APPOINTMENT_STATUS_LABELS,
   INVENTORY_MOVEMENT_TYPE_LABELS,
   PAYMENT_STATUS_COLORS,
@@ -112,6 +115,49 @@ function addRecurrenceInterval(
   return addMonths(date, n)
 }
 
+function formatMoneyPreview(value?: string): string {
+  const normalized = value?.trim()
+  return normalized ? `R$ ${normalized}` : 'Não definido'
+}
+
+function formatAppointmentPreview(startsAt: string, endsAt: string): string {
+  return `${format(parseISO(startsAt), 'dd/MM')} · ${format(parseISO(startsAt), 'HH:mm')}–${format(parseISO(endsAt), 'HH:mm')}`
+}
+
+function SummaryChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-[#f8fafb] px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-800">{value}</p>
+    </div>
+  )
+}
+
+function ManagementSection({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string
+  description?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-[26px] border border-gray-200 bg-white p-4 shadow-sm sm:p-4.5">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          {description ? <p className="mt-0.5 text-sm text-gray-500">{description}</p> : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface Props {
   open: boolean
@@ -153,6 +199,7 @@ export default function AppointmentModal({
   const [patientSearch, setPatientSearch] = useState('')
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null)
   const [showQuickPatient, setShowQuickPatient] = useState(false)
+  const [showEditFields, setShowEditFields] = useState(false)
   const [quickName, setQuickName] = useState('')
   const [quickCpf, setQuickCpf] = useState('')
   const [patientDrawerOpen, setPatientDrawerOpen] = useState(false)
@@ -168,6 +215,13 @@ export default function AppointmentModal({
   const recurrenceType  = watch('recurrenceType')
   const recurrenceCount = watch('recurrenceCount')
   const durationMinVal  = watch('durationMin')
+  const watchedDate = watch('date')
+  const watchedStartTime = watch('startTime')
+  const watchedStatus = watch('status') as AppointmentStatus | undefined
+  const watchedChargeAmount = watch('chargeAmount')
+  const watchedPatientId = watch('patientId')
+  const watchedProfessionalId = watch('professionalId')
+  const watchedServiceTypeId = watch('serviceTypeId')
   const latestPayment = payments[0] ?? null
   const canManagePayments = isEditing && !!appointment && hasFinancial && hasPermission('canViewFinancial')
   const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
@@ -184,9 +238,50 @@ export default function AppointmentModal({
       .filter(movement => movement.metadata.source === 'appointment_service_suggestion')
       .map(movement => movement.materialId)
   )
+  const currentPatientId = selectedPatient?.id ?? watchedPatientId ?? appointment?.patientId ?? ''
+  const { appointments: patientAppointments = [], loading: loadingPatientAppointments } = usePatientAppointments(currentPatientId)
+  const { itemsQuery: patientClinicalItemsQuery } = usePatientClinicalItems(currentPatientId)
   const canAutoHideProfessional = !hasStaff && activeProfessionals.length === 1
   const hasActiveProfessional = activeProfessionals.length > 0
   const [professionalModalOpen, setProfessionalModalOpen] = useState(false)
+  const currentProfessional = activeProfessionals.find(p => p.id === watchedProfessionalId)
+    ?? professionals.find(p => p.id === watchedProfessionalId)
+    ?? appointment?.professional
+    ?? null
+  const currentServiceType = activeServiceTypes.find(service => service.id === watchedServiceTypeId)
+    ?? serviceTypes.find(service => service.id === watchedServiceTypeId)
+    ?? null
+  const previewStartsAt = useMemo(() => {
+    if (!watchedDate || !watchedStartTime) return appointment?.startsAt ?? null
+    return toUTC(watchedDate, watchedStartTime)
+  }, [appointment?.startsAt, watchedDate, watchedStartTime])
+  const previewEndsAt = useMemo(() => {
+    if (!previewStartsAt) return appointment?.endsAt ?? null
+    const duration = Math.max(15, parseInt(durationMinVal || '30') || 30)
+    return addMinutes(new Date(previewStartsAt), duration).toISOString()
+  }, [appointment?.endsAt, durationMinVal, previewStartsAt])
+  const otherPatientAppointments = useMemo(
+    () => patientAppointments.filter(item => item.id !== appointment?.id),
+    [appointment?.id, patientAppointments],
+  )
+  const upcomingPatientAppointments = useMemo(
+    () => [...otherPatientAppointments]
+      .filter(item => new Date(item.startsAt).getTime() >= Date.now() && item.status !== 'cancelled')
+      .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+      .slice(0, 3),
+    [otherPatientAppointments],
+  )
+  const patientHistoryAppointments = useMemo(
+    () => [...otherPatientAppointments]
+      .filter(item => new Date(item.startsAt).getTime() < Date.now())
+      .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime())
+      .slice(0, 3),
+    [otherPatientAppointments],
+  )
+  const patientClinicalItems = patientClinicalItemsQuery.data ?? []
+  const clinicalDocumentCount = patientClinicalItems.filter(item => item.category === 'document').length
+  const clinicalRequestCount = patientClinicalItems.filter(item => item.category === 'request').length
+  const latestClinicalItem = patientClinicalItems[0] ?? null
 
   // Build duration options — include any custom value from drag selection or existing appointment
   const durationOptions = useMemo(() => {
@@ -196,7 +291,17 @@ export default function AppointmentModal({
   }, [durationMinVal])
 
   useEffect(() => {
-    if (!open) { setConfirmCancel(false); setPatientSearch(''); setSelectedPatient(null); setShowQuickPatient(false); setQuickName(''); setQuickCpf(''); setShowExtras(false); return }
+    if (!open) {
+      setConfirmCancel(false)
+      setPatientSearch('')
+      setSelectedPatient(null)
+      setShowQuickPatient(false)
+      setQuickName('')
+      setQuickCpf('')
+      setShowExtras(false)
+      setShowEditFields(false)
+      return
+    }
 
     if (appointment) {
       const start   = parseISO(appointment.startsAt)
@@ -226,6 +331,7 @@ export default function AppointmentModal({
         : null)
       // When editing, always show extras so user can see all existing values
       setShowExtras(true)
+      setShowEditFields(false)
     } else {
       reset({
         patientId:       initialPatientId ?? '',
@@ -247,6 +353,7 @@ export default function AppointmentModal({
       } else if (initialPatientName) {
         setPatientSearch(initialPatientName)
       }
+      setShowEditFields(true)
     }
     setReturnPreset('none')
   }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialPatientId, initialPatientName, reset])
@@ -414,6 +521,11 @@ export default function AppointmentModal({
     }
   }
 
+  function handleCompleteAppointment() {
+    setValue('status', 'completed', { shouldDirty: true, shouldTouch: true })
+    void handleSubmit(onSubmit, onInvalid)()
+  }
+
   function onInvalid(errors: FieldErrors<FormValues>) {
     const firstErrorKey = Object.keys(errors)[0] as keyof FormValues | undefined
     if (!firstErrorKey) return
@@ -430,31 +542,227 @@ export default function AppointmentModal({
         <Dialog.Overlay className="fixed inset-0 bg-slate-950/35 backdrop-blur-[2px] z-40" />
         <Dialog.Content className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col bg-[#fcfdfd] shadow-2xl focus:outline-none data-[state=open]:animate-slide-in-right border-l border-white/60">
 
-          {/* Drawer header */}
-          <div className="shrink-0 border-b border-gray-100 bg-white/80 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0] mb-2">
-                  Agenda clínica
-                </p>
-                <Dialog.Title className="text-xl font-semibold text-gray-900 tracking-tight">
-                  {isEditing ? 'Editar consulta' : 'Nova consulta'}
-                </Dialog.Title>
-                <p className="text-sm text-gray-500 mt-1">
-                  {isEditing
-                    ? 'Atualize horário, profissional, cobrança e observações sem sair da agenda.'
-                    : 'Agende uma consulta com o mínimo de atrito e já deixe o retorno configurado, se precisar.'}
-                </p>
-              </div>
-              <Dialog.Close asChild>
-                <button className="text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 p-2 transition-colors"><X size={18} /></button>
-              </Dialog.Close>
-            </div>
-          </div>
+          <Dialog.Title className="sr-only">
+            {isEditing ? 'Editar consulta' : 'Nova consulta'}
+          </Dialog.Title>
+          <Dialog.Close asChild>
+            <button className="absolute right-3 top-3 z-10 rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 sm:right-4 sm:top-4"><X size={18} /></button>
+          </Dialog.Close>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-4">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-3.5 pr-10 sm:pr-12">
+
+            {isEditing && (
+              <>
+                <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-4.5">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0]">
+                          {currentServiceType?.name ?? 'Consulta marcada'}
+                        </p>
+                        <h2 className="mt-1.5 text-[32px] leading-none font-semibold tracking-tight text-gray-900">
+                          {selectedPatient?.name ?? appointment?.patient?.name ?? 'Paciente sem nome'}
+                        </h2>
+                        <p className="mt-1.5 text-sm text-gray-500">
+                          {currentProfessional?.name ?? 'Profissional não definido'}
+                          {currentProfessional?.specialty ? ` · ${currentProfessional.specialty}` : ''}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${APPOINTMENT_STATUS_COLORS[watchedStatus ?? appointment?.status ?? 'scheduled']}`}>
+                          {APPOINTMENT_STATUS_LABELS[watchedStatus ?? appointment?.status ?? 'scheduled']}
+                        </span>
+                        {latestPayment && (
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${PAYMENT_STATUS_COLORS[latestPayment.status]}`}>
+                            {PAYMENT_STATUS_LABELS[latestPayment.status]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2.5 sm:grid-cols-3">
+                      <SummaryChip
+                        label="Data"
+                        value={previewStartsAt ? format(parseISO(previewStartsAt), 'dd/MM/yyyy') : 'Não definida'}
+                      />
+                      <SummaryChip
+                        label="Horário"
+                        value={previewStartsAt && previewEndsAt
+                          ? `${format(parseISO(previewStartsAt), 'HH:mm')}–${format(parseISO(previewEndsAt), 'HH:mm')}`
+                          : 'Não definido'}
+                      />
+                      <SummaryChip
+                        label="Cobrança"
+                        value={formatMoneyPreview(watchedChargeAmount)}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setShowEditFields(current => !current)}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        {showEditFields ? 'Fechar edição detalhada' : 'Alterar horário e dados'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('detail')}
+                        className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-[#006970] transition hover:bg-teal-100"
+                      >
+                        <IdentificationCard size={14} />
+                        Ver prontuário
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('anamnesis')}
+                        className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        <ClipboardText size={14} />
+                        Ver anamnese
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                  <ManagementSection
+                    title="Histórico do paciente"
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('detail')}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        Ver mais
+                      </button>
+                    }
+                  >
+                    {loadingPatientAppointments ? (
+                      <p className="text-sm text-gray-400">Carregando histórico...</p>
+                    ) : otherPatientAppointments.length === 0 ? (
+                      <p className="rounded-2xl border border-dashed border-gray-200 bg-[#f8fafb] px-4 py-4 text-sm text-gray-400">
+                        Sem outras consultas.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Próximas</p>
+                          <div className="space-y-2">
+                            {upcomingPatientAppointments.length === 0 ? (
+                              <p className="text-sm text-gray-400">Nenhuma além desta.</p>
+                            ) : upcomingPatientAppointments.map(item => (
+                              <div key={item.id} className="rounded-2xl border border-gray-200 bg-[#f8fafb] px-3 py-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-800">{formatAppointmentPreview(item.startsAt, item.endsAt)}</p>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {item.professional?.name ?? 'Profissional não definido'}
+                                    </p>
+                                  </div>
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${APPOINTMENT_STATUS_COLORS[item.status]}`}>
+                                    {APPOINTMENT_STATUS_LABELS[item.status]}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Últimos atendimentos</p>
+                          <div className="space-y-2">
+                            {patientHistoryAppointments.length === 0 ? (
+                              <p className="text-sm text-gray-400">Sem atendimentos anteriores.</p>
+                            ) : patientHistoryAppointments.map(item => (
+                              <div key={item.id} className="rounded-2xl border border-gray-200 bg-white px-3 py-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-800">{formatAppointmentPreview(item.startsAt, item.endsAt)}</p>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      {item.professional?.name ?? 'Profissional não definido'}
+                                    </p>
+                                  </div>
+                                  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${APPOINTMENT_STATUS_COLORS[item.status]}`}>
+                                    {APPOINTMENT_STATUS_LABELS[item.status]}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </ManagementSection>
+
+                  <ManagementSection
+                    title="Emitir documento"
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('detail')}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        Abrir prontuário
+                      </button>
+                    }
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <SummaryChip
+                        label="Documentos"
+                        value={`${clinicalDocumentCount} emitido${clinicalDocumentCount === 1 ? '' : 's'}`}
+                      />
+                      <SummaryChip
+                        label="Pedidos"
+                        value={`${clinicalRequestCount} aberto${clinicalRequestCount === 1 ? '' : 's'}`}
+                      />
+                    </div>
+
+                    <div className="mt-3 rounded-2xl border border-gray-200 bg-[#f8fafb] px-4 py-3.5">
+                      <p className="text-sm font-medium text-gray-800">
+                        {latestClinicalItem ? latestClinicalItem.title : 'Nenhum documento emitido ainda'}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {latestClinicalItem
+                          ? `${format(parseISO(latestClinicalItem.createdAt), 'dd/MM/yyyy')} · ${latestClinicalItem.createdByName ?? 'equipe'}`
+                          : 'Use o prontuário para emitir os documentos.'}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('detail')}
+                        className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-[#006970] transition hover:bg-teal-100"
+                      >
+                        <ClipboardText size={14} />
+                        Pedidos e documentos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('anamnesis')}
+                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        Ver anamnese
+                      </button>
+                    </div>
+                  </ManagementSection>
+                </div>
+              </>
+            )}
+
+            {(!isEditing || showEditFields) && (
+              <div className={isEditing ? 'rounded-[28px] border border-gray-200 bg-[#f8fafb] p-4 shadow-sm sm:p-5' : ''}>
+                {isEditing && (
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Editar dados</h3>
+                    </div>
+                  </div>
+                )}
 
             {/* Patient */}
             <div>
@@ -822,22 +1130,26 @@ export default function AppointmentModal({
               </div>
             </div>
 
-            {/* Charge + Professional fee */}
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Valor cobrado (R$)"
-                placeholder="0,00"
-                {...register('chargeAmount')}
-              />
-              <Input
-                label="Repasse ao profissional (R$)"
-                placeholder="0,00"
-                {...register('professionalFee')}
-              />
-            </div>
+            {!isEditing && (
+              <>
+                {/* Charge + Professional fee */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Valor cobrado (R$)"
+                    placeholder="0,00"
+                    {...register('chargeAmount')}
+                  />
+                  <Input
+                    label="Repasse ao profissional (R$)"
+                    placeholder="0,00"
+                    {...register('professionalFee')}
+                  />
+                </div>
 
-            {/* Notes */}
-            <TextArea label="Observações" rows={2} {...register('notes')} />
+                {/* Notes */}
+                <TextArea label="Observações" rows={2} {...register('notes')} />
+              </>
+            )}
 
             {/* Return / recurrence — only for new appointments */}
             {!isEditing && (
@@ -909,7 +1221,7 @@ export default function AppointmentModal({
               </div>
             )}
 
-            {canManagePayments && appointment && (
+            {!isEditing && canManagePayments && appointment && (
               <div className="rounded-2xl border border-teal-100 bg-teal-50/60 p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -961,6 +1273,89 @@ export default function AppointmentModal({
               </div>
             )}
 
+              </div>
+            )}
+
+            {isEditing && (
+              <>
+                <ManagementSection
+                  title="Observações"
+                  description="Resumo do atendimento, combinados e qualquer detalhe que a equipe precise ver no dia."
+                >
+                  <TextArea label="" rows={5} {...register('notes')} />
+                </ManagementSection>
+
+                <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+                  <ManagementSection
+                    title="Valor cobrado"
+                    description="Valor combinado com o paciente para esta consulta."
+                  >
+                    <Input
+                      label=""
+                      placeholder="0,00"
+                      {...register('chargeAmount')}
+                    />
+                  </ManagementSection>
+
+                  <ManagementSection
+                    title="Repasse ao profissional"
+                    description="Valor líquido previsto para quem realizou o atendimento."
+                  >
+                    <Input
+                      label=""
+                      placeholder="0,00"
+                      {...register('professionalFee')}
+                    />
+                  </ManagementSection>
+                </div>
+
+                {canManagePayments && appointment && (
+                  <ManagementSection
+                    title="Pagamento da consulta"
+                    description={latestPayment
+                      ? 'Acompanhe a cobrança já iniciada ou reabra o fluxo sem sair da agenda.'
+                      : 'Inicie a cobrança do atendimento sem alternar para o Financeiro.'}
+                    action={latestPayment ? (
+                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${PAYMENT_STATUS_COLORS[latestPayment.status]}`}>
+                        {PAYMENT_STATUS_LABELS[latestPayment.status]}
+                      </span>
+                    ) : undefined}
+                  >
+                    {patientNeedsCpfForCharge && (
+                      <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
+                        <Warning size={14} className="mt-0.5 shrink-0" />
+                        <span>
+                          O paciente ainda não tem CPF cadastrado. A cobrança via Asaas só poderá ser gerada depois de completar esse dado no cadastro.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {latestPayment ? 'Cobrança em andamento' : 'Nenhuma cobrança criada ainda'}
+                        </p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {latestPayment
+                            ? 'Você pode consultar QR PIX, status e repasse a partir do mesmo fluxo.'
+                            : 'Abra a cobrança assim que o atendimento terminar ou quando quiser receber na hora.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentModalOpen(true)}
+                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99]"
+                        style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+                      >
+                        <CurrencyCircleDollar size={14} />
+                        {latestPayment ? 'Abrir cobrança' : 'Cobrar consulta'}
+                      </button>
+                    </div>
+                  </ManagementSection>
+                )}
+              </>
+            )}
+
             {/* Actions */}
             <div className="mt-2 flex flex-col gap-3 border-t border-gray-100 pt-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
               {isEditing && !confirmCancel && (
@@ -984,11 +1379,27 @@ export default function AppointmentModal({
                     className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-100">
                     Fechar
                   </button>
-                  <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
-                    className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
-                    {isSubmitting ? 'Salvando...' : 'Salvar'}
-                  </button>
+                  {isEditing ? (
+                    <>
+                      <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
+                        className="min-h-11 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[#0ea5b0] hover:text-[#006970] disabled:opacity-50">
+                        {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
+                      </button>
+                      {(watchedStatus ?? appointment?.status) !== 'completed' && (
+                        <button type="button" onClick={handleCompleteAppointment} disabled={isSubmitting || !hasActiveProfessional}
+                          className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
+                          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+                          {isSubmitting ? 'Finalizando...' : 'Finalizar consulta'}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
+                      className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
+                      style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+                      {isSubmitting ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

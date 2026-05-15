@@ -4,6 +4,7 @@ import { APP_ROUTES, isProtectedAppPath } from '../lib/appRoutes'
 describe('isProtectedAppPath', () => {
   it('matches authenticated app routes', () => {
     expect(isProtectedAppPath(APP_ROUTES.staff.home)).toBe(true)
+    expect(isProtectedAppPath(APP_ROUTES.staff.agenda)).toBe(true)
     expect(isProtectedAppPath('/pacientes/123')).toBe(true)
     expect(isProtectedAppPath(APP_ROUTES.patient.appointments)).toBe(true)
     expect(isProtectedAppPath(APP_ROUTES.onboarding.wizard)).toBe(true)

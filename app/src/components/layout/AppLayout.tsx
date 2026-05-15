@@ -1,7 +1,10 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
+  House,
   CalendarBlank,
+  CaretLeft,
+  CaretRight,
   ChartBar,
   Users,
   UsersFour,
@@ -26,8 +29,11 @@ import { useClinic } from '../../hooks/useClinic'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useClinicNotifications } from '../../hooks/useClinicNotifications'
 import { isEmailVerificationPending, sendEmailVerificationLink } from '../../lib/emailVerification'
+import { APP_ROUTES } from '../../lib/appRoutes'
 
 const AppointmentModal = lazy(() => import('../appointments/AppointmentModal'))
+
+const DESKTOP_SIDEBAR_STORAGE_KEY = 'consultin:desktop-sidebar-collapsed'
 
 const ROLE_BADGE_COLORS: Record<UserRole, string> = {
   admin:        'text-teal-700 bg-teal-100',
@@ -54,6 +60,11 @@ const renderNavIcon = (Icon: NavIcon, active: boolean, size = 20) => (
   <Icon size={size} weight={active ? 'fill' : 'duotone'} />
 )
 
+const getInitialDesktopSidebarCollapsed = () => {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(DESKTOP_SIDEBAR_STORAGE_KEY) === '1'
+}
+
 export default function AppLayout({ children }: AppLayoutProps) {
   const { signOut, hasPermission, profile, role, session } = useAuthContext()
   const { data: clinic } = useClinic()
@@ -71,6 +82,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [newApptOpen, setNewApptOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sendingVerification, setSendingVerification] = useState(false)
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(getInitialDesktopSidebarCollapsed)
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      DESKTOP_SIDEBAR_STORAGE_KEY,
+      desktopSidebarCollapsed ? '1' : '0',
+    )
+  }, [desktopSidebarCollapsed])
 
   async function handleResendVerification() {
     if (!session?.user.email || sendingVerification) return
@@ -87,24 +106,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
 
   // ── Build navigation ───────────────────────────────────────────────────────
-  // Base: Agenda + Pacientes always visible
+  // Base: Home + Agenda + Pacientes always visible
   // Conditional: Equipe, Salas, WhatsApp driven by active modules + permissions
   // Settings always visible to admins
   const operationalItems = [
-    { to: isProfessional ? '/minha-agenda' : '/agenda', icon: CalendarBlank,   label: isProfessional ? 'Minha Agenda' : 'Agenda', show: true },
-    { to: '/pacientes',      icon: Users,           label: 'Pacientes',    show: hasPermission('canViewPatients') },
-    { to: '/equipe',         icon: UsersFour,       label: 'Equipe',       show: hasStaff && hasPermission('canManageProfessionals') },
-    { to: '/salas',          icon: Buildings,       label: 'Salas',        show: hasRooms },
-    { to: '/estoque',        icon: Package,         label: 'Estoque',      show: hasInventory && hasPermission('canManageAgenda') },
-    { to: '/financeiro',     icon: CurrencyDollar,  label: 'Financeiro',   show: hasFinancial && hasPermission('canViewFinancial') },
-    { to: '/whatsapp',       icon: WhatsappLogo,    label: 'Mensagens',    show: hasWhatsApp && hasPermission('canViewWhatsApp') },
+    { to: APP_ROUTES.staff.home, icon: House, label: 'Home', show: true },
+    { to: isProfessional ? APP_ROUTES.staff.myAgenda : APP_ROUTES.staff.agenda, icon: CalendarBlank, label: isProfessional ? 'Minha Agenda' : 'Agenda', show: true },
+    { to: APP_ROUTES.staff.patients, icon: Users, label: 'Pacientes', show: hasPermission('canViewPatients') },
+    { to: APP_ROUTES.staff.team, icon: UsersFour, label: 'Equipe', show: hasStaff && hasPermission('canManageProfessionals') },
+    { to: APP_ROUTES.staff.rooms, icon: Buildings, label: 'Salas', show: hasRooms },
+    { to: APP_ROUTES.staff.inventory, icon: Package, label: 'Estoque', show: hasInventory && hasPermission('canManageAgenda') },
+    { to: APP_ROUTES.staff.financial, icon: CurrencyDollar, label: 'Financeiro', show: hasFinancial && hasPermission('canViewFinancial') },
+    { to: APP_ROUTES.staff.whatsapp, icon: WhatsappLogo, label: 'Mensagens', show: hasWhatsApp && hasPermission('canViewWhatsApp') },
   ].filter(item => item.show)
 
   const adminItems = [
-    { to: '/relatorios',     icon: ChartBar,        label: 'Relatórios',   show: hasFinancial && hasPermission('canViewFinancial') },
+    { to: APP_ROUTES.staff.reports, icon: ChartBar, label: 'Relatórios', show: hasFinancial && hasPermission('canViewFinancial') },
   ].filter(item => item.show)
 
-  const settingsItem = { to: '/configuracoes', icon: Gear, label: 'Configurações', show: hasPermission('canManageSettings') }
+  const settingsItem = { to: APP_ROUTES.staff.settings, icon: Gear, label: 'Configurações', show: hasPermission('canManageSettings') }
 
   // Top 4 visible items for bottom tab bar (mobile)
   const bottomItems = [...operationalItems, ...(settingsItem.show ? [settingsItem] : [])].slice(0, 4)
@@ -117,55 +137,89 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-dvh bg-[#f8fafb] md:flex md:h-screen md:overflow-hidden">
-      <aside className="hidden md:flex md:w-56 md:flex-shrink-0 md:flex-col md:border-r md:bg-[#f2f4f5]">
-        <div className="p-6 pb-4">
-          <div className="mb-5 flex flex-col gap-1">
-            <span className="text-2xl font-bold tracking-tight text-[#0EA5B0]">Consultin</span>
-            {clinic?.name && (
-              <p className="truncate text-xs font-medium text-gray-500" title={clinic.name}>
-                {clinic.name}
-              </p>
+      <aside
+        className={`hidden md:flex md:flex-shrink-0 md:flex-col md:border-r md:bg-[#f2f4f5] md:transition-[width] md:duration-200 ${
+          desktopSidebarCollapsed ? 'md:w-20' : 'md:w-56'
+        }`}
+      >
+        <div className="shrink-0 p-4 pb-3">
+          <div className={`flex ${desktopSidebarCollapsed ? 'justify-center' : 'items-start justify-between gap-3'}`}>
+            <div className={`min-w-0 ${desktopSidebarCollapsed ? 'hidden' : 'flex-1'}`}>
+              <div className="mb-5 flex flex-col gap-1">
+                <span className="text-2xl font-bold tracking-tight text-[#0EA5B0]">Consultin</span>
+                {clinic?.name && (
+                  <p className="truncate text-xs font-medium text-gray-500" title={clinic.name}>
+                    {clinic.name}
+                  </p>
+                )}
+              </div>
+
+              {role && ROLE_BADGE_COLORS[role] && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ROLE_BADGE_COLORS[role]}`}>
+                  {USER_ROLE_LABELS[role]}
+                </span>
+              )}
+            </div>
+
+            {desktopSidebarCollapsed && (
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-lg font-bold tracking-tight text-[#0EA5B0] shadow-sm">
+                C
+              </span>
             )}
+
+            <button
+              type="button"
+              onClick={() => setDesktopSidebarCollapsed(prev => !prev)}
+              aria-label={desktopSidebarCollapsed ? 'Expandir menu lateral' : 'Minimizar menu lateral'}
+              title={desktopSidebarCollapsed ? 'Expandir menu lateral' : 'Minimizar menu lateral'}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0]"
+            >
+              {desktopSidebarCollapsed ? <CaretRight size={18} /> : <CaretLeft size={18} />}
+            </button>
           </div>
 
-          {role && ROLE_BADGE_COLORS[role] && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ROLE_BADGE_COLORS[role]}`}>
-              {USER_ROLE_LABELS[role]}
-            </span>
-          )}
-
           {canSchedule && (
-            <div className="mt-4">
+            <div className="mt-4 flex justify-center">
               <Button
                 variant="primary"
                 size="sm"
-                className="w-full justify-center"
+                className={desktopSidebarCollapsed ? 'h-10 w-10 justify-center rounded-xl px-0' : 'w-full justify-center'}
                 style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
                 leftIcon={<Plus size={14} weight="bold" />}
                 onClick={() => setNewApptOpen(true)}
+                title="Nova consulta"
+                aria-label="Nova consulta"
               >
-                Nova consulta
+                {desktopSidebarCollapsed ? '' : 'Nova consulta'}
               </Button>
             </div>
           )}
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-2">
+        <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-2">
           {operationalItems.map(({ to, icon, label }) => {
             const active = isRouteActive(location.pathname, to)
             return (
               <NavLink
                 key={to}
                 to={to}
+                title={desktopSidebarCollapsed ? label : undefined}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
                   active
                     ? 'bg-white text-[#0ea5b0] shadow-sm'
                     : 'text-gray-600 hover:bg-white/70 hover:text-[#0ea5b0]'
-                }`}
+                } ${desktopSidebarCollapsed ? 'justify-center px-2' : ''}`}
               >
-                {renderNavIcon(icon, active)}
-                <span className="flex-1 truncate">{label}</span>
-                {to === '/whatsapp' && notifBadge > 0 && (
+                <span className="relative flex items-center justify-center">
+                  {renderNavIcon(icon, active)}
+                  {to === APP_ROUTES.staff.whatsapp && notifBadge > 0 && desktopSidebarCollapsed && (
+                    <span className="absolute -right-2 -top-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-white">
+                      {notifBadge > 99 ? '99+' : notifBadge}
+                    </span>
+                  )}
+                </span>
+                {!desktopSidebarCollapsed && <span className="flex-1 truncate">{label}</span>}
+                {to === APP_ROUTES.staff.whatsapp && notifBadge > 0 && !desktopSidebarCollapsed && (
                   <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                     {notifBadge > 99 ? '99+' : notifBadge}
                   </span>
@@ -177,9 +231,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {adminItems.length > 0 && (
             <div className="px-1 pt-4 pb-2">
               <div className="border-t border-gray-200 pt-4">
-                <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-400">
-                  Administrativo
-                </p>
+                {!desktopSidebarCollapsed && (
+                  <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-gray-400">
+                    Administrativo
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -190,14 +246,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <NavLink
                 key={to}
                 to={to}
+                title={desktopSidebarCollapsed ? label : undefined}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
                   active
                     ? 'bg-white text-[#0ea5b0] shadow-sm'
                     : 'text-gray-600 hover:bg-white/70 hover:text-[#0ea5b0]'
-                }`}
+                } ${desktopSidebarCollapsed ? 'justify-center px-2' : ''}`}
               >
                 {renderNavIcon(icon, active)}
-                <span className="flex-1 truncate">{label}</span>
+                {!desktopSidebarCollapsed && <span className="flex-1 truncate">{label}</span>}
               </NavLink>
             )
           })}
@@ -205,54 +262,60 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {settingsItem.show && (
             <NavLink
               to={settingsItem.to}
+              title={desktopSidebarCollapsed ? settingsItem.label : undefined}
               className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${
                 isRouteActive(location.pathname, settingsItem.to)
                   ? 'bg-white text-[#0ea5b0] shadow-sm'
                   : 'text-gray-600 hover:bg-white/70 hover:text-[#0ea5b0]'
-              }`}
+              } ${desktopSidebarCollapsed ? 'justify-center px-2' : ''}`}
             >
               {renderNavIcon(settingsItem.icon, isRouteActive(location.pathname, settingsItem.to))}
-              <span className="flex-1 truncate">{settingsItem.label}</span>
+              {!desktopSidebarCollapsed && <span className="flex-1 truncate">{settingsItem.label}</span>}
             </NavLink>
           )}
         </nav>
 
-        <div className="border-t border-gray-100 p-4">
+        <div className="shrink-0 border-t border-gray-100 p-4">
           {profile && (
             <NavLink
-              to="/minha-conta"
+              to={APP_ROUTES.staff.account}
+              title={desktopSidebarCollapsed ? 'Minha conta' : undefined}
               className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
-                isRouteActive(location.pathname, '/minha-conta')
+                isRouteActive(location.pathname, APP_ROUTES.staff.account)
                   ? 'bg-white text-[#0ea5b0] shadow-sm'
                   : 'text-gray-600 hover:bg-white/70 hover:text-[#0ea5b0]'
-              }`}
+              } ${desktopSidebarCollapsed ? 'justify-center px-2' : ''}`}
             >
               <Avatar src={profile.avatarUrl} name={profile.name} size={28} />
-              <p className="truncate text-sm font-medium">{profile.name}</p>
+              {!desktopSidebarCollapsed && <p className="truncate text-sm font-medium">{profile.name}</p>}
             </NavLink>
           )}
 
           {role === 'admin' && (
             <NavLink
-              to="/assinatura"
+              to={APP_ROUTES.staff.subscription}
+              title={desktopSidebarCollapsed ? 'Meu plano' : undefined}
               className={`mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors ${
-                isRouteActive(location.pathname, '/assinatura')
+                isRouteActive(location.pathname, APP_ROUTES.staff.subscription)
                   ? 'bg-white text-[#0ea5b0] shadow-sm'
                   : 'text-gray-500 hover:bg-white/70 hover:text-[#0ea5b0]'
-              }`}
+              } ${desktopSidebarCollapsed ? 'justify-center px-2' : ''}`}
             >
               <CreditCard size={15} />
-              Meu plano
+              {!desktopSidebarCollapsed && 'Meu plano'}
             </NavLink>
           )}
 
           <button
             type="button"
             onClick={signOut}
-            className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/70 hover:text-gray-700"
+            title={desktopSidebarCollapsed ? 'Sair' : undefined}
+            className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/70 hover:text-gray-700 ${
+              desktopSidebarCollapsed ? 'justify-center px-2' : ''
+            }`}
           >
             <SignOut size={18} />
-            Sair
+            {!desktopSidebarCollapsed && 'Sair'}
           </button>
         </div>
       </aside>

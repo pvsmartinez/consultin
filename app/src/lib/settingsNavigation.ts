@@ -1,4 +1,5 @@
 export type SettingsTab =
+  | 'modulos'
   | 'dados'
   | 'documentos'
   | 'agenda'

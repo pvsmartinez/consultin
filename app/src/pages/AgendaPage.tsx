@@ -1,5 +1,4 @@
 import { useState, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import FullCalendar from '@fullcalendar/react'
 import interactionPlugin from '@fullcalendar/interaction'
 import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
@@ -7,13 +6,13 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Plus, DoorOpen, UserCircle, X, Lock, Clock, CalendarBlank, Buildings, UsersFour, WhatsappLogo, CurrencyDollar, CheckCircle, Gear } from '@phosphor-icons/react'
+import { Plus, DoorOpen, UserCircle, X, Lock, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useAppointmentsQuery, useAppointmentMutations, useMyProfessionalRecords } from '../hooks/useAppointmentsMutations'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
-import { useRooms, useCreateRoom } from '../hooks/useRooms'
+import { useRooms } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
@@ -21,7 +20,6 @@ import RoomsDrawer from '../components/rooms/RoomsDrawer'
 import UpgradeModal from '../components/billing/UpgradeModal'
 import { useClinicQuota } from '../hooks/useClinicQuota'
 import type { Appointment } from '../types'
-import { buildSettingsPath, type SettingsTab } from '../lib/settingsNavigation'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = typeof DAY_ORDER[number]
@@ -181,12 +179,11 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [roomsDrawerOpen, setRoomsDrawerOpen]     = useState(false)
 
-  const { role, isSuperAdmin, session, profile, hasPermission } = useAuthContext()
+  const { role, isSuperAdmin } = useAuthContext()
   const { data: clinic, update: clinicUpdate } = useClinic()
-  const { hasRooms, hasStaff, hasWhatsApp, hasFinancial, enableModule, disableModule } = useClinicModules()
+  const { hasRooms } = useClinicModules()
   const { data: rooms = [] }              = useRooms()
-  const createRoom                        = useCreateRoom()
-  const { data: professionals = [], create: createProfessional } = useProfessionals()
+  const { data: professionals = [] }      = useProfessionals()
   const { data: myProfRecords = [] }      = useMyProfessionalRecords()
   const { data: roomAvailSlots = [] }     = useRoomAvailabilitySlots()
   const { data: clinicAvailSlots = [] }   = useClinicAvailabilitySlots()
@@ -230,8 +227,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [editingAppt, setEditingAppt]       = useState<Appointment | null>(null)
   const [initialSlot, setInitialSlot]       = useState<{ date: string; time: string; durationMin: number; professionalId?: string } | null>(null)
-  const [togglingModule, setTogglingModule] = useState<string | null>(null)
-  const navigate = useNavigate()
   const quota = useClinicQuota(clinic)
 
   function openNewAppointmentModal() {
@@ -286,12 +281,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       extendedProps: { appointment: a },
     }
   })
-
-  // Once we've seen events, never show welcome screen again (even when navigating to empty week)
-  const hasSeenEvents = useRef(false)
-  if (events.length > 0) hasSeenEvents.current = true
-  const showWelcome = !isLoading && !hasSeenEvents.current && events.length === 0 && !isPersonalView
-  const canManageSettings = hasPermission('canManageSettings')
 
   function handleDateSelect(arg: { start: Date; end: Date; startStr: string; endStr: string; allDay: boolean; resource?: { id: string } }) {
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
@@ -470,7 +459,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
 
   return (
     <div className="space-y-4">
-      {!showWelcome && (
       <div className="rounded-[28px] bg-white/90 border border-gray-200/80 px-4 py-4 shadow-sm sm:px-6 sm:py-5">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
@@ -541,7 +529,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           )}
         </div>
       </div>
-      )}{/* end !showWelcome header */}
 
       {/* Multi-clinic legend */}
       {multiClinic && (
@@ -563,99 +550,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         </div>
       )}
 
-      {/* Empty state — shown when there are no appointments at all (new clinic) */}
-      {showWelcome ? (
-        <div className="bg-white rounded-2xl border border-gray-100 px-8 pt-16 pb-12 flex flex-col items-center gap-5 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center">
-            <CalendarBlank size={32} className="text-[#0ea5b0]" />
-          </div>
-          <div className="max-w-sm">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Bem-vindo ao Consultin!</h2>
-            <p className="text-sm text-gray-500">
-              Sua agenda está vazia. Agende a primeira consulta clicando abaixo — o cadastro do paciente pode ser feito na hora.
-            </p>
-          </div>
-          <button
-            onClick={() => { setEditingAppt(null); setInitialSlot(null); openNewAppointmentModal() }}
-            className="flex items-center gap-2 px-5 py-3 text-white text-sm font-medium rounded-xl transition-all active:scale-95 shadow-sm"
-            style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
-          >
-            <Plus size={16} /> Agendar primeira consulta
-          </button>
-
-          {canManageSettings && (
-            <button
-              onClick={() => navigate(buildSettingsPath('dados'))}
-              className="flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 transition-all active:scale-95 hover:border-gray-300 hover:bg-gray-50"
-            >
-              <Gear size={16} /> Revisar dados e horários
-            </button>
-          )}
-
-          {/* Module extras */}
-          <div className="mt-4 w-full max-w-lg">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Extras disponíveis</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {([
-                { key: 'staff'     as const, label: 'Equipe',     desc: 'Múltiplos profissionais e horários individuais',  icon: UsersFour,      active: hasStaff,    tab: 'usuarios'  as SettingsTab },
-                { key: 'rooms'     as const, label: 'Salas',      desc: 'Gerencie salas e filtre a agenda por espaço',    icon: Buildings,      active: hasRooms,    tab: 'salas'     as SettingsTab },
-                { key: 'whatsapp'  as const, label: 'WhatsApp',   desc: 'Lembretes automáticos e caixa de mensagens',    icon: WhatsappLogo,   active: hasWhatsApp, tab: 'whatsapp'  as SettingsTab },
-                { key: 'financial' as const, label: 'Financeiro', desc: 'Cobranças, pagamentos e fluxo de caixa',         icon: CurrencyDollar, active: hasFinancial, tab: 'pagamento' as SettingsTab },
-              ]).map(({ key, label, desc, icon: Icon, active, tab }) => (
-                <button
-                  key={key}
-                  disabled={togglingModule === key}
-                  onClick={async () => {
-                    setTogglingModule(key)
-                    if (active) {
-                      await disableModule(key)
-                      setTogglingModule(null)
-                    } else {
-                      await enableModule(key)
-                      if (key === 'rooms' && rooms.length === 0) {
-                        await createRoom.mutateAsync({ name: 'Sala 1', color: '#6366f1' })
-                      }
-                      if (key === 'staff' && professionals.length === 0) {
-                        await createProfessional.mutateAsync({
-                          name: profile?.name ?? session?.user.email ?? 'Profissional',
-                          email: session?.user.email ?? null,
-                          userId: session?.user.id ?? null,
-                          specialty: null,
-                          councilId: null,
-                          phone: null,
-                          active: true,
-                          customFields: {},
-                        })
-                      }
-                      setTogglingModule(null)
-                      navigate(buildSettingsPath(tab))
-                    }
-                  }}
-                  className={`text-left p-4 rounded-2xl border transition-all ${
-                    active
-                      ? 'border-teal-200 bg-teal-50/50'
-                      : 'border-gray-200 bg-white hover:border-teal-200 hover:bg-teal-50/20'
-                  } disabled:opacity-60`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                      active ? 'bg-teal-100 text-[#006970]' : 'bg-gray-100 text-gray-400'
-                    }`}>
-                      <Icon size={16} />
-                    </div>
-                    {active
-                      ? <CheckCircle size={16} weight="fill" className="text-[#0ea5b0]" />
-                      : <span className="text-[10px] font-medium text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">Ativar</span>
-                    }
-                  </div>
-                  <p className="text-sm font-semibold text-gray-800">{label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
       <div className={`bg-white rounded-xl border border-gray-100 p-4 relative ${isLoading ? 'opacity-60' : ''}`}>
         <FullCalendar
           key={effectiveAgendaView}
@@ -707,7 +601,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           }}
         />
       </div>
-      )}{/* end empty-state conditional */}
 
       <AppointmentModal
         open={modalOpen}

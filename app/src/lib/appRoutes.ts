@@ -12,7 +12,8 @@ export const APP_ROUTES = {
     wizard: '/onboarding',
   },
   staff: {
-    home: '/agenda',
+    home: '/home',
+    agenda: '/agenda',
     legacyToday: '/hoje',
     legacyDashboard: '/dashboard',
     myAgenda: '/minha-agenda',
@@ -44,6 +45,7 @@ export const APP_ROUTES = {
 
 const PROTECTED_APP_PATH_PREFIXES = [
   APP_ROUTES.staff.home,
+  APP_ROUTES.staff.agenda,
   APP_ROUTES.staff.myAgenda,
   APP_ROUTES.staff.myAvailability,
   APP_ROUTES.staff.patients,
