@@ -33,6 +33,37 @@ const NOTIF_OPTIONS: { field: NotifField; camelKey: 'notifNewAppointment' | 'not
   },
 ]
 
+function ToggleRow({
+  label,
+  desc,
+  value,
+  disabled,
+  onToggle,
+}: {
+  label: string
+  desc: string
+  value: boolean
+  disabled?: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-4">
+      <div>
+        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="mt-1 text-xs text-gray-500">{desc}</p>
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${value ? 'bg-[#0ea5b0]' : 'bg-gray-200'}`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+      </button>
+    </div>
+  )
+}
+
 export default function NotificacoesTab() {
   const { profile, refreshProfile } = useAuthContext()
 
@@ -74,29 +105,31 @@ export default function NotificacoesTab() {
   const anyToggleOn = NOTIF_OPTIONS.some(o => profile[o.camelKey])
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div>
-        <h2 className="text-base font-semibold text-gray-800">Notificações pessoais</h2>
-        <p className="text-sm text-gray-400 mt-0.5">
-          Receba alertas no seu próprio WhatsApp enviados pela clínica.
-        </p>
-      </div>
+    <div className="max-w-2xl space-y-5">
+      <section className="rounded-2xl border border-gray-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,250,252,0.98))] px-4 py-4 sm:px-5">
+        <h2 className="text-base font-semibold text-gray-900">Notificações pessoais</h2>
+        <p className="mt-1 text-sm text-gray-500">Escolha quais alertas você quer receber no WhatsApp.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${hasPhone ? 'bg-teal-50 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>
+            {hasPhone ? 'Número salvo' : 'Sem número'}
+          </span>
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${anyToggleOn ? 'bg-green-50 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+            {anyToggleOn ? 'Alertas ativos' : 'Nenhum alerta ativo'}
+          </span>
+        </div>
+      </section>
 
-      {/* How it works */}
-      <div className="flex gap-3 bg-teal-50 border border-teal-100 rounded-xl p-4 text-sm text-[#006970]">
+      <div className="flex gap-3 rounded-2xl border border-teal-100 bg-teal-50 p-4 text-sm text-[#006970]">
         <Info size={16} className="flex-shrink-0 mt-0.5" />
         <p>
-          As notificações são enviadas pela conta <strong>WhatsApp Business da clínica</strong>{' '}
-          para o seu número pessoal. Você as recebe como qualquer outra mensagem — sem precisar
-          abrir o sistema.
+          Os alertas saem do WhatsApp Business da clínica para o seu número pessoal.
         </p>
       </div>
 
-      {/* Phone number */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
         <div className="flex items-center gap-2">
           <WhatsappLogo size={16} className="text-green-500" />
-          <p className="text-sm font-semibold text-gray-700">Seu número pessoal</p>
+          <p className="text-sm font-semibold text-gray-700">Seu número</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -115,44 +148,37 @@ export default function NotificacoesTab() {
             {saving ? 'Salvando…' : 'Salvar'}
           </button>
         </div>
-        <p className="text-xs text-gray-400">
-          Formato internacional sem espaços — ex: <strong>5511999990000</strong>
-        </p>
-      </div>
+        <p className="text-xs text-gray-400">Use o formato 5511999990000.</p>
+      </section>
 
-      {/* Alert toggles */}
-      <div className={`bg-white rounded-xl border divide-y divide-gray-100 ${!hasPhone ? 'opacity-50 pointer-events-none' : ''} border-gray-200`}>
+      <section className={`bg-white rounded-2xl border divide-y divide-gray-100 ${!hasPhone ? 'opacity-50 pointer-events-none' : ''} border-gray-200`}>
         <div className="flex items-center gap-2 px-4 py-3">
           <Bell size={14} className="text-gray-400" />
           <p className="text-sm font-semibold text-gray-700">
-            Quais eventos me avisam?
+            Eventos que disparam aviso
           </p>
           {!hasPhone && (
-            <span className="ml-auto text-xs text-gray-400">Informe seu número primeiro</span>
+            <span className="ml-auto text-xs text-gray-400">Salve um número antes</span>
           )}
         </div>
         {NOTIF_OPTIONS.map(({ field, camelKey, label, desc }) => {
           const value = profile[camelKey] as boolean
           return (
-            <div key={field} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-gray-700">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-              </div>
-              <button
-                onClick={() => handleToggle(field, !value)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${value ? 'bg-[#0ea5b0]' : 'bg-gray-200'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
+            <ToggleRow
+              key={field}
+              label={label}
+              desc={desc}
+              value={value}
+              disabled={!hasPhone}
+              onToggle={() => handleToggle(field, !value)}
+            />
           )
         })}
-      </div>
+      </section>
 
       {hasPhone && !anyToggleOn && (
-        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          Nenhum alerta ativado — você não receberá mensagens até habilitar pelo menos um.
+        <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-600">
+          Nenhum alerta ativado. Você não receberá mensagens até ligar pelo menos um evento.
         </p>
       )}
     </div>

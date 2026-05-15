@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ConfiguracoesPage from '../pages/ConfiguracoesPage'
 import { renderWithProviders } from './testUtils'
 import type { Clinic } from '../types'
@@ -104,6 +105,8 @@ describe('ConfiguracoesPage', () => {
       hasWhatsApp: false,
       hasFinancial: false,
       hasServices: false,
+      hasInsurance: false,
+      hasInventory: false,
       enableModule: vi.fn(),
       disableModule: vi.fn(),
     })
@@ -139,6 +142,21 @@ describe('ConfiguracoesPage', () => {
     expect(await screen.findByText('DocumentosTab')).toBeInTheDocument()
   })
 
+  it('switches sections from the side navigation', async () => {
+    const user = userEvent.setup()
+
+    useClinicMock.mockReturnValue({ data: clinicFixture, isLoading: false })
+
+    renderWithProviders(<ConfiguracoesPage />, {
+      routerProps: { initialEntries: ['/configuracoes'] },
+    })
+
+    await user.click(screen.getByRole('button', { name: /documentos/i }))
+
+    expect(await screen.findByText('DocumentosTab')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Documentos' })).toBeInTheDocument()
+  })
+
   it('shows the lightweight setup guide when setup is still pending', () => {
     useClinicMock.mockReturnValue({
       data: { ...clinicFixture, onboardingCompleted: false },
@@ -150,8 +168,8 @@ describe('ConfiguracoesPage', () => {
       routerProps: { initialEntries: ['/configuracoes?setup=1'] },
     })
 
-    expect(screen.getByText('Você já pode usar a agenda. Configure só o básico.')).toBeInTheDocument()
-    expect(screen.getByText('Revise nome, contato e endereço para deixar notificações e relatórios corretos.')).toBeInTheDocument()
+    expect(screen.getByText('Quatro ajustes e a clínica já roda melhor.')).toBeInTheDocument()
+    expect(screen.getByText('Contato e endereço')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /equipe e acessos/i })).toBeInTheDocument()
   })
 })

@@ -158,25 +158,29 @@ export default function UsuariosTab() {
   const me     = members.find(m => m.id === profile?.id)
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-700">
-          {members.length} membro{members.length !== 1 ? 's' : ''} nesta clínica
-          {invites.length > 0 && (
-            <span className="text-amber-500 ml-1.5">
-              · {invites.length} convite{invites.length !== 1 ? 's' : ''} pendente{invites.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </h2>
-        <p className="text-xs text-gray-400">
-          Para convidar novos membros, use a opção de convite por e-mail.
-        </p>
-      </div>
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-gray-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,250,252,0.98))] px-4 py-4 sm:px-5">
+        <h2 className="text-base font-semibold text-gray-900">Acessos da clínica</h2>
+        <p className="mt-1 text-sm text-gray-500">Revise equipe, permissões e convites em um só lugar.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+            {members.length} membro{members.length !== 1 ? 's' : ''}
+          </span>
+          <span className="inline-flex items-center rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
+            {others.length} na equipe
+          </span>
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+            invites.length > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+          }`}>
+            {invites.length} convite{invites.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </section>
 
-      <div className="space-y-2">
-        {/* Current user row */}
-        {me && (
-          <div className="flex items-center justify-between px-4 py-3 bg-teal-50 border border-teal-100 rounded-xl">
+      {me && (
+        <section className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Seu acesso</p>
+          <div className="flex items-center justify-between rounded-2xl border border-teal-100 bg-teal-50 px-4 py-3">
             <div className="flex items-center gap-3 min-w-0">
               <UserCircle size={20} className="text-[#0ea5b0] flex-shrink-0" />
               <div>
@@ -196,9 +200,15 @@ export default function UsuariosTab() {
               </div>
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Other members */}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Equipe</p>
+          <p className="text-xs text-gray-400">Cada pessoa pode ter uma função e ajustes finos.</p>
+        </div>
+
         {others.map(m => {
           const isEditing = editingId === m.id
           const hasOverrides = Object.keys(m.permissionOverrides).length > 0
@@ -277,7 +287,7 @@ export default function UsuariosTab() {
                     <>
                       <button onClick={() => openEdit(m.id, m.roles, m.permissionOverrides)}
                         className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1.5 transition-colors">
-                        Editar acesso
+                        Editar
                       </button>
                       <button onClick={() => handleRemove(m.id, m.name)} disabled={removeMember.isPending}
                         className="p-1.5 text-red-400 hover:text-red-600 border border-red-100 hover:border-red-300 rounded-lg transition-colors">
@@ -292,7 +302,7 @@ export default function UsuariosTab() {
               {isEditing && showPerms && (
                 <div className="px-4 pb-4 border-t border-gray-200 mt-0 pt-3">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">
-                    Permissões individuais — <span className="text-gray-400 font-normal normal-case">sobrepõem a função</span>
+                    Permissões individuais <span className="text-gray-400 font-normal normal-case">sobrescrevem a função</span>
                   </p>
                   <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                     {ALL_PERMISSIONS.map(key => {
@@ -324,10 +334,7 @@ export default function UsuariosTab() {
                       )
                     })}
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-2">
-                    Permissões em laranja diferem do padrão da função selecionada.
-                    Alterar as funções acima pode redefinir as permissões.
-                  </p>
+                  <p className="text-[11px] text-gray-400 mt-2">Itens em laranja estão fora do padrão da função.</p>
                 </div>
               )}
             </div>
@@ -335,20 +342,25 @@ export default function UsuariosTab() {
         })}
 
         {others.length === 0 && invites.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-6">
+          <p className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
             Nenhum outro membro nesta clínica ainda.
           </p>
         )}
+      </section>
 
-        {/* Pending invites */}
-        {invites.length > 0 && (
-          <>
-            <div className="pt-2 pb-1">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
-                <Clock size={12} />
-                Convites pendentes ({invites.length})
-              </p>
-            </div>
+      {invites.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+              <Clock size={12} />
+              Convites pendentes
+            </p>
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+              {invites.length}
+            </span>
+          </div>
+          <p className="text-sm text-gray-500">Pessoas que ainda precisam aceitar o acesso por e-mail.</p>
+
             {invites.map(inv => (
               <div key={inv.id}
                 className="flex items-center justify-between px-4 py-3 bg-amber-50 border border-amber-100 rounded-xl">
@@ -387,9 +399,8 @@ export default function UsuariosTab() {
                 </div>
               </div>
             ))}
-          </>
-        )}
-      </div>
+        </section>
+      )}
 
       <ConfirmDialog
         open={!!confirmRemove}

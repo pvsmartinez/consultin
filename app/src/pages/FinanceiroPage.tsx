@@ -26,21 +26,32 @@ export default function FinanceiroPage() {
   const totalCharged = data.reduce((s, r) => s + (r.chargeAmountCents ?? 0), 0)
   const totalReceived = data.reduce((s, r) => s + (r.paidAmountCents ?? 0), 0)
   const pending = data.filter(r => r.status === 'completed' && r.paidAmountCents == null)
+  const pendingAmount = totalCharged - totalReceived
 
   const monthLabel = format(month, "MMMM 'de' yyyy", { locale: ptBR })
 
   return (
     <div className="space-y-6">
-      {/* v2 Hero */}
-      <section className="rounded-[28px] bg-white/90 border border-gray-200/80 shadow-sm px-4 py-5 sm:px-6 sm:py-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0ea5b0] mb-2">Gestão clínica</p>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-1">Financeiro</h1>
-        <p className="text-sm text-gray-500">Cobranças, pagamentos e fluxo de caixa da clínica.</p>
+      <section className="rounded-[28px] border border-gray-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,176,0.12),_transparent_42%),linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,250,252,0.98))] px-5 py-5 shadow-sm sm:px-6 sm:py-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">Financeiro</h1>
+            <p className="mt-1 text-sm text-gray-500">Veja o mês, registre recebimentos e cobre o que estiver pendente.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
+              Recebido {formatBRL(totalReceived)}
+            </span>
+            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${pendingAmount > 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+              Pendente {formatBRL(pendingAmount)}
+            </span>
+          </div>
+        </div>
       </section>
 
-      <div>
-        {/* Month nav + tab bar */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-gray-200 bg-white p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setMonth(m => subMonths(m, 1))}
@@ -84,16 +95,21 @@ export default function FinanceiroPage() {
               </button>
             )}
           </div>
-        </div>
-        <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <KpiCard label="Total a cobrar" value={formatBRL(totalCharged)} color="blue" />
-              <KpiCard label="Total recebido" value={formatBRL(totalReceived)} color="green" />
-              <KpiCard label="Pendente" value={formatBRL(totalCharged - totalReceived)} color={totalCharged - totalReceived > 0 ? 'red' : 'gray'} />
-            </div>
+          </div>
+        </section>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <KpiCard label="Total do mês" value={formatBRL(totalCharged)} color="blue" />
+          <KpiCard label="Recebido" value={formatBRL(totalReceived)} color="green" />
+          <KpiCard label="Em aberto" value={formatBRL(pendingAmount)} color={pendingAmount > 0 ? 'red' : 'gray'} />
+        </div>
+
+        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="text-sm font-semibold text-gray-800">Consultas e pagamentos</p>
+            <p className="mt-1 text-xs text-gray-500">Registre pagamento manualmente ou envie cobrança.</p>
+          </div>
+          <div className="overflow-hidden">
               {isLoading ? (
                 <p className="text-center text-gray-400 text-sm py-12">Carregando...</p>
               ) : isError ? (
@@ -248,31 +264,31 @@ export default function FinanceiroPage() {
                 </div>
                 </>
               )}
-            </div>
+          </div>
+        </section>
 
-            {pending.length > 0 && (
-              <p className="text-xs text-gray-400 mt-3">
-                {pending.length} consulta{pending.length > 1 ? 's' : ''} com pagamento pendente.
-              </p>
-            )}
+        {pending.length > 0 && (
+          <p className="text-sm text-gray-500">
+            {pending.length} consulta{pending.length > 1 ? 's' : ''} ainda sem recebimento registrado.
+          </p>
+        )}
 
-            {chargingAppointment && (
-              <AppointmentPaymentModal
-                appointment={chargingAppointment}
-                onClose={() => setChargingAppointment(null)}
-              />
-            )}
+        {chargingAppointment && (
+          <AppointmentPaymentModal
+            appointment={chargingAppointment}
+            onClose={() => setChargingAppointment(null)}
+          />
+        )}
 
-            {registeringRow && (
-              <PaymentRegistrationModal
-                open={!!registeringRow}
-                onClose={() => setRegisteringRow(null)}
-                appointmentId={registeringRow.id}
-                patientName={registeringRow.patientName}
-                chargeAmountCents={registeringRow.chargeAmountCents}
-              />
-            )}
-        </>
+        {registeringRow && (
+          <PaymentRegistrationModal
+            open={!!registeringRow}
+            onClose={() => setRegisteringRow(null)}
+            appointmentId={registeringRow.id}
+            patientName={registeringRow.patientName}
+            chargeAmountCents={registeringRow.chargeAmountCents}
+          />
+        )}
       </div>
     </div>
   )

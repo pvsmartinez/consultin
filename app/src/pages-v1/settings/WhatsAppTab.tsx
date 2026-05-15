@@ -14,6 +14,34 @@ import {
   useDeleteWhatsappFaq,
 } from '../../hooks/useWhatsappFaqs'
 
+function ToggleRow({
+  label,
+  hint,
+  value,
+  onToggle,
+}: {
+  label: string
+  hint: string
+  value: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-4">
+      <div>
+        <p className="text-sm font-medium text-gray-800">{label}</p>
+        <p className="mt-1 text-xs text-gray-500">{hint}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-gray-200'}`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+      </button>
+    </div>
+  )
+}
+
 // ─── Meta FB SDK helpers ────────────────────────────────────────────────────
 
 interface FBSDKType {
@@ -210,56 +238,51 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
 
   if (clinic.whatsappEnabled && step !== 'form') {
     return (
-      <div className="space-y-6">
-        {/* Status banner */}
-        <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-green-800">WhatsApp conectado</p>
-            <p className="text-xs text-green-600">{clinic.whatsappPhoneDisplay}</p>
+      <div className="space-y-5">
+        <section className="rounded-2xl border border-green-200 bg-green-50 px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-green-600">
+                <WhatsappLogo size={20} weight="fill" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-green-900">WhatsApp conectado</p>
+                <p className="text-sm text-green-700">{clinic.whatsappPhoneDisplay}</p>
+              </div>
+            </div>
+            <button onClick={() => setStep('form')}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-green-300 bg-white px-3 py-2 text-sm font-medium text-green-800 hover:bg-green-100">
+              <ArrowClockwise size={13} /> Reconfigurar
+            </button>
           </div>
-          <button onClick={() => setStep('form')}
-            className="flex items-center gap-1.5 text-xs text-green-700 hover:text-green-900 px-3 py-1.5 border border-green-300 rounded-lg">
-            <ArrowClockwise size={13} /> Reconfigurar
-          </button>
-        </div>
+        </section>
 
-        {/* Feature toggles — Para pacientes */}
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-4 py-2.5">Para pacientes</p>
+        <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="text-sm font-semibold text-gray-800">Automação com pacientes</p>
+            <p className="mt-1 text-xs text-gray-500">Ative só o que quer rodando no WhatsApp.</p>
+          </div>
           {([
-            { key: 'waRemindersd1', label: 'Lembrete D-1 (véspera)',         desc: 'Envia lembrete 1 dia antes com botões Confirmar / Cancelar' },
-            { key: 'waRemindersd0', label: 'Lembrete D-0 (dia da consulta)', desc: 'Envia lembrete no próprio dia às 07:00' },
+            { key: 'waRemindersd1', label: 'Lembrete D-1', desc: 'Mensagem na véspera com confirmar ou cancelar.' },
+            { key: 'waRemindersd0', label: 'Lembrete D-0', desc: 'Mensagem no dia da consulta pela manhã.' },
           ] as { key: 'waRemindersd1'|'waRemindersd0'; label: string; desc: string }[]).map(({ key, label, desc }) => {
             const value = clinic[key] as boolean
             return (
-              <div key={key} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                </div>
-                <button
-                  onClick={() => handleToggleReminders(key, !value)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-gray-200'}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
+              <ToggleRow key={key} label={label} hint={desc} value={value} onToggle={() => handleToggleReminders(key, !value)} />
             )
           })}
-        </div>
+        </section>
 
-        {/* Reminder message templates */}
         {(clinic.waRemindersd1 || clinic.waRemindersd0) && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-4">
             <div>
-              <p className="text-sm font-semibold text-gray-700">Mensagem de lembrete</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Personalize o texto enviado ao paciente. Variáveis disponíveis:{' '}
-                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{nome}}'}</code>{' '}
-                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{data}}'}</code>{' '}
-                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{hora}}'}</code>{' '}
-                <code className="bg-gray-100 px-1 rounded text-[11px] font-mono">{'{{profissional}}'}</code>
-              </p>
+              <p className="text-sm font-semibold text-gray-800">Textos dos lembretes</p>
+              <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-gray-500">
+                <code className="rounded bg-gray-100 px-1.5 py-1 font-mono">{'{{nome}}'}</code>
+                <code className="rounded bg-gray-100 px-1.5 py-1 font-mono">{'{{data}}'}</code>
+                <code className="rounded bg-gray-100 px-1.5 py-1 font-mono">{'{{hora}}'}</code>
+                <code className="rounded bg-gray-100 px-1.5 py-1 font-mono">{'{{profissional}}'}</code>
+              </div>
             </div>
             {clinic.waRemindersd1 && (
               <div className="space-y-1.5">
@@ -288,40 +311,32 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
           </div>
         )}
 
-        {/* Feature toggles — Para a equipe */}
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest px-4 py-2.5">Para a equipe</p>
+        <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="text-sm font-semibold text-gray-800">Rotina da equipe</p>
+            <p className="mt-1 text-xs text-gray-500">Use o WhatsApp como apoio interno, sem excesso.</p>
+          </div>
           {([
-            { key: 'waProfessionalAgenda', label: 'Agenda diária para profissionais', desc: 'Envia a agenda do dia para cada profissional às 07:30' },
-            { key: 'waAttendantInbox',     label: 'Caixa de mensagens (atendentes)', desc: 'Conversas que a IA não resolveu aparecem na aba Mensagens' },
+            { key: 'waProfessionalAgenda', label: 'Agenda diária para profissionais', desc: 'Resumo diário no começo da manhã.' },
+            { key: 'waAttendantInbox',     label: 'Caixa de mensagens da recepção', desc: 'Conversa não resolvida cai na aba Mensagens.' },
           ] as { key: 'waProfessionalAgenda'|'waAttendantInbox'; label: string; desc: string }[]).map(({ key, label, desc }) => {
             const value = clinic[key] as boolean
             return (
-              <div key={key} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                </div>
-                <button
-                  onClick={() => handleToggleReminders(key, !value)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-gray-200'}`}>
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
+              <ToggleRow key={key} label={label} hint={desc} value={value} onToggle={() => handleToggleReminders(key, !value)} />
             )
           })}
-          <div className="px-4 py-3 bg-gray-50 rounded-b-xl">
-            <p className="text-xs text-gray-400">
-              💡 Para receber alertas no <strong>seu próprio celular</strong>, configure em{' '}
-              <strong>Configurações → Notificações</strong>.
+          <div className="px-4 py-3 bg-gray-50">
+            <p className="text-xs text-gray-500">
+              Alertas pessoais ficam na aba Notificações.
             </p>
           </div>
-        </div>
+        </section>
 
-        {/* AI model picker */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-          <p className="text-sm font-semibold text-gray-700">Modelo de IA (via OpenRouter)</p>
-          <p className="text-xs text-gray-400">Usado para entender mensagens dos pacientes e sugerir respostas.</p>
+        <section className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Modelo de IA</p>
+            <p className="mt-1 text-xs text-gray-500">Escolha o modelo que vai interpretar as conversas.</p>
+          </div>
           <select
             value={aiModel}
             onChange={(e) => setAiModel(e.target.value)}
@@ -331,16 +346,13 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
               <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
-        </div>
+        </section>
 
-        {/* AI personality */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
           <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-            <Robot size={15} weight="fill" className="text-violet-500" /> Personalidade da IA
+            <Robot size={15} weight="fill" className="text-violet-500" /> Instruções da IA
           </p>
-          <p className="text-xs text-gray-400">
-            Instruções adicionais para o assistente. Exemplo: &ldquo;Seja sempre gentil e termine com o nome da clínica.&rdquo;
-          </p>
+          <p className="text-xs text-gray-500">Defina tom e limites do atendimento automático.</p>
           <textarea
             value={customPrompt}
             onChange={e => setCustomPrompt(e.target.value)}
@@ -351,38 +363,27 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
           />
         </div>
 
-        {/* AI command toggles */}
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          <p className="text-sm font-semibold text-gray-700 px-4 pt-3 pb-2">Ações permitidas para a IA</p>
+        <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="text-sm font-semibold text-gray-800">O que a IA pode fazer</p>
+          </div>
           {([
-            { field: 'waAiAllowConfirm'  as const, label: 'IA pode confirmar consultas',     desc: 'Confirma agendamentos via WhatsApp automaticamente' },
-            { field: 'waAiAllowCancel'   as const, label: 'IA pode cancelar consultas',       desc: 'Cancela consultas a pedido do paciente' },
-            { field: 'waAiAllowSchedule' as const, label: 'IA pode agendar novas consultas',  desc: 'Fluxo de agendamento completo via WhatsApp' },
+            { field: 'waAiAllowConfirm'  as const, label: 'Confirmar consultas', desc: 'Permite confirmação automática.' },
+            { field: 'waAiAllowCancel'   as const, label: 'Cancelar consultas', desc: 'Permite cancelamento via conversa.' },
+            { field: 'waAiAllowSchedule' as const, label: 'Agendar novas consultas', desc: 'Permite montar um agendamento completo.' },
           ]).map(({ field, label, desc }) => {
             const value = clinic[field] as boolean
             return (
-              <div key={field} className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-                </div>
-                <button
-                  onClick={() => handleToggleAi(field, !value)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${value ? 'bg-green-500' : 'bg-gray-200'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
+              <ToggleRow key={field} label={label} hint={desc} value={value} onToggle={() => handleToggleAi(field, !value)} />
             )
           })}
-        </div>
+        </section>
 
-        {/* FAQ knowledge base */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <section className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
           <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-            <BookOpen size={15} weight="fill" className="text-[#0ea5b0]" /> Base de conhecimento (FAQ)
+            <BookOpen size={15} weight="fill" className="text-[#0ea5b0]" /> Base de respostas
           </p>
-          <p className="text-xs text-gray-400">Perguntas e respostas que a IA usará para responder dúvidas frequentes.</p>
+          <p className="text-xs text-gray-500">Perguntas frequentes que ajudam a IA a responder com consistência.</p>
 
           {/* Existing FAQs */}
           <div className="space-y-2">
@@ -475,7 +476,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
               <Plus size={12} /> Adicionar
             </button>
           </div>
-        </div>
+        </section>
 
         <button onClick={handleDisconnect}
           className="text-sm text-red-500 hover:text-red-700 underline">
@@ -487,27 +488,25 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
 
   // ── Setup / guide state ─────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-xl">
-      <div>
+    <div className="space-y-5 max-w-3xl">
+      <section className="rounded-2xl border border-gray-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,250,252,0.98))] px-4 py-4 sm:px-5">
         <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
           <WhatsappLogo size={20} weight="fill" className="text-green-500" />
-          Conectar WhatsApp Business
+          WhatsApp da clínica
         </h2>
-        <p className="text-sm text-gray-400 mt-1">
-          Autorize o Consultin a enviar e receber mensagens pelo número da sua clínica.
+        <p className="mt-1 text-sm text-gray-500">
+          Conecte uma vez e controle lembretes, mensagens e IA no mesmo lugar.
         </p>
-      </div>
+      </section>
 
-      {/* ── Primary: Meta Embedded Signup ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-4 text-center">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col items-center gap-4 text-center">
         <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
           <WhatsappLogo size={28} weight="fill" className="text-green-500" />
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-semibold text-gray-800">Autorize com a Meta em 2 cliques</p>
-          <p className="text-xs text-gray-400 max-w-xs">
-            Faça login com o Facebook associado ao seu WhatsApp Business e selecione a conta.
-            O Consultin configura tudo automaticamente — sem copiar IDs ou tokens.
+          <p className="text-sm font-semibold text-gray-800">Conexão rápida pela Meta</p>
+          <p className="text-xs text-gray-500 max-w-sm">
+            Faça login, escolha a conta do WhatsApp Business e deixe o restante com o Consultin.
           </p>
         </div>
         <button
@@ -522,28 +521,27 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
         </button>
         {!import.meta.env.VITE_META_EMBEDDED_SIGNUP_CONFIG_ID && (
           <p className="text-xs text-amber-600">
-            ⚠️ Configure{' '}
+            Configure{' '}
             <code className="font-mono text-xs">VITE_META_APP_ID</code> e{' '}
             <code className="font-mono text-xs">VITE_META_EMBEDDED_SIGNUP_CONFIG_ID</code>{' '}
-            nas variáveis de ambiente.
+            no ambiente.
           </p>
         )}
       </div>
 
-      {/* ── Secondary: Manual config (collapsible) ────────────────────────── */}
-      <div className="rounded-xl border border-dashed border-gray-200">
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-white">
         <button
           onClick={() => setShowManual(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-600 hover:text-gray-800 transition-colors"
         >
-          <span>Configuração manual (modo avançado)</span>
+          <span>Modo avançado</span>
           <span className="text-xs">{showManual ? '▲' : '▼'}</span>
         </button>
         {showManual && (
           <div className="px-4 pb-4 space-y-4 border-t border-dashed border-gray-200 pt-4">
 
             <div>
-              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">URL do Webhook</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Webhook</p>
               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                 <code className="text-xs text-gray-700 flex-1 break-all">{webhookUrl}</code>
                 <button onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('Copiado!') }}
@@ -554,7 +552,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Token de Verificação</p>
+              <p className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Token de verificação</p>
               <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                 <code className="text-xs text-gray-700 flex-1">{verifyToken}</code>
                 <button onClick={() => { navigator.clipboard.writeText(verifyToken); toast.success('Copiado!') }}
@@ -574,7 +572,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
                 placeholder="123456789012345"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
               />
-              <p className="text-xs text-gray-400 mt-1">Meta for Developers → Seu App → WhatsApp → Configuração</p>
+              <p className="text-xs text-gray-400 mt-1">Meta → seu app → WhatsApp.</p>
             </div>
 
             <div>
@@ -612,9 +610,7 @@ export default function WhatsAppTab({ clinic }: { clinic: Clinic }) {
                 placeholder="EAAxxxxxxxxxxxxxxx..."
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-300"
               />
-              <p className="text-xs text-gray-400 mt-1">
-                🔒 Armazenado de forma segura — nunca exposto no frontend.
-              </p>
+              <p className="text-xs text-gray-400 mt-1">Armazenado de forma segura.</p>
             </div>
 
             <div>

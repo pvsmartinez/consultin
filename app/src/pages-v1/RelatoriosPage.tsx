@@ -117,6 +117,8 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
   const totalCharged = (data as RawRow[]).reduce((s, r) => s + ((r.charge_amount_cents as number) ?? 0), 0)
   const totalReceived = (data as RawRow[]).reduce((s, r) => s + ((r.paid_amount_cents as number) ?? 0), 0)
   const completedCount = (data as RawRow[]).filter(r => r.status === 'completed').length
+  const pendingAmount = Math.max(totalCharged - totalReceived, 0)
+  const selectedProfessionalName = professionals.find(p => p.id === professionalId)?.name ?? null
 
   const handleExport = () => {
     const rows = (data as RawRow[]).map(r => ({
@@ -244,76 +246,125 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className={`flex flex-wrap items-center justify-between gap-3 ${hideHeader ? 'mb-4' : 'mb-6'}`}>
-        {!hideHeader && <h1 className="text-xl font-semibold text-gray-800">Relatórios</h1>}
+    <div className="space-y-6">
+      <section className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.12),_transparent_38%),linear-gradient(135deg,#ffffff_0%,#f8fafc_48%,#ecfeff_100%)] p-5 sm:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-2xl space-y-3">
+            {!hideHeader && (
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0f766e]">
+                Relatórios
+              </p>
+            )}
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[30px]">
+                Fechamento e exportações de {monthLabel}
+              </h1>
+              <p className="max-w-xl text-sm leading-6 text-slate-600 sm:text-[15px]">
+                Confira o ritmo do período, veja o que já entrou no caixa e exporte a base certa sem
+                navegar por telas extras.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <SummaryChip label="Recorte" value={selectedProfessionalName ?? 'Equipe toda'} />
+              <SummaryChip label="Consultas concluídas" value={String(completedCount)} />
+              <SummaryChip label="Em aberto" value={formatBRL(pendingAmount)} />
+            </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Month selector — hidden when parent controls the month */}
-          {!controlledMonth && (
-            <select
-              value={format(month, 'yyyy-MM')}
-              onChange={e => {
-                const [y, m] = e.target.value.split('-').map(Number)
-                setMonth(new Date(y, m - 1, 1))
-              }}
-              className="border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-            >
-              {Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i)).map(d => (
-                <option key={format(d, 'yyyy-MM')} value={format(d, 'yyyy-MM')}>
-                  {format(d, "MMMM 'de' yyyy", { locale: ptBR })}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Professional filter */}
-          <select
-            value={professionalId}
-            onChange={e => setProfessionalId(e.target.value)}
-            className="border border-gray-200 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-          >
-            <option value="">Todos os profissionais</option>
-            {professionals.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-
-          {/* PDF export */}
-          <button
-            onClick={handleExport}
-            disabled={isLoading || data.length === 0}
-            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
-          >
-            <FilePdf size={16} />
-            PDF
-          </button>
-
-          {/* CSV appointments */}
-          <button
-            onClick={handleExportCSV}
-            disabled={isLoading || data.length === 0}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-lg text-sm font-medium transition disabled:opacity-50"
-          >
-            <FileCsv size={16} />
-            CSV Consultas
-          </button>
+          <div className="grid flex-1 gap-3 sm:grid-cols-3 xl:max-w-xl">
+            <HighlightMetric label="Total cobrado" value={formatBRL(totalCharged)} />
+            <HighlightMetric label="Total recebido" value={formatBRL(totalReceived)} accent="teal" />
+            <HighlightMetric label="Status ativos" value={`${statusBreakdown.length} tipos`} accent="slate" />
+          </div>
         </div>
-      </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Filtros do período
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {!controlledMonth && (
+                <label className="space-y-1.5 text-sm text-slate-600">
+                  <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Mês
+                  </span>
+                  <select
+                    value={format(month, 'yyyy-MM')}
+                    onChange={e => {
+                      const [y, m] = e.target.value.split('-').map(Number)
+                      setMonth(new Date(y, m - 1, 1))
+                    }}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => subMonths(new Date(), i)).map(d => (
+                      <option key={format(d, 'yyyy-MM')} value={format(d, 'yyyy-MM')}>
+                        {format(d, "MMMM 'de' yyyy", { locale: ptBR })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              <label className="space-y-1.5 text-sm text-slate-600">
+                <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                  Profissional
+                </span>
+                <select
+                  value={professionalId}
+                  onChange={e => setProfessionalId(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                >
+                  <option value="">Todos os profissionais</option>
+                  {professionals.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-950 p-4 text-white shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-teal-200/80">
+              Saída rápida
+            </p>
+            <p className="mt-2 text-sm text-slate-200">
+              Leve o resumo do período em PDF ou baixe a planilha de consultas do recorte atual.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={handleExport}
+                disabled={isLoading || data.length === 0}
+                className="flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+              >
+                <FilePdf size={16} />
+                PDF
+              </button>
+              <button
+                onClick={handleExportCSV}
+                disabled={isLoading || data.length === 0}
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              >
+                <FileCsv size={16} />
+                CSV Consultas
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {isLoading ? (
-        <p className="text-center text-gray-400 text-sm py-20">Carregando...</p>
+        <p className="py-20 text-center text-sm text-gray-400">Carregando...</p>
       ) : (
         <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
-            <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+          <section className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Painel rápido
+                  Ritmo recente
                 </h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Mesma lógica usada pelo bot administrativo no WhatsApp.
+                <p className="mt-1 text-sm text-slate-600">
+                  Mesmo snapshot usado pelo assistente administrativo, agora agrupado para leitura rápida.
                   {professionalId ? ' Painel filtrado para o profissional selecionado.' : ''}
                 </p>
               </div>
@@ -322,19 +373,19 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
             {loadingAdmin || !adminSnapshot ? (
               <p className="text-sm text-slate-400">Carregando painel rápido...</p>
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 {[adminSnapshot.today, adminSnapshot.week, adminSnapshot.month].map(period => (
                   <div key={period.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 mb-3">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                       {period.label}
                     </p>
-                    <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="mb-3 grid grid-cols-2 gap-3">
                       <MiniStat label="Consultas" value={String(period.totalAppointments)} />
                       <MiniStat label="Pacientes únicos" value={String(period.uniquePatients)} />
                       <MiniStat label="Novos pacientes" value={String(period.newPatients)} />
                       <MiniStat label="Concluídas" value={String(period.completedCount)} />
                     </div>
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600 space-y-1">
+                    <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                       <p>Cobrado: <strong className="text-slate-800">{formatBRL(period.totalChargedCents)}</strong></p>
                       <p>Recebido: <strong className="text-slate-800">{formatBRL(period.totalPaidCents)}</strong></p>
                       <p>
@@ -352,96 +403,98 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
             )}
           </section>
 
-          {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { label: 'Consultas concluídas', value: String(completedCount) },
-              { label: 'Status distribu.',     value: `${statusBreakdown.length} tipos` },
-              { label: 'Total cobrado',        value: formatBRL(totalCharged) },
-              { label: 'Total recebido',       value: formatBRL(totalReceived) },
-            ].map(c => (
-              <div key={c.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500 mb-1">{c.label}</p>
-                <p className="text-lg font-semibold text-gray-800">{c.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Consultas por dia */}
-          <ChartCard title="Consultas por dia">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={countsPerDay} margin={{ left: -20, right: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="consultas" fill="#0d9488" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* Faturamento diário */}
-          <ChartCard title="Faturamento diário (R$)">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={revenuePerDay} margin={{ left: -10, right: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number | undefined) => v != null ? formatBRLReais(v) : ''} />
-                <Line type="monotone" dataKey="faturamento" stroke="#0d9488" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* Status breakdown */}
-          {statusBreakdown.length > 0 && (
-            <ChartCard title="Consultas por status">
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={statusBreakdown} layout="vertical" margin={{ left: 60, right: 16 }}>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ChartCard
+              title="Consultas por dia"
+              description="Volume diário do recorte atual para localizar picos e vales do mês."
+            >
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={countsPerDay} margin={{ left: -20, right: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="status" type="category" tick={{ fontSize: 11 }} width={55} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#10b981" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="consultas" fill="#0d9488" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
-          )}
 
-          {/* ── Exportações de dados ─────────────────────────────────────── */}
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Exportar dados
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <ExportCard
-                icon={<DownloadSimple size={22} className="text-emerald-600" />}
-                title="Financeiro"
-                description={`Pagamentos de ${monthLabel}`}
-                loading={exportingFinance}
-                onClick={handleExportFinance}
-                color="emerald"
-              />
-              <ExportCard
-                icon={<Users size={22} className="text-[#0ea5b0]" />}
-                title="Pacientes"
-                description="Todos os pacientes cadastrados"
-                loading={exportingPatients}
-                onClick={handleExportPatients}
-                color="blue"
-              />
-              <ExportCard
-                icon={<UserCircle size={22} className="text-violet-600" />}
-                title="Profissionais"
-                description="Todos os profissionais cadastrados"
-                loading={exportingProfessionals}
-                onClick={handleExportProfessionals}
-                color="violet"
-              />
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Arquivos CSV compatíveis com Excel, Google Sheets e outros sistemas.
-            </p>
+            <ChartCard
+              title="Faturamento diário (R$)"
+              description="Mostra em quais dias o caixa realmente girou, não só o que foi cobrado."
+            >
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={revenuePerDay} margin={{ left: -10, right: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number | undefined) => v != null ? formatBRLReais(v) : ''} />
+                  <Line type="monotone" dataKey="faturamento" stroke="#0d9488" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            {statusBreakdown.length > 0 && (
+              <ChartCard
+                title="Consultas por status"
+                description="Distribuição do mês para entender se a agenda está virando atendimento e pagamento."
+              >
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={statusBreakdown} layout="vertical" margin={{ left: 60, right: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="status" type="category" tick={{ fontSize: 11 }} width={55} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#10b981" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            )}
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Exportar dados
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Bases completas para repasse, conferência ou uso em Excel e Google Sheets.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <ExportCard
+                  icon={<DownloadSimple size={22} className="text-emerald-600" />}
+                  title="Financeiro"
+                  description={`Pagamentos de ${monthLabel}`}
+                  loading={exportingFinance}
+                  onClick={handleExportFinance}
+                  color="emerald"
+                />
+                <ExportCard
+                  icon={<Users size={22} className="text-[#0ea5b0]" />}
+                  title="Pacientes"
+                  description="Todos os pacientes cadastrados"
+                  loading={exportingPatients}
+                  onClick={handleExportPatients}
+                  color="blue"
+                />
+                <ExportCard
+                  icon={<UserCircle size={22} className="text-violet-600" />}
+                  title="Profissionais"
+                  description="Todos os profissionais cadastrados"
+                  loading={exportingProfessionals}
+                  onClick={handleExportProfessionals}
+                  color="violet"
+                />
+              </div>
+              <p className="mt-3 text-xs text-gray-400">
+                Arquivos CSV compatíveis com Excel, Google Sheets e outros sistemas.
+              </p>
+            </section>
           </div>
         </div>
       )}
@@ -451,11 +504,54 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
 
 // ─── ChartCard ────────────────────────────────────────────────────────────────
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-sm font-semibold text-gray-600 mb-4">{title}</h2>
+    <div className="rounded-3xl border border-gray-200 bg-white p-5">
+      <div className="mb-4 space-y-1">
+        <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+        {description && <p className="text-sm text-slate-500">{description}</p>}
+      </div>
       {children}
+    </div>
+  )
+}
+
+function SummaryChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-sm text-slate-600 shadow-sm">
+      <span className="text-slate-400">{label}:</span>{' '}
+      <strong className="font-semibold text-slate-800">{value}</strong>
+    </div>
+  )
+}
+
+function HighlightMetric({
+  label,
+  value,
+  accent = 'emerald',
+}: {
+  label: string
+  value: string
+  accent?: 'emerald' | 'teal' | 'slate'
+}) {
+  const accentClass = {
+    emerald: 'text-emerald-700 bg-emerald-50 border-emerald-100',
+    teal: 'text-teal-700 bg-teal-50 border-teal-100',
+    slate: 'text-slate-700 bg-slate-100 border-slate-200',
+  }[accent]
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${accentClass}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">{label}</p>
+      <p className="mt-2 text-xl font-semibold tracking-tight">{value}</p>
     </div>
   )
 }

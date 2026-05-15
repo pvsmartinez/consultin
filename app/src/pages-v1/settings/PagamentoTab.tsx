@@ -29,9 +29,22 @@ function PagamentoTabForm({ clinic }: { clinic: Clinic }) {
     )
   }
 
+  const parsedCancelH = parseInt(cancelH, 10)
+
+  function applyCancelPreset(value: number) {
+    setCancelH(String(value))
+  }
+
+  function getCancellationSummary() {
+    if (parsedCancelH === 0) return 'Cancelamento sempre permitido.'
+    if (parsedCancelH === -1) return 'Cancelamento pelo portal desativado.'
+    if (Number.isNaN(parsedCancelH)) return 'Defina quantas horas antes o paciente pode cancelar.'
+    if (parsedCancelH > 0) return `Paciente pode cancelar até ${parsedCancelH}h antes.`
+    return 'Use 0 para liberar sempre ou -1 para bloquear no portal.'
+  }
+
   async function save() {
     if (methods.length === 0) { toast.error('Selecione ao menos uma forma de pagamento'); return }
-    const parsedCancelH = parseInt(cancelH, 10)
     setSaving(true)
     try {
       await update.mutateAsync({
@@ -48,38 +61,63 @@ function PagamentoTabForm({ clinic }: { clinic: Clinic }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Accepted payment methods */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-gray-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,250,252,0.98))] px-4 py-4 sm:px-5">
+        <h2 className="text-base font-semibold text-gray-900">Regras de pagamento</h2>
+        <p className="mt-1 text-sm text-gray-500">Defina como a clínica cobra e como o paciente pode cancelar.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
+            {methods.length} forma{methods.length !== 1 ? 's' : ''} ativa{methods.length !== 1 ? 's' : ''}
+          </span>
+          <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+            {PAYMENT_TIMING_LABELS[timing]}
+          </span>
+          <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+            {getCancellationSummary()}
+          </span>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <label className="block text-sm font-medium text-gray-800 mb-3">
           Formas de pagamento aceitas
         </label>
-        <p className="text-xs text-gray-400 mb-3">
-          Essas opções aparecerão no registro de recebimento de cada consulta.
-        </p>
-        <div className="space-y-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           {PAYMENT_METHOD_OPTIONS.map(opt => (
-            <label key={opt.value} className="flex items-center gap-3 cursor-pointer">
+            <label
+              key={opt.value}
+              className={`flex items-center gap-3 rounded-2xl border px-3 py-3 transition cursor-pointer ${
+                methods.includes(opt.value)
+                  ? 'border-teal-200 bg-teal-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={methods.includes(opt.value)}
                 onChange={() => toggleMethod(opt.value)}
                 className="rounded border-gray-300"
               />
-              <span className="text-sm text-gray-700">{opt.label}</span>
+              <span className="text-sm font-medium text-gray-700">{opt.label}</span>
             </label>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Payment timing */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Quando o pagamento é realizado?
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <label className="block text-sm font-medium text-gray-800 mb-3">
+          Momento da cobrança
         </label>
         <div className="space-y-2">
           {Object.entries(PAYMENT_TIMING_LABELS).map(([value, label]) => (
-            <label key={value} className="flex items-center gap-3 cursor-pointer">
+            <label
+              key={value}
+              className={`flex items-center gap-3 rounded-2xl border px-3 py-3 transition cursor-pointer ${
+                timing === value
+                  ? 'border-teal-200 bg-teal-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
               <input
                 type="radio"
                 name="paymentTiming"
@@ -87,20 +125,37 @@ function PagamentoTabForm({ clinic }: { clinic: Clinic }) {
                 onChange={() => setTiming(value as Clinic['paymentTiming'])}
                 className="border-gray-300"
               />
-              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-sm font-medium text-gray-700">{label}</span>
             </label>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Cancellation policy */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Política de cancelamento pelo paciente
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <label className="block text-sm font-medium text-gray-800 mb-3">
+          Cancelamento pelo paciente
         </label>
-        <p className="text-xs text-gray-400 mb-3">
-          Quantas horas antes da consulta o paciente pode cancelar pelo portal.
-        </p>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {[
+            { value: 0, label: 'Sempre' },
+            { value: 24, label: '24h' },
+            { value: 48, label: '48h' },
+            { value: -1, label: 'Bloquear' },
+          ].map(preset => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => applyCancelPreset(preset.value)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                parsedCancelH === preset.value
+                  ? 'bg-[#006970] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -111,12 +166,8 @@ function PagamentoTabForm({ clinic }: { clinic: Clinic }) {
           />
           <span className="text-sm text-gray-500">horas antes da consulta</span>
         </div>
-        <p className="text-xs text-gray-400 mt-1.5">
-          {parseInt(cancelH) === 0 && 'Cancelamento sempre permitido.'}
-          {parseInt(cancelH) === -1 && 'Cancelamento pelo portal nunca permitido.'}
-          {parseInt(cancelH) > 0 && `Paciente pode cancelar até ${cancelH}h antes. Após esse prazo, deverá ligar para a clínica.`}
-        </p>
-      </div>
+        <p className="mt-2 text-sm text-gray-500">{getCancellationSummary()}</p>
+      </section>
 
       <div className="flex justify-end">
         <button
