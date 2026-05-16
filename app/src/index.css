@@ -197,6 +197,7 @@ body {
 
 /* Slot time labels */
 .fc .fc-timegrid-slot-label { font-size: 0.6875rem; color: var(--ui-text-muted); }
+.fc .fc-timegrid-slot { height: 2.8rem; }
 
 /* Column headers */
 .fc .fc-col-header-cell { background: var(--ui-bg); }
@@ -216,6 +217,20 @@ body {
 }
 .fc-event .fc-event-title { font-size: 0.75rem !important; font-weight: 500 !important; }
 .fc-event .fc-event-time { font-size: 0.6875rem !important; opacity: 0.85; }
+
+.fc .consultin-agenda-event .fc-event-main {
+  height: 100%;
+  padding: 0 !important;
+}
+
+.fc .consultin-agenda-event .fc-event-main-frame {
+  height: 100%;
+}
+
+.fc .consultin-agenda-event.fc-timegrid-event,
+.fc .consultin-agenda-event.fc-daygrid-dot-event {
+  overflow: hidden !important;
+}
 
 /* Toolbar title */
 .fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; color: var(--ui-text-bright); }

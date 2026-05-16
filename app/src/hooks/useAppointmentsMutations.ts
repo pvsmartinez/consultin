@@ -97,7 +97,7 @@ export function useAppointmentsQuery(
     queryFn: async () => {
       let q = supabase
         .from('appointments')
-        .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty), clinic_room:clinic_rooms(id,name,color), clinics(id,name)`)
+        .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty,photo_url), clinic_room:clinic_rooms(id,name,color), clinics(id,name)`)
         .eq('clinic_id', clinicId!)
         .gte('starts_at', startsFrom)
         .lte('starts_at', startsUntil)
@@ -157,7 +157,7 @@ export function useAppointmentMutations() {
           professional_fee_cents:  input.professionalFeeCents ?? null,
           service_type_id:         input.serviceTypeId ?? null,
         })
-        .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty), clinic_room:clinic_rooms(id,name,color)`)
+        .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty,photo_url), clinic_room:clinic_rooms(id,name,color)`)
         .single()
       if (error) throw error
       return mapAppointment(data as Record<string, unknown>)
@@ -182,7 +182,7 @@ export function useAppointmentMutations() {
           professional_fee_cents:  input.professionalFeeCents ?? null,
         })
         .eq('id', id)
-        .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty), clinic_room:clinic_rooms(id,name,color)`)
+        .select(`*, patient:patients(id,name,phone), professional:professionals(id,name,specialty,photo_url), clinic_room:clinic_rooms(id,name,color)`)
         .single()
       if (error) throw error
       return mapAppointment(data as Record<string, unknown>)

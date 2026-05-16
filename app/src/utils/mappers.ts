@@ -19,6 +19,10 @@ import type {
 // ─── Appointment ──────────────────────────────────────────────────────────────
 
 export function mapAppointment(row: Record<string, unknown>): Appointment {
+  const patientRow = (row.patient as Record<string, unknown> | null) ?? null
+  const professionalRow = (row.professional as Record<string, unknown> | null) ?? null
+  const clinicRoomRow = (row.clinic_room as Record<string, unknown> | null) ?? null
+
   return {
     id:                   row.id as string,
     clinicId:             row.clinic_id as string,
@@ -36,9 +40,32 @@ export function mapAppointment(row: Record<string, unknown>): Appointment {
     paidAt:               (row.paid_at as string) ?? null,
     paymentMethod:        (row.payment_method as string) ?? null,
     createdAt:            row.created_at as string,
-    patient:              row.patient as Appointment['patient'],
-    professional:         row.professional as Appointment['professional'],
-    clinicRoom:           row.clinic_room as Appointment['clinicRoom'],
+    patient: patientRow
+      ? {
+          id: patientRow.id as string,
+          name: patientRow.name as string,
+          phone: (patientRow.phone as string) ?? null,
+          cpf: (patientRow.cpf as string) ?? null,
+        }
+      : undefined,
+    professional: professionalRow
+      ? {
+          id: professionalRow.id as string,
+          name: professionalRow.name as string,
+          specialty: (professionalRow.specialty as string) ?? null,
+          photoUrl:
+            (professionalRow.photo_url as string | null | undefined)
+            ?? (professionalRow.photoUrl as string | null | undefined)
+            ?? null,
+        }
+      : undefined,
+    clinicRoom: clinicRoomRow
+      ? {
+          id: clinicRoomRow.id as string,
+          name: clinicRoomRow.name as string,
+          color: clinicRoomRow.color as string,
+        }
+      : undefined,
   }
 }
 

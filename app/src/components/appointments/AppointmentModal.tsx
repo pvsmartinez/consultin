@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { FieldErrors } from 'react-hook-form'
-import { X, Trash, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle } from '@phosphor-icons/react'
+import { X, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
@@ -26,6 +26,10 @@ import { useServiceTypes } from '../../hooks/useServiceTypes'
 import { useAppointmentInventoryMovements, useCreateInventoryMovement, useInventoryMaterials } from '../../hooks/useInventory'
 import { useAuthContext } from '../../contexts/AuthContext'
 import PatientDrawer from '../patients/PatientDrawer'
+import ConfirmDialog from '../ui/ConfirmDialog'
+import { APP_ROUTES } from '../../lib/appRoutes'
+import { getAppointmentSaveErrorMessage } from '../../utils/appointmentErrors'
+import { getAppointmentRoomRequirement } from '../../utils/appointmentRoomRequirement'
 import {
   APPOINTMENT_STATUS_COLORS,
   APPOINTMENT_STATUS_LABELS,
@@ -97,7 +101,7 @@ const RETURN_PRESETS = [
   { label: '2 semanas',  value: '14d'   },
   { label: '1 mês',      value: '30d'   },
   { label: '3 meses',    value: '90d'   },
-  { label: 'Avançado',   value: 'custom' },
+  { label: 'Personalizado', value: 'custom' },
 ] as const
 type ReturnPreset = typeof RETURN_PRESETS[number]['value']
 
@@ -122,6 +126,26 @@ function formatMoneyPreview(value?: string): string {
 
 function formatAppointmentPreview(startsAt: string, endsAt: string): string {
   return `${format(parseISO(startsAt), 'dd/MM')} · ${format(parseISO(startsAt), 'HH:mm')}–${format(parseISO(endsAt), 'HH:mm')}`
+}
+
+function normalizeText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function subsequenceScore(query: string, text: string): number {
+  let qi = 0
+  let score = 0
+  for (let i = 0; i < text.length && qi < query.length; i += 1) {
+    if (query[qi] === text[i]) {
+      score += qi === 0 ? 2 : 1
+      qi += 1
+    }
+  }
+  return qi === query.length ? score : 0
 }
 
 function SummaryChip({ label, value }: { label: string; value: string }) {
@@ -169,6 +193,8 @@ interface Props {
   initialDurationMin?: number // from drag selection
   /** Default professional from calendar column */
   initialProfessionalId?: string
+  /** Default room from calendar filter/column */
+  initialRoomId?: string
   /** Pre-fill patient (e.g. opened from PatientDetailPage) */
   initialPatientId?: string
   initialPatientName?: string
@@ -176,7 +202,7 @@ interface Props {
 
 export default function AppointmentModal({
   open, onClose, appointment,
-  initialDate, initialTime, initialDurationMin, initialProfessionalId,
+  initialDate, initialTime, initialDurationMin, initialProfessionalId, initialRoomId,
   initialPatientId, initialPatientName,
 }: Props) {
   const isEditing = !!appointment
@@ -193,6 +219,7 @@ export default function AppointmentModal({
   const createInventoryMovement = useCreateInventoryMovement()
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [roomRequirementDialogOpen, setRoomRequirementDialogOpen] = useState(false)
   const [showExtras, setShowExtras]       = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [returnPreset, setReturnPreset]   = useState<ReturnPreset>('none')
@@ -206,6 +233,7 @@ export default function AppointmentModal({
   const [patientDrawerPatientId, setPatientDrawerPatientId] = useState<string | undefined>(undefined)
   const debouncedPatientSearch = useDebounce(patientSearch, 300)
   const { patients = [] } = usePatients(debouncedPatientSearch)
+  const { patients: allPatients = [] } = usePatients('', 0)
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -213,7 +241,6 @@ export default function AppointmentModal({
   })
 
   const recurrenceType  = watch('recurrenceType')
-  const recurrenceCount = watch('recurrenceCount')
   const durationMinVal  = watch('durationMin')
   const watchedDate = watch('date')
   const watchedStartTime = watch('startTime')
@@ -231,6 +258,7 @@ export default function AppointmentModal({
   const activeServiceTypes = serviceTypes.filter(s => s.active)
   const activeProfessionals = professionals.filter(p => p.active)
   const activeRooms         = rooms.filter(r => r.active)
+  const { hasSelectableRooms, requiresRoomSelection } = getAppointmentRoomRequirement(rooms)
   const selectedServiceType = activeServiceTypes.find(s => s.id === (watch('serviceTypeId') ?? '')) ?? null
   const selectedServiceSuggestions = selectedServiceType?.inventorySuggestions ?? []
   const appointmentSuggestedMaterialIds = new Set(
@@ -282,6 +310,39 @@ export default function AppointmentModal({
   const clinicalDocumentCount = patientClinicalItems.filter(item => item.category === 'document').length
   const clinicalRequestCount = patientClinicalItems.filter(item => item.category === 'request').length
   const latestClinicalItem = patientClinicalItems[0] ?? null
+  const patientSearchResults = useMemo(() => {
+    const raw = patientSearch.trim()
+    if (!raw) return patients.slice(0, 8)
+
+    const query = normalizeText(raw)
+    const queryDigits = raw.replace(/\D/g, '')
+    const merged = [...patients, ...allPatients]
+    const uniquePatients = Array.from(new Map(merged.map(item => [item.id, item])).values())
+
+    return uniquePatients
+      .map(patient => {
+        const name = normalizeText(patient.name)
+        const cpfDigits = (patient.cpf ?? '').replace(/\D/g, '')
+        const phoneDigits = (patient.phone ?? '').replace(/\D/g, '')
+
+        let score = 0
+        if (name.includes(query)) {
+          score += 100 - Math.min(name.indexOf(query), 20)
+        } else {
+          score += subsequenceScore(query, name)
+        }
+
+        if (queryDigits.length >= 3 && (cpfDigits.includes(queryDigits) || phoneDigits.includes(queryDigits))) {
+          score += 60
+        }
+
+        return { patient, score }
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map(item => item.patient)
+  }, [allPatients, patientSearch, patients])
 
   // Build duration options — include any custom value from drag selection or existing appointment
   const durationOptions = useMemo(() => {
@@ -293,6 +354,7 @@ export default function AppointmentModal({
   useEffect(() => {
     if (!open) {
       setConfirmCancel(false)
+      setRoomRequirementDialogOpen(false)
       setPatientSearch('')
       setSelectedPatient(null)
       setShowQuickPatient(false)
@@ -341,7 +403,7 @@ export default function AppointmentModal({
         durationMin:     String(initialDurationMin ?? 30),
         status:          'scheduled',
         notes:           '',
-        roomId:          '',
+        roomId:          initialRoomId ?? '',
         serviceTypeId:   '',
         chargeAmount:    '',
         professionalFee: '',
@@ -354,9 +416,10 @@ export default function AppointmentModal({
         setPatientSearch(initialPatientName)
       }
       setShowEditFields(true)
+      setShowExtras(true)
     }
     setReturnPreset('none')
-  }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialPatientId, initialPatientName, reset])
+  }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialRoomId, initialPatientId, initialPatientName, reset])
 
   // Auto-select room / professional when there is only one active option
   useEffect(() => {
@@ -367,11 +430,36 @@ export default function AppointmentModal({
     if (rms.length   === 1) setValue('roomId', rms[0].id)
   }, [open, professionals, rooms, setValue])
 
+  useEffect(() => {
+    if (!open || isEditing) return
+    if (watchedProfessionalId) return
+    const firstProfessional = activeProfessionals[0]
+    if (firstProfessional) {
+      setValue('professionalId', firstProfessional.id, { shouldValidate: true })
+    }
+  }, [activeProfessionals, isEditing, open, setValue, watchedProfessionalId])
+
   async function onSubmit(values: FormValues) {
     try {
+      if (requiresRoomSelection && !values.roomId) {
+        setShowExtras(true)
+        setRoomRequirementDialogOpen(true)
+        return
+      }
+
       const durationMin = parseInt(values.durationMin)
+      if (!Number.isFinite(durationMin) || durationMin < 15) {
+        toast.error('Duração inválida — selecione pelo menos 15 minutos')
+        return
+      }
+
       const startsAt    = toUTC(values.date, values.startTime)
       const endsAt      = addMinutes(new Date(startsAt), durationMin).toISOString()
+      if (Number.isNaN(new Date(startsAt).getTime()) || Number.isNaN(new Date(endsAt).getTime())) {
+        toast.error('Data ou horário inválido — revise os campos da consulta')
+        return
+      }
+
       const chargeRaw = values.chargeAmount ? parseFloat(values.chargeAmount.replace(',', '.')) : NaN
       const feeRaw = values.professionalFee ? parseFloat(values.professionalFee.replace(',', '.')) : NaN
       if (values.chargeAmount && isNaN(chargeRaw)) {
@@ -382,8 +470,17 @@ export default function AppointmentModal({
         toast.error('Repasse ao profissional inválido')
         return
       }
+      if (values.chargeAmount && chargeRaw < 0) {
+        toast.error('Valor cobrado não pode ser negativo')
+        return
+      }
+      if (values.professionalFee && feeRaw < 0) {
+        toast.error('Repasse ao profissional não pode ser negativo')
+        return
+      }
       const chargeAmountCents = values.chargeAmount ? Math.round(chargeRaw * 100) : null
       const professionalFeeCents = values.professionalFee ? Math.round(feeRaw * 100) : null
+      let shouldClose = false
 
       const basePayload = {
         patientId:           values.patientId,
@@ -399,17 +496,28 @@ export default function AppointmentModal({
       if (isEditing) {
         await update.mutateAsync({ id: appointment!.id, ...basePayload, startsAt, endsAt })
         toast.success('Consulta atualizada')
+        shouldClose = true
       } else if (returnPreset !== 'none' && returnPreset !== 'custom') {
         // Quick return preset — create original + one follow-up
         const offsetDays  = parseInt(returnPreset)  // '7d' → 7, '14d' → 14 …
         const returnStart = addDays(new Date(startsAt), offsetDays).toISOString()
         const returnEnd   = addMinutes(new Date(returnStart), durationMin).toISOString()
-        await Promise.all([
+        const quickReturnResults = await Promise.allSettled([
           create.mutateAsync({ ...basePayload, startsAt, endsAt }),
           create.mutateAsync({ ...basePayload, startsAt: returnStart, endsAt: returnEnd }),
         ])
+        const quickCreated = quickReturnResults.filter(result => result.status === 'fulfilled').length
+        const quickFailed = quickReturnResults.length - quickCreated
         const presetLabel = RETURN_PRESETS.find(p => p.value === returnPreset)?.label ?? ''
-        toast.success(`Consulta agendada com retorno em ${presetLabel}`)
+        if (quickCreated === quickReturnResults.length) {
+          toast.success(`Consulta agendada com retorno em ${presetLabel}`)
+          shouldClose = true
+        } else if (quickCreated > 0) {
+          toast.warning(`Apenas ${quickCreated} de 2 consultas foram agendadas (${quickFailed} falhou). Revise conflitos e tente novamente.`)
+          shouldClose = true
+        } else {
+          toast.error('Não foi possível agendar a consulta com retorno — revise conflitos de agenda e sala')
+        }
       } else if (returnPreset === 'custom' && values.recurrenceType !== 'none') {
         // Advanced recurrence
         const count = Math.min(Math.max(parseInt(values.recurrenceCount) || 1, 1), 52)
@@ -422,27 +530,39 @@ export default function AppointmentModal({
         const results = await Promise.allSettled(creates)
         const created = results.filter(r => r.status === 'fulfilled').length
         const failed  = count - created
-        if (failed > 0) {
-          toast.error(`${failed} consulta(s) não puderam ser agendadas — verifique conflito de horário`)
-        }
-        if (created > 0) {
+        if (created === count) {
           toast.success(`${created} de ${count} consultas agendadas`)
+          shouldClose = true
+        } else if (created > 0) {
+          toast.warning(`${created} de ${count} consultas agendadas. ${failed} falharam — verifique conflitos de horário/sala.`)
+          shouldClose = true
+        } else {
+          toast.error('Nenhuma consulta foi agendada — verifique conflitos de horário e sala')
         }
       } else {
         await create.mutateAsync({ ...basePayload, startsAt, endsAt })
         toast.success('Consulta agendada')
+        shouldClose = true
       }
-      onClose()
+
+      if (shouldClose) {
+        onClose()
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('no_overlap')) {
-        toast.error('Conflito de horário — profissional já tem consulta nesse horário')
-      } else if (msg.includes('room_overlap')) {
-        toast.error('Conflito de sala — já existe consulta nessa sala nesse horário')
-      } else {
-        toast.error('Erro ao salvar consulta')
-      }
+      toast.error(getAppointmentSaveErrorMessage(err))
     }
+  }
+
+  function handleRoomRequirementConfirm() {
+    setRoomRequirementDialogOpen(false)
+
+    if (hasSelectableRooms) {
+      setShowExtras(true)
+      return
+    }
+
+    onClose()
+    navigate(APP_ROUTES.staff.rooms)
   }
 
   async function handleQuickPatient() {
@@ -551,27 +671,25 @@ export default function AppointmentModal({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-4">
-          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-3.5 pr-10 sm:pr-12">
+          <form
+            onSubmit={handleSubmit(onSubmit, onInvalid)}
+            className={`${isEditing ? 'space-y-3.5' : 'space-y-2.5'} pr-10 sm:pr-12`}
+          >
 
             {isEditing && (
               <>
                 <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-4.5">
                   <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#0ea5b0]">
-                          {currentServiceType?.name ?? 'Consulta marcada'}
-                        </p>
-                        <h2 className="mt-1.5 text-[32px] leading-none font-semibold tracking-tight text-gray-900">
-                          {selectedPatient?.name ?? appointment?.patient?.name ?? 'Paciente sem nome'}
-                        </h2>
-                        <p className="mt-1.5 text-sm text-gray-500">
-                          {currentProfessional?.name ?? 'Profissional não definido'}
-                          {currentProfessional?.specialty ? ` · ${currentProfessional.specialty}` : ''}
-                        </p>
-                      </div>
-
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <h2 className="text-[34px] leading-none font-semibold tracking-tight text-gray-900">Consulta particular</h2>
                       <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowEditFields(current => !current)}
+                          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                        >
+                          {showEditFields ? 'Fechar edição detalhada' : 'Alterar horário'}
+                        </button>
                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${APPOINTMENT_STATUS_COLORS[watchedStatus ?? appointment?.status ?? 'scheduled']}`}>
                           {APPOINTMENT_STATUS_LABELS[watchedStatus ?? appointment?.status ?? 'scheduled']}
                         </span>
@@ -582,6 +700,37 @@ export default function AppointmentModal({
                         )}
                       </div>
                     </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <h3 className="text-[30px] leading-none font-semibold tracking-tight text-gray-900">
+                        {selectedPatient?.name ?? appointment?.patient?.name ?? 'Paciente sem nome'}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => openPatientPage('detail')}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        Ver mais
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-gray-600">
+                        {currentProfessional?.name ?? 'Profissional não definido'}
+                        {currentProfessional?.specialty ? ` · ${currentProfessional.specialty}` : ''}
+                      </p>
+                      {activeProfessionals.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowEditFields(true)}
+                          className="inline-flex min-h-9 items-center justify-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                        >
+                          Trocar
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-sm text-gray-500">Tipo de consulta: {currentServiceType?.name ?? 'Não definido'}</p>
 
                     <div className="grid gap-2.5 sm:grid-cols-3">
                       <SummaryChip
@@ -601,13 +750,6 @@ export default function AppointmentModal({
                     </div>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => setShowEditFields(current => !current)}
-                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-[#0ea5b0] hover:text-[#006970]"
-                      >
-                        {showEditFields ? 'Fechar edição detalhada' : 'Alterar horário e dados'}
-                      </button>
                       <button
                         type="button"
                         onClick={() => openPatientPage('detail')}
@@ -756,6 +898,12 @@ export default function AppointmentModal({
 
             {(!isEditing || showEditFields) && (
               <div className={isEditing ? 'rounded-[28px] border border-gray-200 bg-[#f8fafb] p-4 shadow-sm sm:p-5' : ''}>
+                {!isEditing && (
+                  <div className="mb-2 rounded-2xl border border-teal-100 bg-gradient-to-r from-teal-50/80 to-white p-3">
+                    <h2 className="text-lg font-semibold tracking-tight text-gray-900">Marcar consulta</h2>
+                    <p className="mt-1 text-xs text-gray-500">Fluxo rapido: paciente, alocacao, atendimento e horario.</p>
+                  </div>
+                )}
                 {isEditing && (
                   <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -765,8 +913,8 @@ export default function AppointmentModal({
                 )}
 
             {/* Patient */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Paciente *</label>
+            <div className={!isEditing ? 'rounded-2xl border border-gray-200 bg-white p-3 shadow-sm' : ''}>
+              <label className={`${!isEditing ? 'mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-500' : 'mb-1 block text-sm font-medium text-gray-700'}`}>Paciente *</label>
 
               {/* Hidden field to keep react-hook-form value in sync */}
               <input type="hidden" {...register('patientId')} />
@@ -788,37 +936,41 @@ export default function AppointmentModal({
                       <X size={15} />
                     </button>
                   </div>
-                  <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
-                    <button
-                      type="button"
-                      onClick={() => openPatientPage('detail')}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
-                    >
-                      <IdentificationCard size={13} />
-                      Abrir ficha
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openPatientPage('anamnesis')}
-                      className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
-                    >
-                      <ClipboardText size={13} />
-                      Anamnese
-                    </button>
-                    {canManagePatients && (
-                      <button
-                        type="button"
-                        onClick={() => openPatientEdit(selectedPatient.id)}
-                        className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-[#006970] transition hover:bg-teal-100"
-                      >
-                        <PencilSimple size={13} />
-                        Editar cadastro
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400">
-                    Campos extras do cadastro, anamnese e anexos do prontuário continuam vinculados a este paciente.
-                  </p>
+                  {isEditing && (
+                    <>
+                      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+                        <button
+                          type="button"
+                          onClick={() => openPatientPage('detail')}
+                          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                        >
+                          <IdentificationCard size={13} />
+                          Abrir ficha
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openPatientPage('anamnesis')}
+                          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                        >
+                          <ClipboardText size={13} />
+                          Anamnese
+                        </button>
+                        {canManagePatients && (
+                          <button
+                            type="button"
+                            onClick={() => openPatientEdit(selectedPatient.id)}
+                            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2.5 text-sm text-[#006970] transition hover:bg-teal-100"
+                          >
+                            <PencilSimple size={13} />
+                            Editar cadastro
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        Campos extras do cadastro, anamnese e anexos do prontuário continuam vinculados a este paciente.
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 /* Search state — text input + suggestion dropdown */
@@ -833,7 +985,7 @@ export default function AppointmentModal({
                   />
                   {patientSearch.trim() && !showQuickPatient && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                      {patients.map(p => (
+                      {patientSearchResults.map(p => (
                         <button
                           key={p.id}
                           type="button"
@@ -856,7 +1008,7 @@ export default function AppointmentModal({
                         className="w-full text-left px-3 py-2.5 text-sm text-[#006970] hover:bg-teal-50 flex items-center gap-1.5 border-t border-gray-100 transition-colors"
                       >
                         <UserPlus size={14} />
-                        {patients.length === 0 ? `Criar paciente "${patientSearch}"` : 'Criar novo paciente'}
+                        {patientSearchResults.length === 0 ? `Criar paciente "${patientSearch}"` : 'Criar novo paciente'}
                       </button>
                     </div>
                   )}
@@ -908,9 +1060,8 @@ export default function AppointmentModal({
               {errors.patientId && <p className="text-xs text-red-500 mt-1">{errors.patientId.message}</p>}
             </div>
 
-            {/* Professional — hidden when staff module is disabled (owner = sole professional),
-                static text when only one active, dropdown when multiple */}
-            {canAutoHideProfessional ? (
+            {/* Professional — compact in create mode, full controls in editing */}
+            {isEditing ? (canAutoHideProfessional ? (
               <input type="hidden" {...register('professionalId')} />
             ) : activeProfessionals.length === 1 ? (
               <div>
@@ -921,7 +1072,7 @@ export default function AppointmentModal({
                     {activeProfessionals[0].name}
                     {activeProfessionals[0].specialty ? ` — ${activeProfessionals[0].specialty}` : ''}
                   </p>
-                  {canManageProfessionals && (
+                  {isEditing && canManageProfessionals && (
                     <button
                       type="button"
                       onClick={() => setProfessionalModalOpen(true)}
@@ -947,7 +1098,7 @@ export default function AppointmentModal({
                       </option>
                     ))}
                   </select>
-                  {canManageProfessionals && (
+                  {isEditing && canManageProfessionals && (
                     <button
                       type="button"
                       onClick={() => setProfessionalModalOpen(true)}
@@ -958,6 +1109,56 @@ export default function AppointmentModal({
                   )}
                 </div>
                 {errors.professionalId && <p className="text-xs text-red-500 mt-1">{errors.professionalId.message}</p>}
+              </div>
+            )) : (
+              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Alocacao</p>
+                <div className={`grid gap-3 ${activeRooms.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Profissional</label>
+                  {canAutoHideProfessional || activeProfessionals.length === 1 ? (
+                    <div className="flex min-h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
+                      <input type="hidden" {...register('professionalId')} />
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-[#006970]">
+                        {(activeProfessionals[0]?.name ?? 'P').trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="truncate text-sm font-medium text-gray-700">
+                        {activeProfessionals[0]?.name ?? 'Sem profissional ativo'}
+                      </span>
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                      {...register('professionalId')}
+                    >
+                      <option value="">Selecionar profissional</option>
+                      {activeProfessionals.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}{p.specialty ? ` — ${p.specialty}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {errors.professionalId && <p className="mt-1 text-xs text-red-500">{errors.professionalId.message}</p>}
+                </div>
+
+                {activeRooms.length > 1 && (
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">
+                      Sala / consultório{requiresRoomSelection ? ' *' : ''}
+                    </label>
+                    <select
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                      {...register('roomId')}
+                    >
+                      <option value="">{requiresRoomSelection ? 'Selecione uma sala' : 'Sem sala definida'}</option>
+                      {activeRooms.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                </div>
               </div>
             )}
 
@@ -982,32 +1183,53 @@ export default function AppointmentModal({
 
             {/* Service type — optional, auto-fills duration + price when creating */}
             {activeServiceTypes.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de atendimento</label>
-                <select
-                  value={watch('serviceTypeId') ?? ''}
-                  onChange={e => {
-                    setValue('serviceTypeId', e.target.value || '')
-                    if (!isEditing) {
-                      const st = activeServiceTypes.find(s => s.id === e.target.value)
-                      if (st) {
-                        setValue('durationMin', String(st.durationMinutes))
-                        if (st.priceCents != null) {
-                          setValue('chargeAmount', (st.priceCents / 100).toFixed(2).replace('.', ','))
+              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Atendimento</p>
+                <div className="space-y-2">
+                  <select
+                    value={watch('serviceTypeId') ?? ''}
+                    onChange={e => {
+                      setValue('serviceTypeId', e.target.value || '')
+                      if (!isEditing) {
+                        const st = activeServiceTypes.find(s => s.id === e.target.value)
+                        if (st) {
+                          setValue('durationMin', String(st.durationMinutes))
+                          if (st.priceCents != null) {
+                            setValue('chargeAmount', (st.priceCents / 100).toFixed(2).replace('.', ','))
+                          }
                         }
                       }
-                    }
-                  }}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                >
-                  <option value="">Selecionar serviço... (opcional)</option>
-                  {activeServiceTypes.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} · {s.durationMinutes}min{s.priceCents != null ? ` · R$${(s.priceCents/100).toFixed(2).replace('.',',')}` : ''}
-                    </option>
-                  ))}
-                </select>
-                {!isEditing && <p className="text-xs text-gray-400 mt-0.5">Selecionar preenche automaticamente duração e valor.</p>}
+                    }}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                  >
+                    <option value="">Selecionar serviço... (opcional)</option>
+                    {activeServiceTypes.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} · {s.durationMinutes}min{s.priceCents != null ? ` · R$${(s.priceCents / 100).toFixed(2).replace('.', ',')}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {!isEditing && (
+                    <div className="grid gap-2 md:grid-cols-[1fr_150px_150px]">
+                      <TextArea label="" rows={2} placeholder="Observação rápida do atendimento" {...register('notes')} />
+                      <div>
+                        <Input label="Valor (R$)" placeholder="0,00" {...register('chargeAmount')} />
+                        {!!selectedServiceType?.priceCents && (
+                          <button
+                            type="button"
+                            onClick={() => setValue('chargeAmount', (selectedServiceType.priceCents! / 100).toFixed(2).replace('.', ','))}
+                            className="mt-1 text-xs font-medium text-[#0ea5b0] hover:text-[#006970]"
+                          >
+                            Usar preço padrão ({(selectedServiceType.priceCents / 100).toFixed(2).replace('.', ',')})
+                          </button>
+                        )}
+                      </div>
+                      <div>
+                        <Input label="Repasse (R$)" placeholder="0,00" {...register('professionalFee')} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1068,153 +1290,118 @@ export default function AppointmentModal({
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Input label="Data *" type="date" error={errors.date?.message} {...register('date')} />
-              <Input label="Horário *" type="time" error={errors.startTime?.message} {...register('startTime')} />
-              <div className="col-span-2 sm:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Duração</label>
-                <select
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                  {...register('durationMin')}
-                >
-                  {durationOptions.map(d => (
-                    <option key={d} value={d}>{d} min</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* ── Mais opções toggle ─────────────────────────────────────────── */}
-            <button
-              type="button"
-              onClick={() => setShowExtras(v => !v)}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#0ea5b0] transition-colors py-0.5"
-            >
-              <span className={`transition-transform ${showExtras ? 'rotate-90' : ''}`}>▶</span>
-              {showExtras ? 'Menos opções' : 'Mais opções'}
-              {!showExtras && (
-                <span className="text-gray-400">(sala, status, valor, observações, retorno)</span>
-              )}
-            </button>
-
-            {/* ── Extras collapsible ─────────────────────────────────────────── */}
-            {showExtras && (
-              <div className="space-y-4">
-
-            {/* Room + Status — room hidden when clinic has ≤1 room */}
-            <div className={`grid gap-3 ${activeRooms.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              {activeRooms.length > 1 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sala / consultório</label>
+            <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Horário / duração</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+                <Input label="Data *" type="date" error={errors.date?.message} {...register('date')} />
+                <Input label="Horário *" type="time" error={errors.startTime?.message} {...register('startTime')} />
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duração</label>
                   <select
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
-                    {...register('roomId')}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                    {...register('durationMin')}
                   >
-                    <option value="">Sem sala definida</option>
-                    {activeRooms.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
+                    {durationOptions.map(d => (
+                      <option key={d} value={d}>{d} min</option>
                     ))}
                   </select>
                 </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                  {...register('status')}
-                >
-                  {STATUSES.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
               </div>
             </div>
 
-            {!isEditing && (
-              <>
-                {/* Charge + Professional fee */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Valor cobrado (R$)"
-                    placeholder="0,00"
-                    {...register('chargeAmount')}
-                  />
-                  <Input
-                    label="Repasse ao profissional (R$)"
-                    placeholder="0,00"
-                    {...register('professionalFee')}
-                  />
-                </div>
-
-                {/* Notes */}
-                <TextArea label="Observações" rows={2} {...register('notes')} />
-              </>
+            {/* Sala — visible in create mode outside of extras */}
+            {/* ── Mais opções toggle (editing only) ─────────────────────────── */}
+            {isEditing && (
+              <button
+                type="button"
+                onClick={() => setShowExtras(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#0ea5b0] transition-colors py-0.5"
+              >
+                <span className={`transition-transform ${showExtras ? 'rotate-90' : ''}`}>▶</span>
+                {showExtras ? 'Menos opções' : 'Mais opções'}
+                {!showExtras && (
+                  <span className="text-gray-400">(sala, status, valor, observações)</span>
+                )}
+              </button>
             )}
 
-            {/* Return / recurrence — only for new appointments */}
-            {!isEditing && (
-              <div className="rounded-2xl border border-gray-200 p-4 space-y-3 bg-[#f8fafb]">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <RepeatOnce size={16} className="text-gray-400" />
-                  Retorno / recorrência
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {RETURN_PRESETS.map(p => (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() => setReturnPreset(p.value)}
-                      className={`min-h-10 rounded-full border px-3 py-2 text-sm font-medium transition ${
-                        returnPreset === p.value
-                          ? 'bg-[#006970] text-white border-[#006970]'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0]'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-                {returnPreset !== 'none' && returnPreset !== 'custom' && (
-                  <p className="text-xs text-[#006970]">
-                    Será agendado um retorno em{' '}
-                    <strong>{RETURN_PRESETS.find(p => p.value === returnPreset)?.label}</strong>{' '}
-                    com o mesmo profissional e horário.
-                  </p>
-                )}
-                {returnPreset === 'custom' && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+            {/* ── Extras collapsible ─────────────────────────────────────────── */}
+            {(isEditing ? showExtras : true) && (
+              <div className="space-y-4">
+                {isEditing && (
+                  <div className={`grid gap-3 ${activeRooms.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {activeRooms.length > 1 && (
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Frequência</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Sala / consultório{requiresRoomSelection ? ' *' : ''}
+                        </label>
                         <select
-                          className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                          {...register('recurrenceType')}
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0] bg-white"
+                          {...register('roomId')}
                         >
-                          {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
-                            <option key={v} value={v}>{l}</option>
+                          <option value="">{requiresRoomSelection ? 'Selecione uma sala' : 'Sem sala definida'}</option>
+                          {activeRooms.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
                           ))}
                         </select>
                       </div>
-                      {recurrenceType !== 'none' && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            Nº de ocorrências
-                          </label>
-                          <input
-                            type="number"
-                            min={2}
-                            max={52}
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                            {...register('recurrenceCount')}
-                          />
-                        </div>
-                      )}
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <select
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                        {...register('status')}
+                      >
+                        {STATUSES.map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
                     </div>
-                    {recurrenceType !== 'none' && (
-                      <p className="text-xs text-[#006970]">
-                        Serão criadas <strong>{Math.min(Math.max(parseInt(recurrenceCount) || 1, 1), 52)}</strong> consultas{' '}
-                        {RECURRENCE_LABELS[recurrenceType].toLowerCase().replace('mente', '')}.
-                      </p>
+                  </div>
+                )}
+
+                {!isEditing && (
+                  <div className="rounded-2xl border border-gray-200 bg-[#f8fafb] p-3 space-y-2 shadow-sm">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <RepeatOnce size={14} className="text-gray-400" />
+                      Retorno / recorrência
+                    </label>
+                    <select
+                      value={returnPreset}
+                      onChange={e => setReturnPreset(e.target.value as ReturnPreset)}
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                    >
+                      {RETURN_PRESETS.map(p => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </select>
+
+                    {returnPreset === 'custom' && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-gray-600">Frequência</label>
+                          <select
+                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                            {...register('recurrenceType')}
+                          >
+                            {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
+                              <option key={v} value={v}>{l}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {recurrenceType !== 'none' && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">Ocorrências</label>
+                            <input
+                              type="number"
+                              min={2}
+                              max={52}
+                              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                              {...register('recurrenceCount')}
+                            />
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -1267,9 +1454,6 @@ export default function AppointmentModal({
                     {latestPayment ? 'Abrir cobrança' : 'Cobrar consulta'}
                   </button>
                 </div>
-              </div>
-            )}
-
               </div>
             )}
 
@@ -1357,52 +1541,64 @@ export default function AppointmentModal({
             )}
 
             {/* Actions */}
-            <div className="mt-2 flex flex-col gap-3 border-t border-gray-100 pt-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
-              {isEditing && !confirmCancel && (
-                <button type="button" onClick={() => setConfirmCancel(true)}
-                  className="flex min-h-11 items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
-                  <Trash size={15} /> Cancelar consulta
-                </button>
-              )}
-              {isEditing && confirmCancel && (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <span className="text-sm text-red-600">Confirmar cancelamento?</span>
-                  <button type="button" onClick={handleCancel}
-                    className="text-sm font-medium text-red-600 hover:underline">Sim</button>
-                  <button type="button" onClick={() => setConfirmCancel(false)}
-                    className="text-sm text-gray-400 hover:underline">Não</button>
-                </div>
-              )}
-              {!confirmCancel && (
-                <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
-                  <button type="button" onClick={onClose}
-                    className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-100">
-                    Fechar
-                  </button>
-                  {isEditing ? (
-                    <>
-                      <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
-                        className="min-h-11 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[#0ea5b0] hover:text-[#006970] disabled:opacity-50">
-                        {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
+            {isEditing ? (
+              <div className="mt-2 border-t border-gray-100 pt-4 pb-2">
+                {confirmCancel ? (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm font-medium text-red-700">Confirmar cancelamento da consulta?</span>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setConfirmCancel(false)}
+                        className="min-h-10 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">
+                        Não
                       </button>
+                      <button type="button" onClick={handleCancel}
+                        className="min-h-10 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700">
+                        Confirmar cancelamento
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <button type="button" onClick={() => setConfirmCancel(true)}
+                      className="min-h-11 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:border-red-300 hover:bg-red-50">
+                      Cancelar consulta
+                    </button>
+                    <div className="flex items-center gap-2">
                       {(watchedStatus ?? appointment?.status) !== 'completed' && (
-                        <button type="button" onClick={handleCompleteAppointment} disabled={isSubmitting || !hasActiveProfessional}
-                          className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
-                          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
-                          {isSubmitting ? 'Finalizando...' : 'Finalizar consulta'}
+                        <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
+                          className="min-h-11 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[#0ea5b0] hover:text-[#006970] disabled:opacity-50">
+                          {isSubmitting ? 'Salvando...' : 'Salvar'}
                         </button>
                       )}
-                    </>
-                  ) : (
-                    <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
-                      className="min-h-11 rounded-xl px-4 py-2.5 text-sm text-white transition-all active:scale-[0.99] disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
-                      {isSubmitting ? 'Salvando...' : 'Salvar'}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                      {(watchedStatus ?? appointment?.status) !== 'completed' ? (
+                        <button type="button" onClick={handleCompleteAppointment} disabled={isSubmitting || !hasActiveProfessional}
+                          className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
+                          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+                          {isSubmitting ? 'Finalizando...' : 'Finalizar'}
+                        </button>
+                      ) : (
+                        <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
+                          className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
+                          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+                          {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-6 border-t border-gray-100 pt-6 pb-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !hasActiveProfessional}
+                  className="min-h-12 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_-16px_rgba(14,165,176,0.9)] transition-all active:scale-[0.99] disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+                >
+                  {isSubmitting ? 'Finalizando...' : 'Finalizar'}
+                </button>
+              </div>
+            )}
           </form>
 
           </div>{/* end scrollable body */}
@@ -1442,6 +1638,17 @@ export default function AppointmentModal({
           setProfessionalModalOpen(false)
           setValue('professionalId', professional.id, { shouldValidate: true, shouldDirty: true })
         }}
+      />
+      <ConfirmDialog
+        open={roomRequirementDialogOpen}
+        title={hasSelectableRooms ? 'Selecione uma sala antes de salvar' : 'Ative uma sala para continuar'}
+        description={hasSelectableRooms
+          ? 'Esta clínica já possui salas cadastradas. Escolha a sala da consulta para concluir o agendamento.'
+          : 'Esta clínica já possui salas cadastradas, mas nenhuma está ativa. Ative uma sala para vincular a consulta.'}
+        confirmLabel={hasSelectableRooms ? 'Escolher sala' : 'Gerenciar salas'}
+        cancelLabel="Agora não"
+        onConfirm={handleRoomRequirementConfirm}
+        onCancel={() => setRoomRequirementDialogOpen(false)}
       />
     </Dialog.Root>
   )

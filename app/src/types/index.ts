@@ -377,7 +377,9 @@ export interface Appointment {
   createdAt: string
   // Joined relations (fetched with select)
   patient?: Pick<Patient, 'id' | 'name' | 'phone' | 'cpf'>
-  professional?: Pick<Professional, 'id' | 'name' | 'specialty'>
+  professional?: Pick<Professional, 'id' | 'name' | 'specialty'> & {
+    photoUrl?: string | null
+  }
   clinicRoom?: Pick<ClinicRoom, 'id' | 'name' | 'color'>
 }
 
