@@ -1310,12 +1310,17 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
 
       {unassignedPopupOpen && (
         <UnassignedRoomsModal
-          count={unassignedAppointmentsCount}
-          onReviewUnassigned={() => {
-            setFilterRoomId(UNASSIGNED_ROOM_FILTER)
-            setUnassignedPopupOpen(false)
-            toast.info('Abra cada consulta sem sala para vincular uma sala ou cancelar o atendimento.')
+          appointments={unassignedAppointments}
+          activeRooms={activeRooms.map(room => ({ id: room.id, name: room.name }))}
+          selectedRoomByAppointment={selectedRoomByAppointment}
+          resolvingAppointmentId={resolvingAppointmentId}
+          cancelingAppointmentId={cancelingAppointmentId}
+          onSelectRoom={(appointmentId, roomId) => {
+            setSelectedRoomByAppointment(prev => ({ ...prev, [appointmentId]: roomId }))
           }}
+          onAssignRoom={handleAssignRoomToAppointment}
+          onEditAppointment={handleEditUnassignedAppointment}
+          onCancelAppointment={handleCancelUnassignedAppointment}
           onManageRooms={() => {
             setUnassignedPopupOpen(false)
             navigate(APP_ROUTES.staff.rooms)
