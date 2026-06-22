@@ -310,7 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     qc.invalidateQueries({ queryKey: QK.appointments.all() })
     qc.invalidateQueries({ queryKey: QK.appointments.todayAll() })
     qc.invalidateQueries({ queryKey: QK.patients.all() })
-    qc.invalidateQueries({ queryKey: ['professionals'] })
+    qc.invalidateQueries({ queryKey: QK.professionals.all() })
     qc.invalidateQueries({ queryKey: QK.financial.all() })
     qc.invalidateQueries({ queryKey: QK.rooms.list(next.clinicId) })
     qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })

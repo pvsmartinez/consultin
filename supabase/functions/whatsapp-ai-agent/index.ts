@@ -37,6 +37,8 @@
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+type AdminClient = ReturnType<typeof createClient<any>>
+
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SRK       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') ?? ''
@@ -79,7 +81,13 @@ interface ClinicRow {
 interface ClinicPublicPageContext {
   slug: string
   show_booking: boolean
+  clinic_name?: string
+  phone?: string | null
+  address?: string | null
+  services?: unknown[]
 }
+
+type QuotaClinicContext = Pick<ClinicRow, 'name' | 'subscription_tier' | 'subscription_status' | 'billing_override_enabled'>
 
 interface SlotOption {
   professionalId:   string
@@ -96,7 +104,7 @@ interface SlotOption {
 serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
+  const supabase = createClient<any>(SUPABASE_URL, SUPABASE_SRK)
 
   let body: AgentRequest
   try { body = await req.json() }
@@ -134,7 +142,7 @@ serve(async (req) => {
 // ─── PATIENT MODE ─────────────────────────────────────────────────────────────
 
 async function handlePatientMessage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AdminClient,
   body:     AgentRequest,
   clinic:   ClinicRow,
   sessionId: string,
@@ -167,11 +175,11 @@ async function handlePatientMessage(
       : Promise.resolve({ data: [] }),
   ])
 
-  const pendingAppts = ((appts ?? []) as { id: string; starts_at: string; professionals: { name: string } | null }[])
+  const pendingAppts = ((appts ?? []) as { id: string; starts_at: string; professionals: RelationValue<{ name: string }> }[])
     .map(a => ({
       id:               a.id,
       starts_at:        a.starts_at,
-      professional_name: (a.professionals as { name: string })?.name ?? 'Profissional',
+      professional_name: pickFirst(a.professionals)?.name ?? 'Profissional',
     }))
 
   // ── Fetch available slots (only when scheduling enabled) ──────────────────
@@ -277,7 +285,7 @@ async function handlePatientMessage(
 // ─── STAFF MODE ───────────────────────────────────────────────────────────────
 
 async function handleStaffMessage(
-  supabase:   ReturnType<typeof createClient>,
+  supabase:   AdminClient,
   body:       AgentRequest,
   clinic:     ClinicRow,
   sessionId:  string,
@@ -331,7 +339,7 @@ async function handleStaffMessage(
 
   const byProf: Record<string, { profName: string; appts: AppointmentRow[] }> = {}
   for (const a of apptRows) {
-    const pName = (a.professionals as { name: string })?.name ?? 'Sem profissional'
+    const pName = pickFirst(a.professionals)?.name ?? 'Sem profissional'
     if (!byProf[pName]) byProf[pName] = { profName: pName, appts: [] }
     byProf[pName].appts.push(a)
   }
@@ -341,9 +349,9 @@ async function handleStaffMessage(
     agendaLines.push(`*${group.profName}*`)
     for (const a of group.appts) {
       const time    = rangeDays > 1 ? fmtDateTimeBR(a.starts_at) : fmtTimeBR(a.starts_at)
-      const patient = (a.patients as { name: string })?.name ?? 'Paciente'
-      const service = (a.service_types as { name: string })?.name ?? ''
-      const room    = (a.clinic_rooms as { name: string })?.name ?? ''
+      const patient = pickFirst(a.patients)?.name ?? 'Paciente'
+      const service = pickFirst(a.service_types)?.name ?? ''
+      const room    = pickFirst(a.clinic_rooms)?.name ?? ''
       const status  = a.status === 'confirmed' ? '✅' : a.status === 'completed' ? '☑️' : '🕐'
       agendaLines.push(
         `  ${status} ${time} → ${patient}${service ? ` _(${service})_` : ''}${room ? ` — ${room}` : ''} [ID:${a.id}]`,
@@ -367,7 +375,7 @@ async function handleStaffMessage(
     isToday
       ? apptRows
           .filter(a => new Date(a.starts_at) <= now && new Date(a.ends_at ?? a.starts_at) >= now)
-          .map(a => (a.clinic_rooms as { id: string } | null)?.id)
+          .map(a => pickFirst(a.clinic_rooms)?.id)
           .filter(Boolean)
       : [],
   )
@@ -506,7 +514,7 @@ export function buildPatientLinks(publicPage: ClinicPublicPageContext | null): s
  * Returns a notice string to inject into the system prompt when the clinic is
  * near or over their monthly appointment quota. Empty string if not applicable.
  */
-export function buildQuotaNotice(clinic: ClinicRow): string {
+export function buildQuotaNotice(clinic: QuotaClinicContext): string {
   const LIMITS: Record<string, number | null> = { trial: null, basic: 40, professional: 100, unlimited: null }
   const tier  = clinic.subscription_tier ?? 'trial'
   const limit = LIMITS[tier] ?? null
@@ -527,7 +535,7 @@ async function callLLM(
   history:   { role: 'user' | 'assistant'; content: string }[],
   message:   string,
   sessionId: string,
-  supabase:  ReturnType<typeof createClient>,
+  supabase:  AdminClient,
   patientId: string | null | undefined,
   buttonReplyId?: string | null,
 ) {
@@ -700,7 +708,7 @@ function detectRequestedDate(message: string): Date {
 // ─── Available slots finder ───────────────────────────────────────────────────
 
 async function findAvailableSlots(
-  supabase:      ReturnType<typeof createClient>,
+  supabase:      AdminClient,
   clinicId:      string,
   slotDuration:  number,
   maxSlots = 10,
@@ -863,15 +871,22 @@ interface AvailabilitySlotRow {
   active:          boolean
 }
 
+type RelationValue<T> = T | T[] | null
+
 interface AppointmentRow {
   id:             string
   starts_at:      string
   ends_at:        string | null
   status:         string
-  patients:       { name: string } | null
-  professionals:  { name: string } | null
-  clinic_rooms:   { id?: string; name: string } | null
-  service_types:  { name: string } | null
+  patients:       RelationValue<{ name: string }>
+  professionals:  RelationValue<{ name: string }>
+  clinic_rooms:   RelationValue<{ id?: string; name: string }>
+  service_types:  RelationValue<{ name: string }>
+}
+
+function pickFirst<T>(value: RelationValue<T>): T | null {
+  if (Array.isArray(value)) return value[0] ?? null
+  return value ?? null
 }
 
 

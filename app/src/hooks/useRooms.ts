@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { invalidateQueryKeys, useAppMutation } from '../lib/mutations'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { ClinicRoom } from '../types'
@@ -34,9 +35,9 @@ export function useRooms() {
 }
 
 export function useCreateRoom() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
-  return useMutation({
+  const listKey = QK.rooms.list(profile?.clinicId)
+  return useAppMutation({
     mutationFn: async (input: { name: string; color: string }) => {
       const { data, error } = await supabase
         .from('clinic_rooms')
@@ -46,14 +47,14 @@ export function useCreateRoom() {
       if (error) throw error
       return mapRow(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.list(profile?.clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }
 
 export function useUpdateRoom() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
-  return useMutation({
+  const listKey = QK.rooms.list(profile?.clinicId)
+  return useAppMutation({
     mutationFn: async (input: { id: string; name: string; color: string; active: boolean }) => {
       const { data, error } = await supabase
         .from('clinic_rooms')
@@ -64,18 +65,18 @@ export function useUpdateRoom() {
       if (error) throw error
       return mapRow(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.list(profile?.clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }
 
 export function useDeleteRoom() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
-  return useMutation({
+  const listKey = QK.rooms.list(profile?.clinicId)
+  return useAppMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('clinic_rooms').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.rooms.list(profile?.clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }

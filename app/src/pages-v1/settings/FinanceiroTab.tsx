@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useForm, Controller, useWatch } from 'react-hook-form'
+import { Controller, useWatch } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle, Warning, Prohibit, CreditCard, Gauge, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Input from '../../components/ui/Input'
 import { useActivateClinicBilling, useCancelClinicBilling, useUpgradeClinicBilling } from '../../hooks/useBilling'
 import { useAuthContext } from '../../contexts/AuthContext'
+import { asFormInputValue, useAppForm } from '../../lib/forms'
 import { gtagEvent } from '../../lib/gtag'
 import { validateCpfCnpj, maskCpfCnpj, maskCEP, fetchAddressByCEP, formatPhone } from '../../utils/validators'
 import { useClinicQuota, TIER_LABELS, TIER_PRICES, TIER_LIMITS } from '../../hooks/useClinicQuota'
@@ -48,10 +48,10 @@ export default function FinanceiroTab({ clinic }: { clinic: Clinic }) {
   const [cepLoading, setCepLoading] = useState(false)
   const [selectedTier, setSelectedTier] = useState<'basic' | 'professional' | 'unlimited'>('basic')
 
-  const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useForm<BillingForm>({
-    resolver: zodResolver(billingSchema),
+  const { register, handleSubmit, control, setValue, formState: { errors, isSubmitting } } = useAppForm({
+    schema: billingSchema,
     defaultValues: {
-      responsibleName: profile?.name ?? '',
+      responsibleName: asFormInputValue(profile?.name),
     },
   })
 

@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { invalidateQueryKeys, useAppMutation } from '../lib/mutations'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { WhatsappFaq } from '../types'
@@ -36,9 +37,9 @@ export function useWhatsappFaqs() {
 }
 
 export function useCreateWhatsappFaq() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
-  return useMutation({
+  const listKey = QK.whatsapp.faqs(profile?.clinicId)
+  return useAppMutation({
     mutationFn: async (input: { question: string; answer: string }) => {
       const { data, error } = await supabase
         .from('whatsapp_faqs')
@@ -48,14 +49,14 @@ export function useCreateWhatsappFaq() {
       if (error) throw error
       return mapFaq(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.whatsapp.faqs(profile?.clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }
 
 export function useUpdateWhatsappFaq() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
-  return useMutation({
+  const listKey = QK.whatsapp.faqs(profile?.clinicId)
+  return useAppMutation({
     mutationFn: async ({ id, ...input }: Partial<Pick<WhatsappFaq, 'question' | 'answer' | 'active' | 'sortOrder'>> & { id: string }) => {
       const patch: Record<string, unknown> = {}
       if (input.question !== undefined) patch.question   = input.question
@@ -68,18 +69,18 @@ export function useUpdateWhatsappFaq() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.whatsapp.faqs(profile?.clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }
 
 export function useDeleteWhatsappFaq() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
-  return useMutation({
+  const listKey = QK.whatsapp.faqs(profile?.clinicId)
+  return useAppMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('whatsapp_faqs').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.whatsapp.faqs(profile?.clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }

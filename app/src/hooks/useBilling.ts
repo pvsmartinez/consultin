@@ -1,8 +1,8 @@
 /**
  * useBilling — Assinatura mensal da clínica via Asaas
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
+import { invalidateQueryKeys, useAppMutation } from '../lib/mutations'
 import { QK } from '../lib/queryKeys'
 import { activateClinicSubscription, cancelAsaasSubscription, upgradeClinicSubscription } from '../services/asaas'
 import type { AsaasBillingType } from '../types'
@@ -40,9 +40,7 @@ export interface ActivateBillingInput {
 
 /** Ativa cobrança mensal da clínica — cria customer + subscription no Asaas */
 export function useActivateClinicBilling() {
-  const qc = useQueryClient()
-
-  return useMutation({
+  return useAppMutation({
     mutationFn: async (input: ActivateBillingInput) => {
       // A edge function já salva asaas_customer_id, subscription_id,
       // subscription_status e payments_enabled=true no banco.
@@ -57,17 +55,15 @@ export function useActivateClinicBilling() {
       })
       return { customerId, subscriptionId }
     },
-    onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: QK.clinic.detail(vars.clinicId) })
-    },
+    invalidate: ({ queryClient, variables }) => invalidateQueryKeys(queryClient, [QK.clinic.detail(variables.clinicId)]),
   })
 }
 
 /** Cancela assinatura e desativa módulo de pagamentos */
 export function useCancelClinicBilling(clinicId: string) {
-  const qc = useQueryClient()
+  const detailKey = QK.clinic.detail(clinicId)
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: async (subscriptionId: string) => {
       await cancelAsaasSubscription(subscriptionId)
       const { error } = await supabase
@@ -76,20 +72,20 @@ export function useCancelClinicBilling(clinicId: string) {
         .eq('id', clinicId)
       if (error) throw new Error(error.message)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [detailKey]),
   })
 }
 
 /** Muda o tier de uma assinatura ativa — atualiza preço no Asaas e subscription_tier no DB */
 export function useUpgradeClinicBilling(clinicId: string) {
-  const qc = useQueryClient()
+  const detailKey = QK.clinic.detail(clinicId)
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: async ({ subscriptionId, tier }: { subscriptionId: string; tier: 'basic' | 'professional' | 'unlimited' }) => {
       // subscriptionId is validated in the edge function via clinicId — pass clinicId as primary key
       void subscriptionId // unused locally; edge fn resolves it from clinicId
       return upgradeClinicSubscription(clinicId, tier)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [detailKey]),
   })
 }

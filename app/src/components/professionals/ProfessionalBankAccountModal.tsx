@@ -3,9 +3,8 @@
  * Permite ao admin cadastrar ou editar a conta bancária de um profissional para repasses.
  */
 import { useEffect } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { Controller } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { X, Bank } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { Modal } from '@pvsmartinez/shared/ui'
@@ -14,6 +13,7 @@ import { useUpsertBankAccount, useProfessionalBankAccount } from '../../hooks/us
 import { useAuthContext } from '../../contexts/AuthContext'
 import { BANK_LIST } from '../../types'
 import type { Professional } from '../../types'
+import { asFormInputValue, toNullableText, useAppForm } from '../../lib/forms'
 import { validateCpfCnpj, maskCpfCnpj } from '../../utils/validators'
 
 const schema = z.object({
@@ -49,8 +49,8 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
   const { data: existing } = useProfessionalBankAccount(professional.id)
   const upsert = useUpsertBankAccount()
 
-  const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useAppForm({
+    schema,
     defaultValues: {
       bankCode:     '',
       accountType:  'CONTA_CORRENTE',
@@ -70,9 +70,9 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
         bankCode:     existing.bankCode,
         accountType:  existing.accountType,
         agency:       existing.agency,
-        agencyDigit:  existing.agencyDigit ?? '',
+        agencyDigit:  asFormInputValue(existing.agencyDigit),
         account:      existing.account,
-        accountDigit: existing.accountDigit ?? '',
+        accountDigit: asFormInputValue(existing.accountDigit),
         ownerName:    existing.ownerName,
         ownerCpfCnpj: existing.ownerCpfCnpj,
       })
@@ -89,9 +89,9 @@ export default function ProfessionalBankAccountModal({ professional, onClose }: 
         bankName,
         accountType:  values.accountType,
         agency:       values.agency,
-        agencyDigit:  values.agencyDigit ?? null,
+        agencyDigit:  toNullableText(values.agencyDigit),
         account:      values.account,
-        accountDigit: values.accountDigit ?? null,
+        accountDigit: toNullableText(values.accountDigit),
         ownerName:    values.ownerName,
         ownerCpfCnpj: values.ownerCpfCnpj.replace(/\D/g, ''),
         active:       true,

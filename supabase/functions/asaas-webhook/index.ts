@@ -23,6 +23,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+type AdminClient = ReturnType<typeof createClient<any>>
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
@@ -58,7 +60,7 @@ export const EVENT_TO_SUBSCRIPTION_UPDATE: Partial<Record<string, {
 }
 
 export async function syncClinicSubscriptionStatus(
-  supabase: ReturnType<typeof createClient>,
+  supabase: AdminClient,
   event: string,
   payment: { subscription?: string | null; externalReference?: string | null },
 ) {
@@ -148,7 +150,7 @@ serve(async (req: Request) => {
 
   console.log(`[asaas-webhook] event=${event} payment=${payment?.id}`)
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  const supabase = createClient<any>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
   // ── Processar evento de pagamento ─────────────────────────────────────────
   const newStatus = EVENT_TO_STATUS[event]

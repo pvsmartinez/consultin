@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -10,6 +8,7 @@ import CustomFieldInput from '../ui/CustomFieldInput'
 import { useProfessionals } from '../../hooks/useProfessionals'
 import { useCreateInvite } from '../../hooks/useInvites'
 import { useClinic } from '../../hooks/useClinic'
+import { asFormInputValue, toNullableText, useAppForm } from '../../lib/forms'
 import type { Professional } from '../../types'
 
 const schema = z.object({
@@ -40,8 +39,8 @@ export default function ProfessionalModal({ open, onClose, professional, onSaved
   const isFieldVisible = (key: string) => clinic?.professionalFieldConfig?.[key] !== false
   const customProfessionalFields = clinic?.customProfessionalFields ?? []
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useAppForm({
+    schema,
     defaultValues: { active: true },
   })
 
@@ -51,10 +50,10 @@ export default function ProfessionalModal({ open, onClose, professional, onSaved
       setCustomFields(professional?.customFields ?? {})
       reset(professional ? {
         name: professional.name,
-        specialty: professional.specialty ?? '',
-        councilId: professional.councilId ?? '',
-        phone: professional.phone ?? '',
-        email: professional.email ?? '',
+        specialty: asFormInputValue(professional.specialty),
+        councilId: asFormInputValue(professional.councilId),
+        phone: asFormInputValue(professional.phone),
+        email: asFormInputValue(professional.email),
         active: professional.active,
       } : { name: '', specialty: '', councilId: '', phone: '', email: '', active: true })
     }
@@ -64,10 +63,10 @@ export default function ProfessionalModal({ open, onClose, professional, onSaved
     try {
       const payload = {
         name: values.name,
-        specialty: values.specialty || null,
-        councilId: values.councilId || null,
-        phone: values.phone || null,
-        email: values.email || null,
+        specialty: toNullableText(values.specialty),
+        councilId: toNullableText(values.councilId),
+        phone: toNullableText(values.phone),
+        email: toNullableText(values.email),
         active: values.active,
         userId: null,
         customFields,

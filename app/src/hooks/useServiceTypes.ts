@@ -1,5 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import { createAppQueryOptions } from '@pvsmartinez/shared'
 import { supabase } from '../services/supabase'
+import { invalidateQueryKeys, useAppMutation } from '../lib/mutations'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapServiceType } from '../utils/mappers'
@@ -11,10 +13,14 @@ export function useServiceTypes() {
   const { profile } = useAuthContext()
   const clinicId = profile?.clinicId
 
-  return useQuery<ServiceType[]>({
+  return useQuery(createAppQueryOptions<ServiceType[]>({
     queryKey: QK.services.types(clinicId),
     enabled: !!clinicId,
     staleTime: 5 * 60_000,
+    meta: {
+      emptyMeaning: 'no-results',
+      errorMessage: 'Erro ao carregar tipos de serviço',
+    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from('service_types')
@@ -24,14 +30,14 @@ export function useServiceTypes() {
       if (error) throw error
       return (data as Record<string, unknown>[] ?? []).map(r => mapServiceType(r))
     },
-  })
+  }))
 }
 
 export function useCreateServiceType() {
   const { profile } = useAuthContext()
-  const qc = useQueryClient()
+  const listKey = QK.services.types(profile?.clinicId)
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: async (input: ServiceTypeInput) => {
       const { data, error } = await supabase
         .from('service_types')
@@ -49,17 +55,15 @@ export function useCreateServiceType() {
       if (error) throw error
       return mapServiceType(data as Record<string, unknown>)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.services.types(profile?.clinicId) })
-    },
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }
 
 export function useUpdateServiceType() {
   const { profile } = useAuthContext()
-  const qc = useQueryClient()
+  const listKey = QK.services.types(profile?.clinicId)
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: async ({ id, ...input }: Partial<ServiceTypeInput> & { id: string }) => {
       const update: Record<string, unknown> = {}
       if (input.name             !== undefined) update.name             = input.name
@@ -78,17 +82,15 @@ export function useUpdateServiceType() {
       if (error) throw error
       return mapServiceType(data as Record<string, unknown>)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.services.types(profile?.clinicId) })
-    },
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }
 
 export function useDeleteServiceType() {
   const { profile } = useAuthContext()
-  const qc = useQueryClient()
+  const listKey = QK.services.types(profile?.clinicId)
 
-  return useMutation({
+  return useAppMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('service_types')
@@ -96,8 +98,6 @@ export function useDeleteServiceType() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.services.types(profile?.clinicId) })
-    },
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [listKey]),
   })
 }

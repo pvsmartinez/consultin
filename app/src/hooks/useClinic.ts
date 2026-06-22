@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { invokeSupabaseFunction } from '@pvsmartinez/shared'
+import { createAppQueryOptions, invokeSupabaseFunction } from '@pvsmartinez/shared'
 import { supabase } from '../services/supabase'
+import { invalidateQueryKeys, useAppMutation } from '../lib/mutations'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
 import { mapClinic } from '../utils/mappers'
@@ -74,14 +75,17 @@ function clinicToSnake(input: Partial<Omit<Clinic, 'id' | 'createdAt'>>): Record
 }
 
 export function useClinic() {
-  const qc = useQueryClient()
   const { profile } = useAuthContext()
   const clinicId = profile?.clinicId
 
-  const query = useQuery({
+  const query = useQuery(createAppQueryOptions({
     queryKey: QK.clinic.detail(clinicId),
     enabled: !!clinicId,
     staleTime: 5 * 60_000,
+    meta: {
+      emptyMeaning: 'not-configured',
+      errorMessage: 'Erro ao carregar clínica',
+    },
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clinics')
@@ -91,9 +95,11 @@ export function useClinic() {
       if (error) throw error
       return mapClinic(data as Record<string, unknown>)
     },
-  })
+  }))
 
-  const update = useMutation({
+  const detailKey = QK.clinic.detail(clinicId)
+
+  const update = useAppMutation({
     mutationFn: async (input: Partial<Omit<Clinic, 'id' | 'createdAt'>>) => {
       const { data, error } = await supabase
         .from('clinics')
@@ -104,7 +110,7 @@ export function useClinic() {
       if (error) throw error
       return mapClinic(data as Record<string, unknown>)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.clinic.detail(clinicId) }),
+    invalidate: ({ queryClient }) => invalidateQueryKeys(queryClient, [detailKey]),
   })
 
   return { ...query, update, isLoading: query.isPending && query.isFetching }

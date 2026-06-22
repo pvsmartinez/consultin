@@ -6,8 +6,7 @@ import {
   ArrowRight, UserCircle, Eye, EyeSlash,
 } from '@phosphor-icons/react'
 import { z } from 'zod'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { Controller } from 'react-hook-form'
 import { IMaskInput } from 'react-imask'
 import {
   invokeSupabaseFunction,
@@ -17,6 +16,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../services/supabase'
 import { trackPublicEvent } from '../lib/publicAnalytics'
 import { buildAttributedPath, getPublicAttributionMetadata } from '../lib/publicAttribution'
+import { asFormInputValue, toNullableText, useAppForm } from '../lib/forms'
 import { trackSignup, trackGenerateLead } from '../lib/googleAds'
 import { Seo } from '../components/seo/Seo'
 
@@ -193,8 +193,17 @@ export default function CadastroClinicaPage() {
     persona: params.get('persona') ?? undefined,
   })
 
-  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } = useAppForm({
+    schema,
+    defaultValues: {
+      clinicName: '',
+      cnpj: '',
+      phone: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      responsibleName: '',
+    },
   })
 
   async function onSubmit(values: FormValues) {
@@ -209,11 +218,11 @@ export default function CadastroClinicaPage() {
         await invokeSupabaseFunction<Record<string, never> | null>(supabase, 'submit-clinic-signup', {
           body: {
             clinicName:          values.clinicName,
-            responsibleName:     isSolo ? values.clinicName : (values.responsibleName || values.clinicName),
+            responsibleName:     isSolo ? values.clinicName : (toNullableText(values.responsibleName) ?? values.clinicName),
             email:               values.email,
             password:            values.password,
-            cnpj:                values.cnpj    || undefined,
-            phone:               values.phone   || undefined,
+            cnpj:                toNullableText(values.cnpj) ?? undefined,
+            phone:               toNullableText(values.phone) ?? undefined,
             isSoloPractitioner:  isSolo,
             attribution,
           },
@@ -409,7 +418,7 @@ export default function CadastroClinicaPage() {
                     <Controller control={control} name="cnpj" render={({ field }) => (
                       <IMaskInput
                         mask={isSolo ? '000.000.000-00' : '00.000.000/0000-00'}
-                        value={field.value ?? ''}
+                        value={asFormInputValue(field.value)}
                         onAccept={(val: string) => field.onChange(val)}
                         placeholder={isSolo ? '000.000.000-00' : '00.000.000/0001-00'}
                         className={inputClass(false)}
@@ -421,7 +430,7 @@ export default function CadastroClinicaPage() {
                     <Controller control={control} name="phone" render={({ field }) => (
                       <IMaskInput
                         mask={[{ mask: '(00) 0000-0000' }, { mask: '(00) 00000-0000' }]}
-                        value={field.value ?? ''}
+                        value={asFormInputValue(field.value)}
                         onAccept={(val: string) => field.onChange(val)}
                         placeholder="(11) 99999-9999"
                         className={inputClass(false)}

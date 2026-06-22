@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import Input from '../../components/ui/Input'
 import { useClinic } from '../../hooks/useClinic'
+import { asFormInputValue, toNullableText, useAppForm } from '../../lib/forms'
 import type { Clinic } from '../../types'
 
 const schema = z.object({
@@ -37,16 +36,16 @@ export default function DadosTab({ clinic }: { clinic: Clinic }) {
 function DadosTabForm({ clinic }: { clinic: Clinic }) {
   const { update } = useClinic()
   const [selfReg, setSelfReg] = useState(clinic.allowSelfRegistration)
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Form>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useAppForm({
+    schema,
     defaultValues: {
       name:    clinic.name,
-      cnpj:    clinic.cnpj ?? '',
-      phone:   clinic.phone ?? '',
-      email:   clinic.email ?? '',
-      address: clinic.address ?? '',
-      city:    clinic.city ?? '',
-      state:   clinic.state ?? '',
+      cnpj:    asFormInputValue(clinic.cnpj),
+      phone:   asFormInputValue(clinic.phone),
+      email:   asFormInputValue(clinic.email),
+      address: asFormInputValue(clinic.address),
+      city:    asFormInputValue(clinic.city),
+      state:   asFormInputValue(clinic.state),
     },
   })
 
@@ -54,12 +53,12 @@ function DadosTabForm({ clinic }: { clinic: Clinic }) {
     try {
       await update.mutateAsync({
         name:                 values.name,
-        cnpj:                 values.cnpj    || null,
-        phone:                values.phone   || null,
-        email:                values.email   || null,
-        address:              values.address || null,
-        city:                 values.city    || null,
-        state:                values.state   || null,
+        cnpj:                 toNullableText(values.cnpj),
+        phone:                toNullableText(values.phone),
+        email:                toNullableText(values.email),
+        address:              toNullableText(values.address),
+        city:                 toNullableText(values.city),
+        state:                toNullableText(values.state),
         allowSelfRegistration: selfReg,
       })
       toast.success('Dados salvos')

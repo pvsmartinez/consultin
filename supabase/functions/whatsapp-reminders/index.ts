@@ -15,6 +15,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { format, addDays } from 'https://esm.sh/date-fns@3'
 import { toZonedTime, fromZonedTime } from 'https://esm.sh/date-fns-tz@3'
 
+type AdminClient = ReturnType<typeof createClient<any>>
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const SELF_URL     = SUPABASE_URL
@@ -31,7 +33,7 @@ serve(async (req) => {
     return jsonError('Body must include type: "d1" or "d0"', 400)
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SRK)
+  const supabase = createClient<any>(SUPABASE_URL, SUPABASE_SRK)
 
   // ── Target date in São Paulo time ─────────────────────────────────────────
   const nowUtc       = new Date()
@@ -95,7 +97,8 @@ serve(async (req) => {
     if (!enabledClinicMap.has(appt.clinic_id)) { skipped++; continue }
 
     const clinicRow = enabledClinicMap.get(appt.clinic_id)!
-    const patient = appt.patient as { id: string; name: string; phone: string } | null
+    const patientSource = Array.isArray(appt.patient) ? appt.patient[0] : appt.patient
+    const patient = patientSource as { id: string; name: string; phone: string } | null
     if (!patient?.phone) { skipped++; continue }
 
     // ── Deduplication check ─────────────────────────────────────────────────
@@ -115,7 +118,10 @@ serve(async (req) => {
     const apptTimeBrt = toZonedTime(new Date(appt.starts_at), TZ)
     const dateStr     = format(apptTimeBrt, "dd/MM/yyyy")
     const timeStr     = format(apptTimeBrt, "HH:mm")
-    const profName    = (appt.professional as { name: string })?.name ?? 'o profissional'
+    const professionalSource = Array.isArray(appt.professional)
+      ? appt.professional[0]
+      : appt.professional
+    const profName = (professionalSource as { name: string } | null)?.name ?? 'o profissional'
 
     const customText = type === 'd1'
       ? clinicRow.wa_reminder_d1_text
@@ -237,7 +243,7 @@ const TIER_LIMITS: Record<string, number | null> = {
 }
 
 async function checkAndNotifyQuota(
-  supabase: ReturnType<typeof import('https://esm.sh/@supabase/supabase-js@2').createClient>,
+  supabase: AdminClient,
   selfUrl:  string,
   srk:      string,
 ): Promise<number> {

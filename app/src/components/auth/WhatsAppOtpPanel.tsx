@@ -16,12 +16,49 @@
 
 import React, { useRef, useState, useEffect } from 'react'
 import { WhatsappLogo } from '@phosphor-icons/react'
+import {
+  fetchSupabaseFunction,
+  SupabaseFunctionInvocationError,
+} from '@pvsmartinez/shared'
 import { supabase } from '../../services/supabase'
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-otp`
 const ANON_KEY     = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 type Step = 'email' | 'code' | 'done'
+type WhatsAppOtpSendResponse = {
+  sent?: boolean
+  reason?: string
+  maskedPhone?: string
+}
+
+type WhatsAppOtpVerifyResponse = {
+  token?: string
+  email: string
+}
+
+const FUNCTION_HEADERS = {
+  apikey: ANON_KEY,
+  Authorization: `Bearer ${ANON_KEY}`,
+}
+
+const callWhatsAppOtp = <TResponse,>(body: unknown, fallbackMessage: string) => {
+  return fetchSupabaseFunction<TResponse>(FUNCTION_URL, {
+    body,
+    headers: FUNCTION_HEADERS,
+    fallbackMessage,
+  })
+}
+
+const getOtpErrorCode = (error: unknown): string | null => {
+  if (!(error instanceof SupabaseFunctionInvocationError)) return null
+
+  const payload = error.payload
+  if (!payload || typeof payload !== 'object') return null
+
+  const code = 'error' in payload ? payload.error : 'reason' in payload ? payload.reason : null
+  return typeof code === 'string' && code.trim() ? code : null
+}
 
 export default function WhatsAppOtpPanel() {
   const [expanded,    setExpanded]    = useState(false)
@@ -60,14 +97,12 @@ export default function WhatsAppOtpPanel() {
     setError('')
 
     try {
-      const res  = await fetch(FUNCTION_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
-        body:    JSON.stringify({ action: 'send', email: email.trim() }),
-      })
-      const data = await res.json()
+      const data = await callWhatsAppOtp<WhatsAppOtpSendResponse>(
+        { action: 'send', email: email.trim() },
+        'Não foi possível enviar o código. Tente novamente.',
+      )
 
-      if (!res.ok || !data.sent) {
+      if (!data.sent) {
         if (data.reason === 'no_phone') {
           setError('Não encontramos um número de WhatsApp vinculado a este email. Use o login por email abaixo.')
         } else if (data.reason === 'rate_limited') {
@@ -81,8 +116,15 @@ export default function WhatsAppOtpPanel() {
       setMaskedPhone(data.maskedPhone ?? '')
       setStep('code')
       startCountdown(300)
-    } catch {
-      setError('Erro de conexão. Tente novamente.')
+    } catch (error) {
+      const code = getOtpErrorCode(error)
+      if (code === 'no_phone') {
+        setError('Não encontramos um número de WhatsApp vinculado a este email. Use o login por email abaixo.')
+      } else if (code === 'rate_limited') {
+        setError('Muitas tentativas. Aguarde alguns minutos.')
+      } else {
+        setError('Erro de conexão. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
@@ -95,19 +137,13 @@ export default function WhatsAppOtpPanel() {
     setError('')
 
     try {
-      const res  = await fetch(FUNCTION_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
-        body:    JSON.stringify({ action: 'verify', email: email.trim(), code: code.trim() }),
-      })
-      const data = await res.json()
+      const data = await callWhatsAppOtp<WhatsAppOtpVerifyResponse>(
+        { action: 'verify', email: email.trim(), code: code.trim() },
+        'Erro ao verificar. Tente novamente.',
+      )
 
-      if (!res.ok || !data.token) {
-        if (res.status === 401) {
-          setError('Código incorreto ou expirado. Tente novamente.')
-        } else {
-          setError('Erro ao verificar. Tente novamente.')
-        }
+      if (!data.token) {
+        setError('Erro ao verificar. Tente novamente.')
         return
       }
 
@@ -126,8 +162,13 @@ export default function WhatsAppOtpPanel() {
 
       setStep('done')
       if (timerRef.current) clearInterval(timerRef.current)
-    } catch {
-      setError('Erro de conexão. Tente novamente.')
+    } catch (error) {
+      const code = getOtpErrorCode(error)
+      if (code === 'invalid_or_expired') {
+        setError('Código incorreto ou expirado. Tente novamente.')
+      } else {
+        setError('Erro de conexão. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }

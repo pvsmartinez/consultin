@@ -68,6 +68,7 @@ export const QK = {
 
   // ── Professionals ─────────────────────────────────────────────
   professionals: {
+    all:         ()                                     => ['professionals']                      as const,
     list:        (clinicId: string | null | undefined) => ['professionals', clinicId]             as const,
     today:       (clinicId: string | null | undefined) => ['professionals-today', clinicId]       as const,
     my:          (userId: string | undefined)          => ['my-professional-records', userId]     as const,
