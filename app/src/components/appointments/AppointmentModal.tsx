@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -231,11 +231,12 @@ export default function AppointmentModal({
   const [quickCpf, setQuickCpf] = useState('')
   const [patientDrawerOpen, setPatientDrawerOpen] = useState(false)
   const [patientDrawerPatientId, setPatientDrawerPatientId] = useState<string | undefined>(undefined)
-  const debouncedPatientSearch = useDebounce(patientSearch, 300)
+  const patientSearchRef = useRef<HTMLInputElement>(null)
+  const debouncedPatientSearch = useDebounce(patientSearch, 150)
   const { patients = [] } = usePatients(debouncedPatientSearch)
   const { patients: allPatients = [] } = usePatients('', 0)
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { durationMin: '30', status: 'scheduled', serviceTypeId: '', recurrenceType: 'none', recurrenceCount: '4' },
   })
@@ -414,6 +415,8 @@ export default function AppointmentModal({
         setSelectedPatient({ id: initialPatientId, name: initialPatientName })
       } else if (initialPatientName) {
         setPatientSearch(initialPatientName)
+      } else {
+        setTimeout(() => patientSearchRef.current?.focus(), 150)
       }
       setShowEditFields(true)
       setShowExtras(true)
@@ -429,6 +432,15 @@ export default function AppointmentModal({
     if (profs.length === 1) setValue('professionalId', profs[0].id)
     if (rms.length   === 1) setValue('roomId', rms[0].id)
   }, [open, professionals, rooms, setValue])
+
+  // Auto-select first room when a patient is picked and no room is set yet
+  useEffect(() => {
+    if (!open || isEditing) return
+    if (!selectedPatient) return
+    if (getValues('roomId')) return
+    const firstRoom = rooms.find(r => r.active)
+    if (firstRoom) setValue('roomId', firstRoom.id)
+  }, [selectedPatient, open, isEditing, rooms, getValues, setValue])
 
   useEffect(() => {
     if (!open || isEditing) return
@@ -976,6 +988,7 @@ export default function AppointmentModal({
                 /* Search state — text input + suggestion dropdown */
                 <div className="relative">
                   <input
+                    ref={patientSearchRef}
                     type="text"
                     value={patientSearch}
                     onChange={e => { setPatientSearch(e.target.value); setShowQuickPatient(false) }}
@@ -1210,8 +1223,7 @@ export default function AppointmentModal({
                     ))}
                   </select>
                   {!isEditing && (
-                    <div className="grid gap-2 md:grid-cols-[1fr_150px_150px]">
-                      <TextArea label="" rows={2} placeholder="Observação rápida do atendimento" {...register('notes')} />
+                    <div className="grid gap-2 sm:grid-cols-2">
                       <div>
                         <Input label="Valor (R$)" placeholder="0,00" {...register('chargeAmount')} />
                         {!!selectedServiceType?.priceCents && (
@@ -1230,6 +1242,13 @@ export default function AppointmentModal({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {!isEditing && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Observações</p>
+                <TextArea label="" rows={2} placeholder="Observação sobre o agendamento..." {...register('notes')} />
               </div>
             )}
 

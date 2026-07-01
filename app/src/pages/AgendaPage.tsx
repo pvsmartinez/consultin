@@ -177,7 +177,7 @@ function renderAppointmentEvent(arg: EventContentArg) {
   const durationMin = eventStart && eventEnd
     ? Math.max(1, Math.round((eventEnd.getTime() - eventStart.getTime()) / 60000))
     : 30
-  const isShortEvent = durationMin <= 20
+  const isShortEvent = durationMin <= 30
 
   if (isMonthView) {
     return (

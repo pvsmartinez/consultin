@@ -191,9 +191,10 @@ body {
   border-bottom-color: var(--ui-brand-primary);
 }
 
-/* Grid borders — very subtle */
-.fc td, .fc th { border-color: var(--ui-surface-2) !important; }
+/* Grid borders */
+.fc td, .fc th { border-color: var(--ui-border) !important; }
 .fc .fc-scrollgrid { border-color: var(--ui-border-2) !important; }
+.fc .fc-timegrid-slot-minor { border-top-color: var(--ui-surface-2) !important; }
 
 /* Slot time labels */
 .fc .fc-timegrid-slot-label { font-size: 0.6875rem; color: var(--ui-text-muted); }
