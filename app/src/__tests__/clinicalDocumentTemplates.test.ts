@@ -20,6 +20,12 @@ describe('clinicalDocumentTemplates', () => {
         name: 'Maria Souza',
         cpf: '123.456.789-01',
         birthDate: '1985-03-15',
+        addressStreet: null,
+        addressNumber: null,
+        addressNeighborhood: null,
+        addressCity: null,
+        addressState: null,
+        addressZip: null,
       },
       clinic: {
         name: 'Clínica Demo',

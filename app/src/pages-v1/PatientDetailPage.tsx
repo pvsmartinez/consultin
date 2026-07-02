@@ -543,6 +543,12 @@ export default function PatientDetailPage() {
             name: patient.name,
             cpf: patient.cpf,
             birthDate: patient.birthDate,
+            addressStreet: patient.addressStreet,
+            addressNumber: patient.addressNumber,
+            addressNeighborhood: patient.addressNeighborhood,
+            addressCity: patient.addressCity,
+            addressState: patient.addressState,
+            addressZip: patient.addressZip,
           }}
           clinic={
             clinic

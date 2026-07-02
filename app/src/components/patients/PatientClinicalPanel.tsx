@@ -7,6 +7,7 @@ import Input from '../ui/Input'
 import Select from '../ui/Select'
 import TextArea from '../ui/TextArea'
 import { usePatientClinicalItems } from '../../hooks/usePatientClinicalItems'
+import { useProfessionals } from '../../hooks/useProfessionals'
 import {
   CLINICAL_DOCUMENT_TYPE_OPTIONS,
   CLINICAL_ITEM_STATUS_COLORS,
@@ -717,7 +718,12 @@ export default function PatientClinicalPanel({
   clinic,
 }: {
   patientId: string
-  patient: { name: string; cpf: string | null; birthDate: string | null }
+  patient: {
+    name: string; cpf: string | null; birthDate: string | null
+    addressStreet: string | null; addressNumber: string | null
+    addressNeighborhood: string | null; addressCity: string | null
+    addressState: string | null; addressZip: string | null
+  }
   clinic: Pick<Clinic, 'name' | 'phone' | 'email' | 'address' | 'city' | 'state' | 'documentTemplates' | 'documentSigning'> | null
 }) {
   const {
@@ -730,6 +736,8 @@ export default function PatientClinicalPanel({
     updateProsthesis,
     deleteProsthesis,
   } = usePatientClinicalItems(patientId)
+
+  const { data: professionals = [] } = useProfessionals()
 
   const [clinicalForm, setClinicalForm] = useState<{ id: string | null; value: PatientClinicalItemInput } | null>(null)
   const [prosthesisForm, setProsthesisForm] = useState<{ id: string | null; value: PatientProsthesisInput } | null>(null)
@@ -873,13 +881,19 @@ export default function PatientClinicalPanel({
     }
   }
 
+  function resolveItemProfessional(item: PatientClinicalItem) {
+    const prof = (professionals as { userId: string | null; name: string; councilId: string | null }[]).find(p => p.userId === item.createdBy)
+    if (!prof) return undefined
+    return { name: prof.name, council: prof.councilId }
+  }
+
   function handleDownload(item: PatientClinicalItem) {
     if (!hasPrintableClinicalContent(item, clinic)) {
       toast.error('Preencha o texto oficial para impressão antes de gerar o PDF')
       return
     }
 
-    downloadPatientClinicalDocumentPdf({ item, patient, clinic })
+    downloadPatientClinicalDocumentPdf({ item, patient, clinic, professional: resolveItemProfessional(item) })
   }
 
   function handlePrint(item: PatientClinicalItem) {
@@ -888,7 +902,7 @@ export default function PatientClinicalPanel({
       return
     }
 
-    printPatientClinicalDocument({ item, patient, clinic })
+    printPatientClinicalDocument({ item, patient, clinic, professional: resolveItemProfessional(item) })
   }
 
   function startPreset(preset: 'panoramic_xray' | 'prescription' | 'certificate' | 'consent') {
@@ -925,6 +939,7 @@ export default function PatientClinicalPanel({
               patient,
               clinic,
               item.issuedOn ? formatDate(`${item.issuedOn}T00:00:00`) : formatDate(new Date().toISOString()),
+              resolveItemProfessional(item),
             )}
             canPrint={hasPrintableClinicalContent(item, clinic)}
             onPrint={handlePrint}

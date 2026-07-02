@@ -22,14 +22,14 @@ export interface ClinicDocumentSigning {
 
 export const DEFAULT_CLINIC_DOCUMENT_TEMPLATES: ClinicDocumentTemplates = {
   examRequest: [
-    'Solicito a realização de {{document_title}} para {{patient_name}}.',
+    '{{professional_name}}',
+    '{{professional_council}}',
     '',
     'Paciente: {{patient_name}}',
+    '{{patient_address}}',
     'CPF: {{patient_cpf}}',
-    'Nascimento: {{patient_birth_date}}',
     'Data: {{issue_date}}',
     '',
-    'Observações clínicas:',
     '{{item_description}}',
   ].join('\n'),
   prescription: [
@@ -80,7 +80,10 @@ export const CLINICAL_DOCUMENT_TEMPLATE_PLACEHOLDERS = [
   '{{clinic_name}}',
   '{{clinic_city_state}}',
   '{{clinic_phone}}',
+  '{{professional_name}}',
+  '{{professional_council}}',
   '{{patient_name}}',
+  '{{patient_address}}',
   '{{patient_cpf}}',
   '{{patient_birth_date}}',
   '{{issue_date}}',
