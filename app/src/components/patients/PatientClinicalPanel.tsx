@@ -26,6 +26,7 @@ import type {
   PatientClinicalItemInput,
   PatientProsthesis,
   PatientProsthesisInput,
+  Professional,
 } from '../../types'
 import { getClinicDocumentTemplate } from '../../utils/clinicalDocumentTemplates'
 import { formatDate, formatDateTime } from '../../utils/date'
@@ -882,7 +883,7 @@ export default function PatientClinicalPanel({
   }
 
   function resolveItemProfessional(item: PatientClinicalItem) {
-    const prof = (professionals as { userId: string | null; name: string; councilId: string | null }[]).find(p => p.userId === item.createdBy)
+    const prof = (professionals as Professional[]).find((p: Professional) => p.userId === item.createdBy)
     if (!prof) return undefined
     return { name: prof.name, council: prof.councilId }
   }
