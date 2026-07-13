@@ -226,14 +226,25 @@ cd app && npm run typecheck
 
 ### Applying migrations (CI/CD — preferred)
 
-Migrations are applied automatically on `git push origin main` via GitHub Actions (`scripts/ci_migrate.sh`). Nothing else needed.
+Migrations are applied automatically on `git push origin main` via GitHub Actions
+(`.github/workflows/deploy.yml`, `migrate` job), which runs the official `supabase db push --linked`.
+Nothing else needed — just push.
+
+The migration history is tracked in `supabase_migrations.schema_migrations` on the remote DB,
+keyed by the version prefix before the first underscore in the filename (or the full 14-digit
+timestamp for newer-style files). **Never reuse a version prefix across two migration files** —
+`supabase db push` cannot distinguish them (this caused a real collision between two `0041_*`
+files in March 2026, fixed by renaming one to its commit timestamp).
 
 ### Applying migrations manually (if needed)
 
-Use `scripts/apply-migrations.sh` — it reads the DB password from `pedrin/.env`:
+`scripts/apply-migrations.sh` reads the DB password from `pedrin/.env` and blindly re-runs every
+`.sql` file via raw `psql` — it has **no tracking table** and relies on migrations being
+idempotent (`IF NOT EXISTS`, etc.). Prefer `supabase db push --linked` (same mechanism as CI)
+since it only applies genuinely pending migrations:
 
 ```bash
-cd consultin && bash scripts/apply-migrations.sh
+cd consultin && supabase db push --linked
 ```
 
 ### Regenerating TypeScript types
@@ -446,7 +457,7 @@ curl -s -X POST 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/token?grant_ty
 
 ### CI/CD
 
-- **GitHub Actions** (`.github/workflows/deploy.yml`): runs on every push to `main`, applies pending migrations via `scripts/ci_migrate.sh`
+- **GitHub Actions** (`.github/workflows/deploy.yml`): runs on every push to `main`, applies pending migrations via `supabase db push --linked` and deploys edge functions
 - **Vercel**: auto-deploys the frontend on every push to `main` via GitHub integration — no manual step needed
 - **To deploy**: just `git push origin main` — both run in parallel automatically
 
