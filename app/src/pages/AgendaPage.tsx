@@ -14,6 +14,7 @@ import {
   Lock,
   Plus,
   SealCheck,
+  Warning,
   WarningCircle,
   X,
   XCircle,
@@ -160,6 +161,10 @@ function renderAppointmentEvent(arg: EventContentArg) {
     return <span className="truncate px-1 text-xs font-medium">{arg.event.title}</span>
   }
 
+  const conflictNames = arg.event.extendedProps.conflictNames as string[] | undefined
+  const hasConflict = !!conflictNames?.length
+  const conflictTitle = hasConflict ? `Conflito de horário com: ${conflictNames.join(', ')}` : undefined
+
   const isMonthView = arg.view.type === 'dayGridMonth'
   const cardColor = appointment.clinicRoom?.color ?? arg.event.backgroundColor ?? STATUS_COLORS[appointment.status]
   const textColor = getContrastingTextColor(cardColor)
@@ -182,9 +187,9 @@ function renderAppointmentEvent(arg: EventContentArg) {
   if (isMonthView) {
     return (
       <div
-        className="flex h-full items-center gap-1.5 overflow-hidden rounded-md px-2 py-1"
+        className={`flex h-full items-center gap-1.5 overflow-hidden rounded-md px-2 py-1${hasConflict ? ' ring-2 ring-red-500' : ''}`}
         style={{ backgroundColor: cardColor, color: textColor }}
-        title={`${professionalName} · ${patientFullName}`}
+        title={conflictTitle ?? `${professionalName} · ${patientFullName}`}
       >
         <span
           className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-sm"
@@ -201,6 +206,7 @@ function renderAppointmentEvent(arg: EventContentArg) {
           )}
         </span>
         <span className="truncate text-[11px] font-semibold">{patientShortName}</span>
+        {hasConflict && <Warning size={11} weight="fill" className="ml-auto shrink-0 text-red-600" />}
       </div>
     )
   }
@@ -208,10 +214,18 @@ function renderAppointmentEvent(arg: EventContentArg) {
   if (isShortEvent) {
     return (
       <div
-        className="relative isolate h-full min-h-[24px] overflow-hidden rounded-[10px] px-2 py-1"
+        className={`relative isolate h-full min-h-[24px] overflow-hidden rounded-[10px] px-2 py-1${hasConflict ? ' ring-2 ring-red-500' : ''}`}
         style={{ backgroundColor: cardColor, color: textColor }}
-        title={`${professionalName} · ${patientFullName}`}
+        title={conflictTitle ?? `${professionalName} · ${patientFullName}`}
       >
+        {hasConflict && (
+          <span
+            className="absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white shadow-sm"
+            title={conflictTitle}
+          >
+            <Warning size={10} weight="fill" />
+          </span>
+        )}
         <div className="flex h-full min-w-0 items-center gap-1.5">
           <span
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-sm"
@@ -234,10 +248,19 @@ function renderAppointmentEvent(arg: EventContentArg) {
 
   return (
     <div
-      className="relative isolate h-full min-h-[56px] overflow-hidden rounded-[14px] px-2.5 py-2"
+      className={`relative isolate h-full min-h-[56px] overflow-hidden rounded-[14px] px-2.5 py-2${hasConflict ? ' ring-2 ring-red-500' : ''}`}
       style={{ backgroundColor: cardColor, color: textColor }}
-      title={`${professionalName} · ${patientFullName}`}
+      title={conflictTitle ?? `${professionalName} · ${patientFullName}`}
     >
+      {hasConflict && (
+        <span
+          className="absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white shadow-sm"
+          title={conflictTitle}
+        >
+          <Warning size={13} weight="fill" />
+        </span>
+      )}
+
       <span
         className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 shadow-sm"
         style={{ color: statusColor }}
@@ -691,6 +714,33 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     })
   ), [appointments, filterProfId, filterRoomId, isPersonalView])
 
+  // Overlaps are allowed (a professional may intentionally double-book — e.g. covering
+  // no-shows or running two patients in parallel) but flagged visually so nothing is hidden.
+  const conflictMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    const active = (appointments as Appointment[]).filter(
+      a => a.status !== 'cancelled' && a.status !== 'no_show' && a.professionalId
+    )
+    for (let i = 0; i < active.length; i++) {
+      const a = active[i]
+      const aStart = new Date(a.startsAt).getTime()
+      const aEnd = new Date(a.endsAt).getTime()
+      for (let j = i + 1; j < active.length; j++) {
+        const b = active[j]
+        if (a.professionalId !== b.professionalId) continue
+        const bStart = new Date(b.startsAt).getTime()
+        const bEnd = new Date(b.endsAt).getTime()
+        if (aStart < bEnd && bStart < aEnd) {
+          const aName = normalizeName(a.patient?.name) || 'Paciente'
+          const bName = normalizeName(b.patient?.name) || 'Paciente'
+          map.set(a.id, [...(map.get(a.id) ?? []), bName])
+          map.set(b.id, [...(map.get(b.id) ?? []), aName])
+        }
+      }
+    }
+    return map
+  }, [appointments])
+
   const unassignedAppointments = useMemo(
     () => (appointments as Appointment[]).filter(appointment => !appointment.roomId && appointment.status !== 'cancelled'),
     [appointments],
@@ -847,7 +897,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
               : (a.professionalId ?? '__no_prof__'),
           }
         : {}),
-      extendedProps: { appointment: a },
+      extendedProps: { appointment: a, conflictNames: conflictMap.get(a.id) },
     }
   })
 
