@@ -33,6 +33,7 @@ import UpgradeModal from '../components/billing/UpgradeModal'
 import { useClinicQuota } from '../hooks/useClinicQuota'
 import { APPOINTMENT_STATUS_LABELS, type Appointment, type AppointmentStatus } from '../types'
 import { getAppointmentSaveErrorMessage } from '../utils/appointmentErrors'
+import { fillMissingRoomSelections } from '../utils/agendaRoomSelections'
 import { APP_ROUTES } from '../lib/appRoutes'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -768,13 +769,9 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     if (activeRooms.length === 0) return
 
     const defaultRoomId = activeRooms[0].id
-    setSelectedRoomByAppointment(prev => {
-      const next = { ...prev }
-      unassignedAppointments.forEach(appointment => {
-        if (!next[appointment.id]) next[appointment.id] = defaultRoomId
-      })
-      return next
-    })
+    setSelectedRoomByAppointment(prev =>
+      fillMissingRoomSelections(prev, unassignedAppointments, defaultRoomId),
+    )
   }, [activeRooms, unassignedAppointments, unassignedPopupOpen])
 
   const [modalOpen, setModalOpen]           = useState(false)
