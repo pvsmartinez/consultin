@@ -85,34 +85,6 @@ function normalizeName(name: string | null | undefined) {
   return (name ?? '').replace(/\s+/g, ' ').trim()
 }
 
-function stripProfessionalPrefix(name: string) {
-  return name.replace(/^(dr\.?|dra\.?|doutor|doutora)\s+/i, '').trim()
-}
-
-function formatProfessionalDisplayName(name: string | null | undefined) {
-  const cleanName = stripProfessionalPrefix(normalizeName(name) || 'Profissional')
-  return `Dr. ${cleanName}`
-}
-
-function shortenWithEllipsis(value: string, maxLength: number) {
-  if (value.length <= maxLength) return value
-  return `${value.slice(0, Math.max(1, maxLength - 1)).trimEnd()}…`
-}
-
-function formatPatientDisplayName(name: string | null | undefined, maxLength = 24) {
-  const cleanName = normalizeName(name) || 'Paciente'
-  const parts = cleanName.split(' ').filter(Boolean)
-  if (parts.length <= 1) return shortenWithEllipsis(cleanName, maxLength)
-
-  const firstAndLast = `${parts[0]} ${parts[parts.length - 1]}`
-  if (firstAndLast.length <= maxLength) return firstAndLast
-
-  const abbreviatedLast = `${parts[0]} ${parts[parts.length - 1][0]}.`
-  if (abbreviatedLast.length <= maxLength) return abbreviatedLast
-
-  return shortenWithEllipsis(parts[0], maxLength)
-}
-
 function getNameInitials(name: string | null | undefined) {
   const parts = normalizeName(name).split(' ').filter(Boolean)
   return (parts.length ? parts : ['P'])
@@ -172,25 +144,25 @@ function renderAppointmentEvent(arg: EventContentArg) {
   const mutedTextColor = textColor === '#ffffff' ? 'rgba(255,255,255,0.82)' : 'rgba(15,23,42,0.72)'
   const statusColor = STATUS_COLORS[appointment.status]
   const StatusIcon = getStatusIcon(appointment.status)
-  const professionalName = formatProfessionalDisplayName(appointment.professional?.name)
-  const patientShortName = formatPatientDisplayName(appointment.patient?.name)
+  const professionalName = normalizeName(appointment.professional?.name) || 'Profissional'
   const patientFullName = normalizeName(appointment.patient?.name) || 'Paciente'
   const photoUrl = appointment.professional?.photoUrl ?? null
   const professionalInitials = getNameInitials(appointment.professional?.name)
-  const compactProfessionalName = shortenWithEllipsis(professionalName, 18)
   const eventStart = arg.event.start
   const eventEnd = arg.event.end
   const durationMin = eventStart && eventEnd
     ? Math.max(1, Math.round((eventEnd.getTime() - eventStart.getTime()) / 60000))
     : 30
   const isShortEvent = durationMin <= 30
+  const isVeryShortEvent = durationMin <= 15
+  const eventLabel = `${patientFullName} · ${professionalName} · ${APPOINTMENT_STATUS_LABELS[appointment.status]}`
 
   if (isMonthView) {
     return (
       <div
         className={`flex h-full items-center gap-1.5 overflow-hidden rounded-md px-2 py-1${hasConflict ? ' ring-2 ring-red-500' : ''}`}
         style={{ backgroundColor: cardColor, color: textColor }}
-        title={conflictTitle ?? `${professionalName} · ${patientFullName}`}
+        title={conflictTitle ?? eventLabel}
       >
         <span
           className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-sm"
@@ -199,14 +171,19 @@ function renderAppointmentEvent(arg: EventContentArg) {
         >
           <StatusIcon size={10} weight="fill" />
         </span>
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 text-[9px] font-semibold">
+        <span
+          className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 text-[9px] font-semibold"
+          role="img"
+          aria-label={`Profissional: ${professionalName}`}
+          title={professionalName}
+        >
           {photoUrl ? (
             <img src={photoUrl} alt={professionalName} className="h-full w-full object-cover" />
           ) : (
             professionalInitials
           )}
         </span>
-        <span className="truncate text-[11px] font-semibold">{patientShortName}</span>
+        <span className="truncate text-[11px] font-semibold" title={patientFullName}>{patientFullName}</span>
         {hasConflict && <Warning size={11} weight="fill" className="ml-auto shrink-0 text-red-600" />}
       </div>
     )
@@ -217,7 +194,7 @@ function renderAppointmentEvent(arg: EventContentArg) {
       <div
         className={`relative isolate h-full min-h-[24px] overflow-hidden rounded-[10px] px-2 py-1${hasConflict ? ' ring-2 ring-red-500' : ''}`}
         style={{ backgroundColor: cardColor, color: textColor }}
-        title={conflictTitle ?? `${professionalName} · ${patientFullName}`}
+        title={conflictTitle ?? eventLabel}
       >
         {hasConflict && (
           <span
@@ -229,19 +206,29 @@ function renderAppointmentEvent(arg: EventContentArg) {
         )}
         <div className="flex h-full min-w-0 items-center gap-1.5">
           <span
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-sm"
-            style={{ color: statusColor }}
-            aria-label={APPOINTMENT_STATUS_LABELS[appointment.status]}
-            title={APPOINTMENT_STATUS_LABELS[appointment.status]}
+            className="relative flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 text-[9px] font-semibold"
+            role="img"
+            aria-label={`Profissional: ${professionalName}`}
+            title={professionalName}
           >
-            <StatusIcon size={10} weight="fill" />
+            {photoUrl ? (
+              <img src={photoUrl} alt={professionalName} className="h-full w-full object-cover" />
+            ) : (
+              professionalInitials
+            )}
+            <span
+              className="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full border border-white"
+              style={{ backgroundColor: statusColor }}
+              aria-hidden="true"
+            />
           </span>
-          <p className="truncate text-[10px] font-semibold leading-none" style={{ color: mutedTextColor }}>
-            {arg.timeText}
+          <p
+            className={`min-w-0 font-bold leading-[1.05rem] tracking-tight ${hasConflict ? 'pr-4' : ''} ${isVeryShortEvent ? 'truncate text-[12px]' : 'line-clamp-2 text-[13px]'}`}
+            title={patientFullName}
+          >
+            {patientFullName}
           </p>
-          <p className="truncate text-[12px] font-semibold leading-none" title={patientFullName}>
-            {patientShortName}
-          </p>
+          <span className="sr-only">{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
         </div>
       </div>
     )
@@ -251,7 +238,7 @@ function renderAppointmentEvent(arg: EventContentArg) {
     <div
       className={`relative isolate h-full min-h-[56px] overflow-hidden rounded-[14px] px-2.5 py-2${hasConflict ? ' ring-2 ring-red-500' : ''}`}
       style={{ backgroundColor: cardColor, color: textColor }}
-      title={conflictTitle ?? `${professionalName} · ${patientFullName}`}
+      title={conflictTitle ?? eventLabel}
     >
       {hasConflict && (
         <span
@@ -263,40 +250,31 @@ function renderAppointmentEvent(arg: EventContentArg) {
       )}
 
       <span
-        className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 shadow-sm"
-        style={{ color: statusColor }}
-        aria-label={APPOINTMENT_STATUS_LABELS[appointment.status]}
-        title={APPOINTMENT_STATUS_LABELS[appointment.status]}
+        className="absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-white/70 bg-white/15 text-[10px] font-semibold shadow-sm"
+        role="img"
+        aria-label={`Profissional: ${professionalName}`}
+        title={professionalName}
       >
-        <StatusIcon size={13} weight="fill" />
-      </span>
-
-      <span className="absolute bottom-2 left-2 z-10 flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-white/70 bg-white/15 text-[10px] font-semibold shadow-sm">
         {photoUrl ? (
           <img src={photoUrl} alt={professionalName} className="h-full w-full object-cover" />
         ) : (
           professionalInitials
         )}
+        <span
+          className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full border-2 border-white"
+          style={{ backgroundColor: statusColor }}
+          aria-hidden="true"
+        />
       </span>
 
-      <div className="flex h-full min-w-0 flex-col justify-between pl-10 pr-1">
-        <div className="min-w-0">
-          <p className="truncate text-[8px] font-semibold uppercase tracking-[0.16em]" style={{ color: mutedTextColor }}>
-            {APPOINTMENT_STATUS_LABELS[appointment.status]}
-          </p>
-          <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.1em] leading-none" style={{ color: mutedTextColor }} title={professionalName}>
-            {compactProfessionalName}
-          </p>
-        </div>
-
-        <div className="min-w-0">
-          <p className="truncate text-[10px] font-semibold leading-none" style={{ color: mutedTextColor }}>
-            {arg.timeText}
-          </p>
-          <p className="mt-1 truncate text-[14px] font-semibold leading-none tracking-tight" title={patientFullName}>
-            {patientShortName}
-          </p>
-        </div>
+      <div className="flex h-full min-w-0 flex-col justify-between pl-9 pr-1">
+        <p className={`line-clamp-3 text-[15px] font-bold leading-[1.05rem] tracking-tight ${hasConflict ? 'pr-5' : ''}`} title={patientFullName}>
+          {patientFullName}
+        </p>
+        <p className="mt-1 text-[11px] font-semibold leading-none" style={{ color: mutedTextColor }}>
+          {arg.timeText}
+        </p>
+        <span className="sr-only">{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
       </div>
     </div>
   )
@@ -1139,7 +1117,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const todayHeadline = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
   const effectiveSlotDuration = Math.max(15, clinic?.slotDurationMinutes ?? 30)
   const slotDuration = minutesToFcDuration(effectiveSlotDuration)
-  const eventMinHeight = effectiveSlotDuration <= 15 ? 22 : 34
+  const eventMinHeight = effectiveSlotDuration <= 15 ? 28 : 34
 
   function handleViewChange(nextView: CalendarView) {
     setCalendarView(nextView)
@@ -1298,6 +1276,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           selectable={!isPersonalView}
           selectMirror
           dayMaxEvents
+          slotEventOverlap={false}
           eventClassNames={() => ['consultin-agenda-event']}
           eventContent={renderAppointmentEvent}
           eventMinHeight={eventMinHeight}
