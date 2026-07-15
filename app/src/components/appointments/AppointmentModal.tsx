@@ -87,6 +87,7 @@ function defaultTimeSlot(): string {
 
 const PRESET_DURATIONS = [15, 20, 30, 45, 60, 90, 120]
 const STATUSES = Object.entries(APPOINTMENT_STATUS_LABELS) as [AppointmentStatus, string][]
+const PRIMARY_STATUSES = STATUSES.filter(([status]) => status !== 'cancelled')
 
 const RECURRENCE_LABELS: Record<string, string> = {
   none:    'Não repetir',
@@ -221,6 +222,7 @@ export default function AppointmentModal({
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [roomRequirementDialogOpen, setRoomRequirementDialogOpen] = useState(false)
   const [showExtras, setShowExtras]       = useState(false)
+  const [showCreateDetails, setShowCreateDetails] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [returnPreset, setReturnPreset]   = useState<ReturnPreset>('none')
   const [patientSearch, setPatientSearch] = useState('')
@@ -374,6 +376,7 @@ export default function AppointmentModal({
       setQuickName('')
       setQuickCpf('')
       setShowExtras(false)
+      setShowCreateDetails(false)
       setShowEditFields(false)
       return
     }
@@ -404,8 +407,8 @@ export default function AppointmentModal({
       setSelectedPatient(appointment.patient
         ? { id: appointment.patientId, name: appointment.patient.name }
         : null)
-      // When editing, always show extras so user can see all existing values
-      setShowExtras(true)
+      // Existing appointments open focused on the fastest action: status.
+      setShowExtras(false)
       setShowEditFields(false)
     } else {
       reset({
@@ -432,6 +435,7 @@ export default function AppointmentModal({
       }
       setShowEditFields(true)
       setShowExtras(true)
+      setShowCreateDetails(false)
     }
     setReturnPreset('none')
   }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialRoomId, initialPatientId, initialPatientName, reset])
@@ -582,6 +586,7 @@ export default function AppointmentModal({
 
     if (hasSelectableRooms) {
       setShowExtras(true)
+      setShowEditFields(true)
       return
     }
 
@@ -665,11 +670,6 @@ export default function AppointmentModal({
     }
   }
 
-  function handleCompleteAppointment() {
-    setValue('status', 'completed', { shouldDirty: true, shouldTouch: true })
-    void handleSubmit(onSubmit, onInvalid)()
-  }
-
   function onInvalid(errors: FieldErrors<FormValues>) {
     const firstErrorKey = Object.keys(errors)[0] as keyof FormValues | undefined
     if (!firstErrorKey) return
@@ -705,14 +705,14 @@ export default function AppointmentModal({
                 <section className="rounded-[28px] border border-gray-200 bg-white p-4 shadow-sm sm:p-4.5">
                   <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <h2 className="text-[34px] leading-none font-semibold tracking-tight text-gray-900">Consulta particular</h2>
+                      <h2 className="text-[28px] leading-none font-semibold tracking-tight text-gray-900">Consulta</h2>
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => setShowEditFields(current => !current)}
                           className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-[#0ea5b0] hover:text-[#006970]"
                         >
-                          {showEditFields ? 'Fechar edição detalhada' : 'Alterar horário'}
+                          {showEditFields ? 'Fechar edição' : 'Editar dados'}
                         </button>
                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${APPOINTMENT_STATUS_COLORS[watchedStatus ?? appointment?.status ?? 'scheduled']}`}>
                           {APPOINTMENT_STATUS_LABELS[watchedStatus ?? appointment?.status ?? 'scheduled']}
@@ -736,6 +736,28 @@ export default function AppointmentModal({
                       >
                         Ver mais
                       </button>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Status da consulta</p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Status da consulta">
+                        {PRIMARY_STATUSES.map(([status, label]) => {
+                          const selected = (watchedStatus ?? appointment?.status ?? 'scheduled') === status
+                          return (
+                            <button
+                              key={status}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => setValue('status', status, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
+                              className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold transition ${selected
+                                ? `${APPOINTMENT_STATUS_COLORS[status]} border-current ring-1 ring-current/10`
+                                : 'border-gray-200 bg-white text-gray-600 hover:border-[#0ea5b0]/50 hover:text-[#006970]'}`}
+                            >
+                              {label}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
@@ -790,11 +812,18 @@ export default function AppointmentModal({
                         <ClipboardText size={14} />
                         Ver anamnese
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowExtras(current => !current)}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0] hover:text-[#006970]"
+                      >
+                        {showExtras ? 'Ocultar detalhes' : 'Mais detalhes'}
+                      </button>
                     </div>
                   </div>
                 </section>
 
-                <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                {showExtras && <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
                   <ManagementSection
                     title="Histórico do paciente"
                     action={
@@ -916,16 +945,16 @@ export default function AppointmentModal({
                       </button>
                     </div>
                   </ManagementSection>
-                </div>
+                </div>}
               </>
             )}
 
             {(!isEditing || showEditFields) && (
               <div className={isEditing ? 'rounded-[28px] border border-gray-200 bg-[#f8fafb] p-4 shadow-sm sm:p-5' : ''}>
                 {!isEditing && (
-                  <div className="mb-2 rounded-2xl border border-teal-100 bg-gradient-to-r from-teal-50/80 to-white p-3">
-                    <h2 className="text-lg font-semibold tracking-tight text-gray-900">Marcar consulta</h2>
-                    <p className="mt-1 text-xs text-gray-500">Fluxo rapido: paciente, alocacao, atendimento e horario.</p>
+                  <div className="mb-3 border-b border-gray-100 pb-3">
+                    <h2 className="text-xl font-semibold tracking-tight text-gray-900">Nova consulta</h2>
+                    <p className="mt-1 text-sm text-gray-500">Comece pelo paciente, alocação e horário. Os demais dados são opcionais.</p>
                   </div>
                 )}
                 {isEditing && (
@@ -1206,8 +1235,20 @@ export default function AppointmentModal({
               </div>
             )}
 
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={() => setShowCreateDetails(current => !current)}
+                className="flex w-full items-center justify-between rounded-xl border border-dashed border-gray-300 bg-white px-3 py-2.5 text-left text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0]/60 hover:text-[#006970]"
+                aria-expanded={showCreateDetails}
+              >
+                <span>{showCreateDetails ? 'Ocultar detalhes opcionais' : 'Adicionar serviço, valores, observações ou retorno'}</span>
+                <span aria-hidden="true" className={`text-[#0ea5b0] transition-transform ${showCreateDetails ? 'rotate-90' : ''}`}>›</span>
+              </button>
+            )}
+
             {/* Service type — optional, auto-fills duration + price when creating */}
-            {activeServiceTypes.length > 0 && (
+            {(isEditing || showCreateDetails) && activeServiceTypes.length > 0 && (
               <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Atendimento</p>
                 <div className="space-y-2">
@@ -1257,14 +1298,14 @@ export default function AppointmentModal({
               </div>
             )}
 
-            {!isEditing && (
+            {!isEditing && showCreateDetails && (
               <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Observações</p>
                 <TextArea label="" rows={2} placeholder="Observação sobre o agendamento..." {...register('notes')} />
               </div>
             )}
 
-            {hasInventory && selectedServiceSuggestions.length > 0 && (
+            {(isEditing || showCreateDetails) && hasInventory && selectedServiceSuggestions.length > 0 && (
               <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 rounded-xl bg-white p-2 text-sky-700">
@@ -1321,8 +1362,8 @@ export default function AppointmentModal({
                 </div>
               </div>
             )}
-            <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Horário / duração</p>
+            <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-3 shadow-sm">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#006970]">Quando será</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 <Input label="Data *" type="date" error={errors.date?.message} {...register('date')} />
                 <Input label="Horário *" type="time" error={errors.startTime?.message} {...register('startTime')} />
@@ -1336,31 +1377,22 @@ export default function AppointmentModal({
                       <option key={d} value={d}>{d} min</option>
                     ))}
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => setValue('durationMin', '15', { shouldDirty: true })}
+                    className={`mt-1 rounded-md px-1.5 py-1 text-xs font-medium transition ${durationMinVal === '15' ? 'bg-teal-100 text-[#006970]' : 'text-[#0ea5b0] hover:bg-teal-100'}`}
+                  >
+                    {durationMinVal === '15' ? '15 min selecionado' : 'Usar 15 min'}
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Sala — visible in create mode outside of extras */}
-            {/* ── Mais opções toggle (editing only) ─────────────────────────── */}
-            {isEditing && (
-              <button
-                type="button"
-                onClick={() => setShowExtras(v => !v)}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#0ea5b0] transition-colors py-0.5"
-              >
-                <span className={`transition-transform ${showExtras ? 'rotate-90' : ''}`}>▶</span>
-                {showExtras ? 'Menos opções' : 'Mais opções'}
-                {!showExtras && (
-                  <span className="text-gray-400">(sala, status, valor, observações)</span>
-                )}
-              </button>
-            )}
-
-            {/* ── Extras collapsible ─────────────────────────────────────────── */}
-            {(isEditing ? showExtras : true) && (
+            {/* Opções secundárias de agendamento */}
+            {(isEditing ? showExtras : showCreateDetails) && (
               <div className="space-y-4">
                 {isEditing && (
-                  <div className={`grid gap-3 ${activeRooms.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="grid gap-3">
                     {activeRooms.length > 1 && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1377,17 +1409,6 @@ export default function AppointmentModal({
                         </select>
                       </div>
                     )}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                        {...register('status')}
-                      >
-                        {STATUSES.map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
                 )}
 
@@ -1491,7 +1512,7 @@ export default function AppointmentModal({
               </div>
             )}
 
-            {isEditing && (
+            {isEditing && showExtras && (
               <>
                 <ManagementSection
                   title="Observações"
@@ -1589,32 +1610,16 @@ export default function AppointmentModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between gap-2">
-                    <button type="button" onClick={() => setConfirmCancel(true)}
-                      className="min-h-11 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:border-red-300 hover:bg-red-50">
-                      Cancelar consulta
-                    </button>
-                    <div className="flex items-center gap-2">
-                      {(watchedStatus ?? appointment?.status) !== 'completed' && (
-                        <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
-                          className="min-h-11 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[#0ea5b0] hover:text-[#006970] disabled:opacity-50">
-                          {isSubmitting ? 'Salvando...' : 'Salvar'}
-                        </button>
-                      )}
-                      {(watchedStatus ?? appointment?.status) !== 'completed' ? (
-                        <button type="button" onClick={handleCompleteAppointment} disabled={isSubmitting || !hasActiveProfessional}
-                          className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
-                          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
-                          {isSubmitting ? 'Finalizando...' : 'Finalizar'}
-                        </button>
-                      ) : (
-                        <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
-                          className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
-                          style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
-                          {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
-                        </button>
-                      )}
-                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <button type="button" onClick={() => setConfirmCancel(true)}
+                        className="min-h-11 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:border-red-300 hover:bg-red-50">
+                        Cancelar consulta
+                      </button>
+                      <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
+                        className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
+                        style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>
+                        {isSubmitting ? 'Salvando...' : 'Salvar alterações'}
+                      </button>
                   </div>
                 )}
               </div>

@@ -1,15 +1,15 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
-import FullCalendar from '@fullcalendar/react'
-import interactionPlugin from '@fullcalendar/interaction'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import resourceTimeGridPlugin from '@fullcalendar/resource-timegrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import type { EventClickArg, EventContentArg, EventInput } from '@fullcalendar/core'
-import { format, addMinutes, startOfWeek, endOfWeek } from 'date-fns'
+import { useState, useMemo, useEffect } from 'react'
+import { Calendar, dateFnsLocalizer, type EventProps, type SlotInfo, type View } from 'react-big-calendar'
+import withDragAndDrop, { type EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop'
+import 'react-big-calendar/lib/css/react-big-calendar.css'
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
+import { format, addDays, addMinutes, addMonths, addWeeks, endOfWeek, getDay, parse, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   CalendarBlank,
   CheckCircle,
+  CaretLeft,
+  CaretRight,
   DoorOpen,
   Lock,
   Plus,
@@ -27,7 +27,6 @@ import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
 import { useRooms } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
-import { useRoomAvailabilitySlots, useClinicAvailabilitySlots } from '../hooks/useRoomAvailability'
 import AppointmentModal from '../components/appointments/AppointmentModal'
 import UpgradeModal from '../components/billing/UpgradeModal'
 import { useClinicQuota } from '../hooks/useClinicQuota'
@@ -38,23 +37,34 @@ import { APP_ROUTES } from '../lib/appRoutes'
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = typeof DAY_ORDER[number]
-const DAY_FC: Record<DayKey, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 }
 const PT_DAY_LABELS: Record<DayKey, string> = {
   sun: 'Domingo', mon: 'Segunda', tue: 'Terça', wed: 'Quarta',
   thu: 'Quinta', fri: 'Sexta', sat: 'Sábado',
 }
-type CalendarView = 'timeGridDay' | 'timeGridWeek' | 'dayGridMonth'
+type CalendarView = 'day' | 'week' | 'month'
 type DayBreakdown = 'none' | 'room' | 'professional'
-type ResolvedCalendarView = CalendarView | 'resourceTimeGridDay'
 
-type FCBusinessHour = { daysOfWeek: number[]; startTime: string; endTime: string }
-
-function slotsToResourceBusinessHours(
-  slots: Array<{ weekday: number; startTime: string; endTime: string }>,
-): FCBusinessHour[] | undefined {
-  if (!slots.length) return undefined
-  return slots.map(s => ({ daysOfWeek: [s.weekday], startTime: s.startTime, endTime: s.endTime }))
+type AgendaCalendarResource = { id: string; title: string; color?: string }
+type AgendaCalendarEvent = {
+  id: string
+  title: string
+  start: Date
+  end: Date
+  resourceId?: string
+  appointment: Appointment
+  conflictNames?: string[]
+  color: string
 }
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales: { 'pt-BR': ptBR },
+})
+
+const DragAndDropCalendar = withDragAndDrop<AgendaCalendarEvent, AgendaCalendarResource>(Calendar)
 
 function isInsideBusinessHours(
   date: Date,
@@ -121,165 +131,49 @@ function getStatusIcon(status: AppointmentStatus) {
   }
 }
 
-function minutesToFcDuration(totalMinutes: number) {
-  const safeMinutes = Math.max(5, totalMinutes)
-  const hours = Math.floor(safeMinutes / 60)
-  const minutes = safeMinutes % 60
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+function timeToDate(value: string) {
+  const [hours, minutes] = value.slice(0, 5).split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours || 0, minutes || 0, 0, 0)
+  return date
 }
 
-function toFullCalendarTime(value: string) {
-  return value.length === 5 ? `${value}:00` : value
-}
-
-function renderAppointmentEvent(arg: EventContentArg) {
-  const appointment = arg.event.extendedProps.appointment as Appointment | undefined
-  if (!appointment) {
-    return <span className="truncate px-1 text-xs font-medium">{arg.event.title}</span>
-  }
-
-  const conflictNames = arg.event.extendedProps.conflictNames as string[] | undefined
+function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
+  const { appointment, conflictNames, color, start, end } = event
   const hasConflict = !!conflictNames?.length
-  const conflictTitle = hasConflict ? `Conflito de horário com: ${conflictNames.join(', ')}` : undefined
-
-  const isMonthView = arg.view.type === 'dayGridMonth'
-  const cardColor = appointment.clinicRoom?.color ?? arg.event.backgroundColor ?? STATUS_COLORS[appointment.status]
-  const textColor = getContrastingTextColor(cardColor)
-  const mutedTextColor = textColor === '#ffffff' ? 'rgba(255,255,255,0.82)' : 'rgba(15,23,42,0.72)'
-  const statusColor = STATUS_COLORS[appointment.status]
-  const StatusIcon = getStatusIcon(appointment.status)
   const professionalName = normalizeName(appointment.professional?.name) || 'Profissional'
   const patientFullName = normalizeName(appointment.patient?.name) || 'Paciente'
-  const photoUrl = appointment.professional?.photoUrl ?? null
-  const professionalInitials = getNameInitials(appointment.professional?.name)
-  const eventStart = arg.event.start
-  const eventEnd = arg.event.end
-  const durationMin = eventStart && eventEnd
-    ? Math.max(1, Math.round((eventEnd.getTime() - eventStart.getTime()) / 60000))
-    : 30
-  const isShortEvent = durationMin <= 30
-  const isVeryShortEvent = durationMin <= 15
-  const eventLabel = `${patientFullName} · ${professionalName} · ${APPOINTMENT_STATUS_LABELS[appointment.status]}`
-
-  if (isMonthView) {
-    return (
-      <div
-        className={`flex h-full items-center gap-1.5 overflow-hidden rounded-md px-2 py-1${hasConflict ? ' ring-2 ring-red-500' : ''}`}
-        style={{ backgroundColor: cardColor, color: textColor }}
-        title={conflictTitle ?? eventLabel}
-      >
-        <span
-          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white/95 shadow-sm"
-          style={{ color: statusColor }}
-          aria-label={APPOINTMENT_STATUS_LABELS[appointment.status]}
-        >
-          <StatusIcon size={10} weight="fill" />
-        </span>
-        <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 text-[9px] font-semibold"
-          role="img"
-          aria-label={`Profissional: ${professionalName}`}
-          title={professionalName}
-        >
-          {photoUrl ? (
-            <img src={photoUrl} alt={professionalName} className="h-full w-full object-cover" />
-          ) : (
-            professionalInitials
-          )}
-        </span>
-        <span className="truncate text-[11px] font-semibold" title={patientFullName}>{patientFullName}</span>
-        {hasConflict && <Warning size={11} weight="fill" className="ml-auto shrink-0 text-red-600" />}
-      </div>
-    )
-  }
-
-  if (isShortEvent) {
-    return (
-      <div
-        className={`relative isolate h-full min-h-[24px] overflow-hidden rounded-[10px] px-2 py-1${hasConflict ? ' ring-2 ring-red-500' : ''}`}
-        style={{ backgroundColor: cardColor, color: textColor }}
-        title={conflictTitle ?? eventLabel}
-      >
-        {hasConflict && (
-          <span
-            className="absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white shadow-sm"
-            title={conflictTitle}
-          >
-            <Warning size={10} weight="fill" />
-          </span>
-        )}
-        <div className="flex h-full min-w-0 items-center gap-1.5">
-          <span
-            className="relative flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 text-[9px] font-semibold"
-            role="img"
-            aria-label={`Profissional: ${professionalName}`}
-            title={professionalName}
-          >
-            {photoUrl ? (
-              <img src={photoUrl} alt={professionalName} className="h-full w-full object-cover" />
-            ) : (
-              professionalInitials
-            )}
-            <span
-              className="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full border border-white"
-              style={{ backgroundColor: statusColor }}
-              aria-hidden="true"
-            />
-          </span>
-          <p
-            className={`min-w-0 font-bold leading-[1.05rem] tracking-tight ${hasConflict ? 'pr-4' : ''} ${isVeryShortEvent ? 'truncate text-[12px]' : 'line-clamp-2 text-[13px]'}`}
-            title={patientFullName}
-          >
-            {patientFullName}
-          </p>
-          <span className="sr-only">{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
-        </div>
-      </div>
-    )
-  }
+  const durationMin = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000))
+  const isFifteenMinuteEvent = durationMin <= 15
+  const isCompact = durationMin <= 30
+  const StatusIcon = getStatusIcon(appointment.status)
+  const conflictTitle = hasConflict ? `Conflito de horário com: ${conflictNames.join(', ')}` : undefined
 
   return (
     <div
-      className={`relative isolate h-full min-h-[56px] overflow-hidden rounded-[14px] px-2.5 py-2${hasConflict ? ' ring-2 ring-red-500' : ''}`}
-      style={{ backgroundColor: cardColor, color: textColor }}
-      title={conflictTitle ?? eventLabel}
+      className={`relative flex h-full min-w-0 items-start gap-2 overflow-hidden px-1 py-0.5 ${hasConflict ? 'pr-5' : ''}`}
+      style={{ color: getContrastingTextColor(color) }}
+      title={conflictTitle ?? `${patientFullName} · ${APPOINTMENT_STATUS_LABELS[appointment.status]}`}
     >
-      {hasConflict && (
-        <span
-          className="absolute right-2 top-2 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-white shadow-sm"
-          title={conflictTitle}
-        >
-          <Warning size={13} weight="fill" />
-        </span>
-      )}
-
       <span
-        className="absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-white/70 bg-white/15 text-[10px] font-semibold shadow-sm"
+        className={`relative mt-0.5 flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 font-semibold ${isFifteenMinuteEvent ? 'h-5 w-5 text-[8px]' : 'h-6 w-6 text-[9px]'}`}
         role="img"
         aria-label={`Profissional: ${professionalName}`}
         title={professionalName}
       >
-        {photoUrl ? (
-          <img src={photoUrl} alt={professionalName} className="h-full w-full object-cover" />
-        ) : (
-          professionalInitials
-        )}
-        <span
-          className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full border-2 border-white"
-          style={{ backgroundColor: statusColor }}
-          aria-hidden="true"
-        />
+        {appointment.professional?.photoUrl ? (
+          <img src={appointment.professional.photoUrl} alt={professionalName} className="h-full w-full object-cover" />
+        ) : getNameInitials(appointment.professional?.name)}
+        <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white" style={{ backgroundColor: STATUS_COLORS[appointment.status] }} />
       </span>
-
-      <div className="flex h-full min-w-0 flex-col justify-between pl-9 pr-1">
-        <p className={`line-clamp-3 text-[15px] font-bold leading-[1.05rem] tracking-tight ${hasConflict ? 'pr-5' : ''}`} title={patientFullName}>
+      <div className="min-w-0 flex-1">
+        <p className={`font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'truncate text-[11px]' : isCompact ? 'line-clamp-2 text-[12px]' : 'line-clamp-3 text-[14px]'}`}>
           {patientFullName}
         </p>
-        <p className="mt-1 text-[11px] font-semibold leading-none" style={{ color: mutedTextColor }}>
-          {arg.timeText}
-        </p>
-        <span className="sr-only">{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
+        {!isCompact && <p className="mt-1 text-[11px] font-medium opacity-85">{format(start, 'HH:mm')}</p>}
       </div>
+      {hasConflict && <Warning size={13} weight="fill" className="absolute right-1 top-1 text-red-100 drop-shadow" aria-label={conflictTitle} />}
+      <span className="sr-only"><StatusIcon />{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
     </div>
   )
 }
@@ -589,14 +483,14 @@ function RoomsQuickFilterModal({
 
 export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const navigate = useNavigate()
-  const calendarRef = useRef<FullCalendar>(null)
   const today = new Date()
+  const [calendarDate, setCalendarDate] = useState(today)
   const [range, setRange] = useState({
     start: startOfWeek(today).toISOString(),
     end: endOfWeek(today).toISOString(),
   })
 
-  const [calendarView, setCalendarView]           = useState<CalendarView>('timeGridWeek')
+  const [calendarView, setCalendarView]           = useState<CalendarView>('week')
   const [dayBreakdown, setDayBreakdown]           = useState<DayBreakdown>('none')
   const [filterRoomId, setFilterRoomId]           = useState<string>('')
   const [filterProfId, setFilterProfId]           = useState<string>('')
@@ -615,23 +509,15 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const { data: rooms = [] }              = useRooms()
   const { data: professionals = [] }      = useProfessionals()
   const { data: myProfRecords = [] }      = useMyProfessionalRecords()
-  const { data: roomAvailSlots = [] }     = useRoomAvailabilitySlots()
-  const { data: clinicAvailSlots = [] }   = useClinicAvailabilitySlots()
 
-  const { businessHours, slotMin, slotMax, todayOpen, todayLabel } = useMemo(() => {
+  const { slotMin, slotMax, todayOpen, todayLabel } = useMemo(() => {
     const wh = clinic?.workingHours ?? {}
     const entries = Object.entries(wh)
-    const bh = entries.map(([day, h]) => ({
-      daysOfWeek: [DAY_FC[day as DayKey] ?? 0],
-      startTime: h!.start,
-      endTime: h!.end,
-    }))
     const starts = entries.map(([, h]) => h!.start).sort()
     const ends   = entries.map(([, h]) => h!.end).sort()
     const todayKey = DAY_ORDER[today.getDay() as 0|1|2|3|4|5|6]
     const todayHours = wh[todayKey as keyof typeof wh]
     return {
-      businessHours: bh.length ? bh : false,
       slotMin: starts[0] ?? '07:00',
       slotMax: ends[ends.length - 1] ?? '20:00',
       todayOpen: !!todayHours,
@@ -646,7 +532,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       : [0, 1, 2, 3, 4, 5, 6]
 
     return {
-      hiddenDays: [0, 1, 2, 3, 4, 5, 6].filter(day => !visibleDays.includes(day)),
+      visibleDays,
       slotMin: clinic?.calendarDisplayStartTime ?? slotMin,
       slotMax: clinic?.calendarDisplayEndTime ?? slotMax,
     }
@@ -670,34 +556,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     myProfRecords.map((r, i) => [r.clinicId, CLINIC_PALETTE[i % CLINIC_PALETTE.length]])
   )
   const multiClinic = myProfRecords.length > 1
-
-  const calendarBusinessHours = useMemo(() => {
-    if (filterRoomId) {
-      const selectedRoomSlots = roomAvailSlots.filter(slot => slot.roomId === filterRoomId)
-      const selectedRoomHours = slotsToResourceBusinessHours(
-        selectedRoomSlots.map(slot => ({
-          weekday: slot.weekday,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        }))
-      )
-      if (selectedRoomHours?.length) return selectedRoomHours
-    }
-
-    if (filterProfId) {
-      const selectedProfessionalSlots = clinicAvailSlots.filter(slot => slot.professional_id === filterProfId)
-      const selectedProfessionalHours = slotsToResourceBusinessHours(
-        selectedProfessionalSlots.map(slot => ({
-          weekday: slot.weekday,
-          startTime: slot.start_time,
-          endTime: slot.end_time,
-        }))
-      )
-      if (selectedProfessionalHours?.length) return selectedProfessionalHours
-    }
-
-    return businessHours
-  }, [businessHours, clinicAvailSlots, filterProfId, filterRoomId, roomAvailSlots])
 
   const filteredAppointments = useMemo(() => (
     (appointments as (Appointment & { clinicName?: string | null })[]).filter(appointment => {
@@ -779,40 +637,16 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   } | null>(null)
   const quota = useClinicQuota(clinic)
 
-  const resolvedCalendarView: ResolvedCalendarView = calendarView === 'timeGridDay' && dayBreakdown !== 'none'
-    ? 'resourceTimeGridDay'
-    : calendarView
-
   const dayBreakdownResources = useMemo(() => {
-    if (resolvedCalendarView !== 'resourceTimeGridDay') return undefined
+    if (calendarView !== 'day' || dayBreakdown === 'none') return undefined
 
     if (dayBreakdown === 'room') {
-      const resources: Array<{
-        id: string
-        title: string
-        eventColor?: string
-        businessHours?: FCBusinessHour[]
-      }> = []
+      const resources: AgendaCalendarResource[] = []
       const roomSource = filterRoomId
         ? activeRooms.filter(room => room.id === filterRoomId)
         : activeRooms
 
-      resources.push(...roomSource.map(room => {
-        const roomSlots = roomAvailSlots.filter(slot => slot.roomId === room.id)
-        const resourceBusinessHours = slotsToResourceBusinessHours(
-          roomSlots.map(slot => ({
-            weekday: slot.weekday,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-          }))
-        )
-        return {
-          id: room.id,
-          title: room.name,
-          eventColor: room.color,
-          ...(resourceBusinessHours ? { businessHours: resourceBusinessHours } : {}),
-        }
-      }))
+      resources.push(...roomSource.map(room => ({ id: room.id, title: room.name, color: room.color })))
 
       const hasUnassignedRoomAppointments = filteredAppointments.some(appointment => !appointment.roomId)
       if (hasUnassignedRoomAppointments) {
@@ -826,21 +660,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       ? personalProfessionalFilter
       : (filterProfId ? [filterProfId] : activeProfessionals.map(professional => professional.id))
     const professionalSource = activeProfessionals.filter(professional => professionalIds.includes(professional.id))
-    const resources = professionalSource.map(professional => {
-      const professionalSlots = clinicAvailSlots.filter(slot => slot.professional_id === professional.id)
-      const resourceBusinessHours = slotsToResourceBusinessHours(
-        professionalSlots.map(slot => ({
-          weekday: slot.weekday,
-          startTime: slot.start_time,
-          endTime: slot.end_time,
-        }))
-      )
-      return {
-        id: professional.id,
-        title: professional.name,
-        ...(resourceBusinessHours ? { businessHours: resourceBusinessHours } : {}),
-      }
-    })
+    const resources = professionalSource.map(professional => ({ id: professional.id, title: professional.name }))
 
     const hasUnassignedProfessionalAppointments = filteredAppointments.some(appointment => !appointment.professionalId)
     if (hasUnassignedProfessionalAppointments) {
@@ -851,15 +671,12 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   }, [
     activeProfessionals,
     activeRooms,
-    clinicAvailSlots,
     dayBreakdown,
     filterProfId,
     filterRoomId,
     filteredAppointments,
     isPersonalView,
     personalProfessionalFilter,
-    resolvedCalendarView,
-    roomAvailSlots,
   ])
 
   function openNewAppointmentModal() {
@@ -870,7 +687,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     setModalOpen(true)
   }
 
-  const events: EventInput[] = filteredAppointments.map(a => {
+  const events: AgendaCalendarEvent[] = filteredAppointments.map(a => {
     const color = a.clinicRoom?.color
       ?? (multiClinic ? (clinicColorMap[a.clinicId] ?? '#6366f1') : STATUS_COLORS[a.status])
     const title = multiClinic && a.clinicName
@@ -878,27 +695,21 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       : (a.patient?.name ?? 'Paciente')
     return {
       id: a.id, title,
-      start: a.startsAt, end: a.endsAt,
-      backgroundColor: color, borderColor: color,
-      ...(resolvedCalendarView === 'resourceTimeGridDay'
+      start: new Date(a.startsAt), end: new Date(a.endsAt),
+      color,
+      ...(calendarView === 'day' && dayBreakdown !== 'none'
         ? {
             resourceId: dayBreakdown === 'room'
               ? (a.roomId ?? '__no_room__')
               : (a.professionalId ?? '__no_prof__'),
           }
         : {}),
-      extendedProps: { appointment: a, conflictNames: conflictMap.get(a.id) },
+      appointment: a,
+      conflictNames: conflictMap.get(a.id),
     }
   })
 
-  function handleDateSelect(arg: {
-    start: Date
-    end: Date
-    startStr: string
-    endStr: string
-    allDay: boolean
-    resource?: { id: string }
-  }) {
+  function handleDateSelect(arg: SlotInfo) {
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
     if (!isPersonalView && clinic?.workingHours && !isInsideBusinessHours(arg.start, clinic.workingHours)) {
       const dayKey = DAY_ORDER[arg.start.getDay() as 0|1|2|3|4|5|6]
@@ -912,10 +723,10 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       return
     }
     const initialProfessionalId = dayBreakdown === 'professional'
-      ? (arg.resource?.id && arg.resource.id !== '__no_prof__' ? arg.resource.id : '')
+      ? (arg.resourceId && arg.resourceId !== '__no_prof__' ? String(arg.resourceId) : '')
       : (filterProfId || (isPersonalView ? (personalProfessionalFilter[0] ?? '') : ''))
     const initialRoomId = dayBreakdown === 'room'
-      ? (arg.resource?.id && arg.resource.id !== '__no_room__' ? arg.resource.id : '')
+      ? (arg.resourceId && arg.resourceId !== '__no_room__' ? String(arg.resourceId) : '')
       : filterRoomId
     setEditingAppt(null)
     setInitialSlot({
@@ -970,40 +781,45 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     openNewAppointmentModal()
   }
 
-  function handleEventClick(arg: EventClickArg) {
-    setEditingAppt(arg.event.extendedProps.appointment as Appointment)
+  function handleEventClick(event: AgendaCalendarEvent) {
+    setEditingAppt(event.appointment)
     setInitialSlot(null)
     setModalOpen(true)
   }
 
-  async function handleEventDrop(arg: { event: { id: string; startStr: string; endStr: string; start: Date | null; extendedProps: Record<string, unknown> }; revert: () => void }) {
-    if (update.isPending) { arg.revert(); return }
-    const appt = arg.event.extendedProps.appointment as Appointment
-    const newStart = arg.event.start!
+  async function handleEventDrop({ event, start, resourceId }: EventInteractionArgs<AgendaCalendarEvent>) {
+    if (update.isPending) return
+    const appt = event.appointment
+    const newStart = new Date(start)
+    const movedRoomId = dayBreakdown === 'room' && resourceId
+      ? (resourceId === '__no_room__' ? null : String(resourceId))
+      : appt.roomId
+    const movedProfessionalId = dayBreakdown === 'professional' && resourceId
+      ? (resourceId === '__no_prof__' ? appt.professionalId : String(resourceId))
+      : appt.professionalId
     const diffMs = new Date(appt.endsAt).getTime() - new Date(appt.startsAt).getTime()
     try {
       await update.mutateAsync({
         id: appt.id, patientId: appt.patientId,
-        professionalId: appt.professionalId,
+        professionalId: movedProfessionalId,
         startsAt: newStart.toISOString(),
         endsAt: new Date(newStart.getTime() + diffMs).toISOString(),
         status: appt.status, notes: appt.notes,
         chargeAmountCents: appt.chargeAmountCents,
-        roomId: appt.roomId,
+        roomId: movedRoomId,
         serviceTypeId: appt.serviceTypeId,
         professionalFeeCents: appt.professionalFeeCents,
       })
       toast.success('Consulta remarcada')
     } catch (error) {
-      arg.revert()
       toast.error(getAppointmentSaveErrorMessage(error, 'Não foi possível remarcar a consulta'))
     }
   }
 
-  async function handleEventResize(arg: { event: { end: Date | null; extendedProps: Record<string, unknown> }; revert: () => void }) {
-    if (update.isPending) { arg.revert(); return }
-    const appt = arg.event.extendedProps.appointment as Appointment
-    const newEnd = arg.event.end!
+  async function handleEventResize({ event, end }: EventInteractionArgs<AgendaCalendarEvent>) {
+    if (update.isPending) return
+    const appt = event.appointment
+    const newEnd = new Date(end)
     const dayKey = DAY_ORDER[newEnd.getDay() as 0|1|2|3|4|5|6]
     const clinicEnd = clinic?.workingHours?.[dayKey]?.end
     if (clinicEnd) {
@@ -1013,7 +829,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         const hh = String(newEnd.getHours()).padStart(2, '0')
         const mm = String(newEnd.getMinutes()).padStart(2, '0')
         setExtendConfirm({ appt, newEndsAt: newEnd.toISOString(), dayKey, newEndTime: `${hh}:${mm}` })
-        arg.revert()
         return
       }
     }
@@ -1029,7 +844,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       })
       toast.success('Consulta atualizada')
     } catch (error) {
-      arg.revert()
       toast.error(getAppointmentSaveErrorMessage(error, 'Não foi possível atualizar a consulta'))
     }
   }
@@ -1121,32 +935,57 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     }
   }
 
-  const fcPlugins    = [resourceTimeGridPlugin, timeGridPlugin, dayGridPlugin, interactionPlugin]
-  const fcButtonText = {
-    today: 'Hoje', week: 'Semana', day: 'Dia', month: 'Mês',
-    resourceTimeGridDay: 'Dia',
-    timeGridWeek: 'Semana', timeGridDay: 'Dia', dayGridMonth: 'Mês',
-  }
-
   const pageTitle = isPersonalView ? 'Minha Agenda' : 'Agenda'
   const todayHeadline = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
-  const effectiveSlotDuration = Math.max(15, clinic?.slotDurationMinutes ?? 30)
-  const slotDuration = minutesToFcDuration(effectiveSlotDuration)
-  const eventMinHeight = effectiveSlotDuration <= 15 ? 28 : 34
+  const hideWeekend = !calendarDisplay.visibleDays.includes(0) && !calendarDisplay.visibleDays.includes(6)
+  const rbcView: View = calendarView === 'week' && hideWeekend ? 'work_week' : calendarView
+  const calendarViews: View[] = hideWeekend
+    ? ['week', 'work_week', 'day']
+    : ['month', 'week', 'work_week', 'day']
+  const calendarPeriodLabel = calendarView === 'month'
+    ? format(calendarDate, "MMMM 'de' yyyy", { locale: ptBR })
+    : calendarView === 'week'
+      ? `${format(startOfWeek(calendarDate), 'dd/MM')} – ${format(endOfWeek(calendarDate), 'dd/MM')}`
+      : format(calendarDate, "EEEE, d 'de' MMMM", { locale: ptBR })
+
+  function setCalendarRange(start: Date, end: Date) {
+    const nextRange = { start: start.toISOString(), end: end.toISOString() }
+    setRange(current => current.start === nextRange.start && current.end === nextRange.end ? current : nextRange)
+  }
+
+  function handleCalendarRangeChange(nextRange: Date[] | { start: Date; end: Date }) {
+    if (Array.isArray(nextRange)) {
+      const firstDay = nextRange[0]
+      const lastDay = nextRange[nextRange.length - 1]
+      if (firstDay && lastDay) setCalendarRange(firstDay, addDays(lastDay, 1))
+      return
+    }
+    setCalendarRange(nextRange.start, nextRange.end)
+  }
+
+  function handleCalendarNavigate(nextDate: Date) {
+    setCalendarDate(nextDate)
+  }
+
+  function navigateCalendar(direction: -1 | 1) {
+    const nextDate = calendarView === 'month'
+      ? addMonths(calendarDate, direction)
+      : calendarView === 'week'
+        ? addWeeks(calendarDate, direction)
+        : addDays(calendarDate, direction)
+    setCalendarDate(nextDate)
+  }
 
   function handleViewChange(nextView: CalendarView) {
     setCalendarView(nextView)
-    const nextResolvedView = nextView === 'timeGridDay' && dayBreakdown !== 'none'
-      ? 'resourceTimeGridDay'
-      : nextView
-    calendarRef.current?.getApi().changeView(nextResolvedView)
   }
+
+  useEffect(() => {
+    if (hideWeekend && calendarView === 'month') setCalendarView('week')
+  }, [calendarView, hideWeekend])
 
   function handleDayBreakdownChange(nextBreakdown: DayBreakdown) {
     setDayBreakdown(nextBreakdown)
-    if (calendarView !== 'timeGridDay') return
-    const nextResolvedView = nextBreakdown === 'none' ? 'timeGridDay' : 'resourceTimeGridDay'
-    calendarRef.current?.getApi().changeView(nextResolvedView)
   }
 
   return (
@@ -1220,12 +1059,23 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
               onChange={e => handleViewChange(e.target.value as CalendarView)}
               className="mt-0.5 bg-transparent text-sm font-semibold text-gray-700 focus:outline-none"
             >
-              <option value="timeGridDay">Dia</option>
-              <option value="timeGridWeek">Semana</option>
-              <option value="dayGridMonth">Mês</option>
+              <option value="day">Dia</option>
+              <option value="week">Semana</option>
+              {!hideWeekend && <option value="month">Mês</option>}
             </select>
           </label>
-          {calendarView === 'timeGridDay' && (
+          <div className="flex min-h-11 items-center gap-1 rounded-xl border border-gray-200 bg-[#f8fafb] px-1.5 py-1 sm:ml-auto" aria-label="Navegação do calendário">
+            <button type="button" onClick={() => navigateCalendar(-1)} className="rounded-lg p-2 text-gray-600 transition hover:bg-white hover:text-[#006970]" aria-label="Período anterior">
+              <CaretLeft size={16} />
+            </button>
+            <button type="button" onClick={() => setCalendarDate(new Date())} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[#006970] transition hover:bg-white">
+              Hoje
+            </button>
+            <button type="button" onClick={() => navigateCalendar(1)} className="rounded-lg p-2 text-gray-600 transition hover:bg-white hover:text-[#006970]" aria-label="Próximo período">
+              <CaretRight size={16} />
+            </button>
+          </div>
+          {calendarView === 'day' && (
             <label className="flex min-h-11 w-full min-w-[210px] flex-col justify-center rounded-xl border border-gray-200 bg-[#f8fafb] px-3 py-2 text-xs font-medium text-gray-500 sm:w-auto">
               Breakdown
               <select
@@ -1270,55 +1120,55 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         </div>
       )}
 
-      <div className={`bg-white rounded-xl border border-gray-100 p-4 relative ${isLoading ? 'opacity-60' : ''}`}>
-        <FullCalendar
-          ref={calendarRef}
-          plugins={fcPlugins}
-          initialView={resolvedCalendarView}
-          locale="pt-br"
-          headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
-          buttonText={fcButtonText}
-          slotMinTime={toFullCalendarTime(calendarDisplay.slotMin)}
-          slotMaxTime={toFullCalendarTime(calendarDisplay.slotMax)}
-          slotDuration={slotDuration}
-          snapDuration={slotDuration}
-          businessHours={calendarBusinessHours}
-          resources={dayBreakdownResources}
-          allDaySlot={false}
-          nowIndicator
-          navLinks
-          editable={!isPersonalView}
-          selectable={!isPersonalView}
-          selectMirror
-          dayMaxEvents
-          hiddenDays={calendarDisplay.hiddenDays}
-          slotEventOverlap={false}
-          eventClassNames={() => ['consultin-agenda-event']}
-          eventContent={renderAppointmentEvent}
-          eventMinHeight={eventMinHeight}
+      <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 ${isLoading ? 'opacity-60' : ''}`}>
+        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+          <h2 className="capitalize text-base font-semibold text-gray-800">{calendarPeriodLabel}</h2>
+          {hideWeekend && calendarView === 'week' && <span className="text-xs text-gray-500">Segunda a sexta</span>}
+        </div>
+        <DragAndDropCalendar
+          localizer={localizer}
+          culture="pt-BR"
+          date={calendarDate}
+          view={rbcView}
+          views={calendarViews}
+          toolbar={false}
           events={events}
-          select={handleDateSelect}
-          eventClick={handleEventClick}
-          eventDrop={handleEventDrop}
-          eventResize={handleEventResize}
-          datesSet={info => {
-            setRange(current => (
-              current.start === info.startStr && current.end === info.endStr
-                ? current
-                : { start: info.startStr, end: info.endStr }
-            ))
-            if (info.view.type === 'resourceTimeGridDay') {
-              setCalendarView(current => current === 'timeGridDay' ? current : 'timeGridDay')
-              return
-            }
-            setCalendarView(current => {
-              const nextView = info.view.type as CalendarView
-              return current === nextView ? current : nextView
-            })
+          resources={dayBreakdownResources}
+          resourceAccessor="resourceId"
+          resourceIdAccessor="id"
+          resourceTitleAccessor="title"
+          onNavigate={handleCalendarNavigate}
+          onView={view => setCalendarView(view === 'work_week' ? 'week' : view as CalendarView)}
+          onRangeChange={handleCalendarRangeChange}
+          onSelectSlot={handleDateSelect}
+          onSelectEvent={handleEventClick}
+          onEventDrop={handleEventDrop}
+          onEventResize={handleEventResize}
+          selectable={!isPersonalView && calendarView !== 'month'}
+          resizable={!isPersonalView}
+          draggableAccessor={() => !isPersonalView}
+          resizableAccessor={() => !isPersonalView}
+          step={15}
+          timeslots={2}
+          min={timeToDate(calendarDisplay.slotMin)}
+          max={timeToDate(calendarDisplay.slotMax)}
+          scrollToTime={timeToDate(calendarDisplay.slotMin)}
+          dayLayoutAlgorithm="no-overlap"
+          showAllEvents
+          popup
+          components={{ event: renderAppointmentEvent }}
+          eventPropGetter={event => ({
+            className: 'consultin-agenda-event',
+            style: { backgroundColor: event.color, borderColor: event.color, color: getContrastingTextColor(event.color) },
+          })}
+          formats={{
+            timeGutterFormat: date => format(date, 'HH:mm'),
+            dayHeaderFormat: date => format(date, "EEEE, dd/MM", { locale: ptBR }),
+            weekdayFormat: date => format(date, 'EEE', { locale: ptBR }),
+            dayRangeHeaderFormat: ({ start, end }) => `${format(start, 'dd/MM')} – ${format(end, 'dd/MM')}`,
           }}
-          contentHeight={820}
-          eventTimeFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
-          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+          messages={{ showMore: count => `+${count} consultas`, noEventsInRange: 'Nenhuma consulta neste período' }}
+          style={{ height: 820 }}
         />
       </div>
 

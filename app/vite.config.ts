@@ -16,7 +16,7 @@ export default defineConfig({
         // Split large vendor libs into stable chunks so browser can cache them
         // independently across deployments.
         manualChunks(id) {
-          if (id.includes('@fullcalendar')) return 'vendor-calendar'
+          if (id.includes('react-big-calendar')) return 'vendor-calendar'
           if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts'
           if (id.includes('@supabase')) return 'vendor-supabase'
           if (id.includes('@tanstack/react-query')) return 'vendor-query'

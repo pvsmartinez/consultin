@@ -1,26 +1,18 @@
-import { forwardRef, useEffect, useImperativeHandle } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import type { ComponentType } from 'react'
 
 const calendarProps = vi.fn()
 
-vi.mock('@fullcalendar/react', () => ({
-  default: forwardRef(function FullCalendarMock(props: Record<string, unknown>, ref) {
-    useImperativeHandle(ref, () => ({ getApi: () => ({ changeView: vi.fn() }) }))
-    useEffect(() => {
-      ;(props.datesSet as (info: {
-        startStr: string
-        endStr: string
-        view: { type: string }
-      }) => void)({
-        startStr: '2026-07-12T00:00:00-03:00',
-        endStr: '2026-07-19T00:00:00-03:00',
-        view: { type: 'timeGridWeek' },
-      })
-    }, [props.datesSet])
+vi.mock('react-big-calendar', () => ({
+  Calendar: function CalendarMock(props: Record<string, unknown>) {
     calendarProps(props)
     return <div data-testid="calendar" />
-  }),
+  },
+  dateFnsLocalizer: () => ({}),
+}))
+vi.mock('react-big-calendar/lib/addons/dragAndDrop', () => ({
+  default: (Component: ComponentType<Record<string, unknown>>) => Component,
 }))
 
 vi.mock('../contexts/AuthContext', () => ({
@@ -51,12 +43,15 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 import AgendaPage from '../pages/AgendaPage'
 
 describe('AgendaPage', () => {
-  it('does not re-render indefinitely when FullCalendar emits datesSet again', () => {
+  it('uses the free calendar without a datesSet render loop', () => {
     render(<AgendaPage />)
 
     expect(screen.getByTestId('calendar')).toBeInTheDocument()
-    // The first callback synchronizes the initial date range; the second one
-    // must not trigger another state update with the same values.
-    expect(calendarProps).toHaveBeenCalledTimes(2)
+    expect(calendarProps).toHaveBeenCalledTimes(1)
+    expect(calendarProps.mock.calls[0]?.[0]).toMatchObject({
+      toolbar: false,
+      view: 'week',
+      views: ['month', 'week', 'work_week', 'day'],
+    })
   })
 })

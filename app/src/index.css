@@ -135,104 +135,21 @@ body {
   outline-offset: 2px;
 }
 
-/* ─── FullCalendar — brand overrides ────────────────────────────────────── */
-
-/* Toolbar buttons */
-.fc .fc-button-primary {
-  background-color: var(--ui-brand-primary) !important;
-  border-color: var(--ui-brand-primary) !important;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  border-radius: 0.5rem !important;
-  padding: 0.375rem 0.875rem;
-  box-shadow: none !important;
-  transition: background-color 150ms ease;
-}
-.fc .fc-button-primary:hover {
-  background-color: #0f766e !important;
-  border-color: #0f766e !important;
-}
-.fc .fc-button-primary:not(:disabled).fc-button-active,
-.fc .fc-button-primary:not(:disabled):active {
-  background-color: #115e59 !important;
-  border-color: #115e59 !important;
-}
-.fc .fc-button-group .fc-button:first-child {
-  border-top-left-radius: 0.5rem !important;
-  border-bottom-left-radius: 0.5rem !important;
-}
-.fc .fc-button-group .fc-button:last-child {
-  border-top-right-radius: 0.5rem !important;
-  border-bottom-right-radius: 0.5rem !important;
-}
-
-/* Today highlight */
-.fc .fc-day-today { background: rgba(20, 184, 166, 0.05) !important; }
-
-/* Today's date number in month/grid views */
-.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  background-color: var(--ui-brand-primary);
-  color: white;
-  border-radius: 50%;
-  min-width: 1.5rem;
-  line-height: 1.5rem;
-  text-align: center;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-/* Now indicator */
-.fc .fc-timegrid-now-indicator-line { border-color: var(--ui-brand-primary); }
-.fc .fc-timegrid-now-indicator-arrow {
-  border-top-color: var(--ui-brand-primary);
-  border-bottom-color: var(--ui-brand-primary);
-}
-
-/* Grid borders */
-.fc td, .fc th { border-color: var(--ui-border) !important; }
-.fc .fc-scrollgrid { border-color: var(--ui-border-2) !important; }
-.fc .fc-timegrid-slot-minor { border-top-color: var(--ui-surface-2) !important; }
-
-/* Slot time labels */
-.fc .fc-timegrid-slot-label { font-size: 0.6875rem; color: var(--ui-text-muted); }
-.fc .fc-timegrid-slot { height: 2.8rem; }
-
-/* Column headers */
-.fc .fc-col-header-cell { background: var(--ui-bg); }
-.fc .fc-col-header-cell-cushion {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--ui-text-muted);
-  padding: 6px 4px;
-  text-decoration: none !important;
-}
-
-/* Events — polished look */
-.fc-event {
-  border-radius: 5px !important;
-  border: none !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
-}
-.fc-event .fc-event-title { font-size: 0.75rem !important; font-weight: 500 !important; }
-.fc-event .fc-event-time { font-size: 0.6875rem !important; opacity: 0.85; }
-
-.fc .consultin-agenda-event .fc-event-main {
-  height: 100%;
-  padding: 0 !important;
-}
-
-.fc .consultin-agenda-event .fc-event-main-frame {
-  height: 100%;
-}
-
-.fc .consultin-agenda-event.fc-timegrid-event,
-.fc .consultin-agenda-event.fc-daygrid-dot-event {
-  overflow: hidden !important;
-}
-
-/* Toolbar title */
-.fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; color: var(--ui-text-bright); }
-.fc .fc-toolbar { gap: 0.5rem; flex-wrap: wrap; }
+/* ─── Agenda (React Big Calendar) ───────────────────────────────────────── */
+.rbc-calendar { color: var(--ui-text); font-family: inherit; }
+.rbc-time-view, .rbc-month-view { border-color: var(--ui-border-2); border-radius: 0.75rem; overflow: hidden; }
+.rbc-header { border-color: var(--ui-border); background: var(--ui-bg); padding: 0.625rem 0.25rem; color: var(--ui-text-muted); font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
+.rbc-time-header-content, .rbc-time-content, .rbc-day-bg + .rbc-day-bg, .rbc-time-content > * + * > * { border-color: var(--ui-border); }
+.rbc-timeslot-group { border-bottom-color: var(--ui-surface-2); min-height: 4rem; }
+.rbc-time-slot:not(:first-child) { border-top: 1px solid color-mix(in srgb, var(--ui-border) 55%, transparent); }
+.rbc-time-gutter .rbc-label { color: var(--ui-text-muted); font-size: 0.6875rem; padding-right: 0.5rem; }
+.rbc-today { background: rgba(20, 184, 166, 0.05); }
+.rbc-current-time-indicator { background-color: var(--ui-brand-primary); }
+.rbc-date-cell { padding: 0.375rem 0.5rem; color: var(--ui-text-muted); font-size: 0.75rem; }
+.rbc-now .rbc-button-link { align-items: center; background: var(--ui-brand-primary); border-radius: 999px; color: white; display: inline-flex; height: 1.5rem; justify-content: center; min-width: 1.5rem; }
+.rbc-event.consultin-agenda-event { border: 0; border-radius: 0.625rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16); min-height: 1.875rem; padding: 0.125rem; }
+.rbc-event.consultin-agenda-event:focus-visible { outline-color: white; }
+.rbc-event-content { height: 100%; }
+.rbc-show-more { color: var(--ui-brand-primary); font-size: 0.75rem; font-weight: 600; }
+.rbc-row-segment { padding: 0 2px 2px; }
+.rbc-month-row + .rbc-month-row, .rbc-day-bg + .rbc-day-bg, .rbc-header + .rbc-header { border-color: var(--ui-border); }
