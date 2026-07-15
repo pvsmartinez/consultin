@@ -640,12 +640,17 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   }, [clinic?.workingHours])
 
   const isPersonalView = myOnly || role === 'professional'
-  const calendarVisibleDays = clinic?.calendarVisibleDays?.length
-    ? clinic.calendarVisibleDays
-    : [0, 1, 2, 3, 4, 5, 6]
-  const calendarHiddenDays = [0, 1, 2, 3, 4, 5, 6].filter(day => !calendarVisibleDays.includes(day))
-  const calendarSlotMin = clinic?.calendarDisplayStartTime ?? slotMin
-  const calendarSlotMax = clinic?.calendarDisplayEndTime ?? slotMax
+  const calendarDisplay = useMemo(() => {
+    const visibleDays = clinic?.calendarVisibleDays?.length
+      ? clinic.calendarVisibleDays
+      : [0, 1, 2, 3, 4, 5, 6]
+
+    return {
+      hiddenDays: [0, 1, 2, 3, 4, 5, 6].filter(day => !visibleDays.includes(day)),
+      slotMin: clinic?.calendarDisplayStartTime ?? slotMin,
+      slotMax: clinic?.calendarDisplayEndTime ?? slotMax,
+    }
+  }, [clinic?.calendarDisplayEndTime, clinic?.calendarDisplayStartTime, clinic?.calendarVisibleDays, slotMin, slotMax])
   const activeRooms = rooms.filter(r => r.active)
   const activeProfessionals = professionals.filter(p => p.active)
   const currentClinicProfessionalIds = myProfRecords
@@ -1273,8 +1278,8 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           locale="pt-br"
           headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
           buttonText={fcButtonText}
-          slotMinTime={toFullCalendarTime(calendarSlotMin)}
-          slotMaxTime={toFullCalendarTime(calendarSlotMax)}
+          slotMinTime={toFullCalendarTime(calendarDisplay.slotMin)}
+          slotMaxTime={toFullCalendarTime(calendarDisplay.slotMax)}
           slotDuration={slotDuration}
           snapDuration={slotDuration}
           businessHours={calendarBusinessHours}
@@ -1286,7 +1291,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           selectable={!isPersonalView}
           selectMirror
           dayMaxEvents
-          hiddenDays={calendarHiddenDays}
+          hiddenDays={calendarDisplay.hiddenDays}
           slotEventOverlap={false}
           eventClassNames={() => ['consultin-agenda-event']}
           eventContent={renderAppointmentEvent}
@@ -1297,12 +1302,19 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
           datesSet={info => {
-            setRange({ start: info.startStr, end: info.endStr })
+            setRange(current => (
+              current.start === info.startStr && current.end === info.endStr
+                ? current
+                : { start: info.startStr, end: info.endStr }
+            ))
             if (info.view.type === 'resourceTimeGridDay') {
-              setCalendarView('timeGridDay')
+              setCalendarView(current => current === 'timeGridDay' ? current : 'timeGridDay')
               return
             }
-            setCalendarView(info.view.type as CalendarView)
+            setCalendarView(current => {
+              const nextView = info.view.type as CalendarView
+              return current === nextView ? current : nextView
+            })
           }}
           contentHeight={820}
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
