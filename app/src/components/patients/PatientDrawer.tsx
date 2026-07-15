@@ -103,6 +103,9 @@ export default function PatientDrawer({ open, patientId, initialValues, stacked 
   const [cpfSuggestion, setCpfSuggestion] = useState<CpfSuggestion | null>(null)
   const [cpfLinked, setCpfLinked]         = useState(false)
   const cpfDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // AppointmentModal passes this object inline. Compare its value instead of
+  // its identity so parent renders do not reset a form the user is editing.
+  const initialValuesKey = JSON.stringify(initialValues ?? {})
 
   // Reset form when opened for a new patient
   useEffect(() => {
@@ -116,7 +119,7 @@ export default function PatientDrawer({ open, patientId, initialValues, stacked 
       setCpfSuggestion(null)
       setCpfLinked(false)
     }
-  }, [open, isEdit, initialValues])
+  }, [open, isEdit, initialValuesKey])
 
   // Populate form when editing
   useEffect(() => {

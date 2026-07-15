@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import AppointmentModal from '../components/appointments/AppointmentModal'
 import UpgradeModal from '../components/billing/UpgradeModal'
 import { HomeCard, HomeGreeting, NextAppointmentCard } from '../components/home/HomeShared'
 import HomePainel from '../components/home/HomePainel'
@@ -15,6 +14,8 @@ import { useProfessionals } from '../hooks/useProfessionals'
 import { useRooms } from '../hooks/useRooms'
 import { APP_ROUTES } from '../lib/appRoutes'
 import { todayBR } from '../utils/date'
+
+const AppointmentModal = lazy(() => import('../components/appointments/AppointmentModal'))
 
 export default function HomePage() {
   const navigate = useNavigate()
@@ -132,11 +133,13 @@ export default function HomePage() {
       {renderContent()}
 
       {modalOpen && (
-        <AppointmentModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          initialDate={todayBR()}
-        />
+        <Suspense fallback={null}>
+          <AppointmentModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            initialDate={todayBR()}
+          />
+        </Suspense>
       )}
       {upgradeOpen && <UpgradeModal quota={quota} onClose={() => setUpgradeOpen(false)} />}
     </div>

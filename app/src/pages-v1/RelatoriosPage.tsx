@@ -7,8 +7,6 @@ import {
 import {
   FilePdf, FileCsv, DownloadSimple, Users, UserCircle,
 } from '@phosphor-icons/react'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import { useAdministrativeSnapshots, useReportData } from '../hooks/useRelatorios'
 import { useProfessionals } from '../hooks/useProfessionals'
 import { formatBRL, formatBRLReais } from '../utils/currency'
@@ -26,7 +24,7 @@ import { loadAllPatientsForExport } from '../utils/patientExport'
 
 // ─── PDF export ──────────────────────────────────────────────────────────────
 
-function exportPDF(
+async function exportPDF(
   monthLabel: string,
   rows: Array<{
     date: string; patient: string; professional: string; status: string;
@@ -34,7 +32,11 @@ function exportPDF(
   }>,
   totals: { count: number; charged: number; received: number }
 ) {
-  const doc = new jsPDF()
+  const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ])
+  const doc = new JsPDF()
   doc.setFontSize(14)
   doc.text(`Relatório — ${monthLabel}`, 14, 18)
 
@@ -47,7 +49,7 @@ function exportPDF(
   })
 
   // Summary after table
-  const finalY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
+  const finalY = (doc as typeof doc & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
   doc.setFontSize(10)
   doc.text(`Total de consultas: ${totals.count}`, 14, finalY)
   doc.text(`Total a cobrar: ${formatBRL(totals.charged)}`, 14, finalY + 6)
@@ -76,6 +78,7 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
   const [exportingPatients, setExportingPatients] = useState(false)
   const [exportingProfessionals, setExportingProfessionals] = useState(false)
   const [exportingFinance, setExportingFinance] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   const { data = [], isLoading } = useReportData(month, professionalId)
   const { data: adminSnapshot, isLoading: loadingAdmin } = useAdministrativeSnapshots(month, professionalId)
@@ -121,7 +124,8 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
   const pendingAmount = Math.max(totalCharged - totalReceived, 0)
   const selectedProfessionalName = professionals.find(p => p.id === professionalId)?.name ?? null
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    setExportingPdf(true)
     const rows = (data as RawRow[]).map(r => ({
       date: format(parseISO(r.starts_at as string), 'dd/MM/yyyy HH:mm'),
       patient: (r.patient as { name: string } | null)?.name ?? '—',
@@ -130,7 +134,13 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
       charge: formatBRL((r.charge_amount_cents as number) ?? null),
       paid: formatBRL((r.paid_amount_cents as number) ?? null),
     }))
-    exportPDF(monthLabel, rows, { count: completedCount, charged: totalCharged, received: totalReceived })
+    try {
+      await exportPDF(monthLabel, rows, { count: completedCount, charged: totalCharged, received: totalReceived })
+    } catch {
+      toast.error('Erro ao gerar PDF')
+    } finally {
+      setExportingPdf(false)
+    }
   }
 
   // ── Build appointment export rows ──
@@ -334,11 +344,11 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 onClick={handleExport}
-                disabled={isLoading || data.length === 0}
+                disabled={isLoading || data.length === 0 || exportingPdf}
                 className="flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
               >
                 <FilePdf size={16} />
-                PDF
+                {exportingPdf ? 'Gerando...' : 'PDF'}
               </button>
               <button
                 onClick={handleExportCSV}

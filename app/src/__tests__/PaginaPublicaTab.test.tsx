@@ -13,9 +13,10 @@ vi.mock('../hooks/useClinicPublicPage', () => ({
   }),
 }))
 vi.mock('../hooks/useProfessionals', () => {
-  const data: never[] = []
   return {
-    useProfessionals: () => ({ data, isLoading: false }),
+    // Deliberately recreate the empty result to guard against effects that
+    // treat a default array's identity as a data change.
+    useProfessionals: () => ({ data: [], isLoading: false }),
   }
 })
 vi.mock('../services/supabase', () => ({

@@ -9,6 +9,8 @@ import { useProfessionals } from '../../hooks/useProfessionals'
 import { supabase } from '../../services/supabase'
 import type { Clinic, Professional } from '../../types'
 
+const EMPTY_PROFESSIONALS: Professional[] = []
+
 function slugify(value: string) {
   return value
     .normalize('NFD')
@@ -68,7 +70,7 @@ async function uploadClinicAsset(clinicId: string, folder: string, file: File) {
 export default function PaginaPublicaTab({ clinic }: { clinic: Clinic }) {
   const { profile } = useAuthContext()
   const { data: page, upsert, isLoading } = useClinicPublicPage()
-  const { data: professionals = [], update: updateProfessional } = useProfessionals()
+  const { data: professionals = EMPTY_PROFESSIONALS, update: updateProfessional } = useProfessionals()
 
   const [slug, setSlug] = useState('')
   const [tagline, setTagline] = useState('')
@@ -103,7 +105,7 @@ export default function PaginaPublicaTab({ clinic }: { clinic: Clinic }) {
   }, [page, clinic.name, clinic.allowSelfRegistration, clinic.whatsappPhoneDisplay])
 
   useEffect(() => {
-    setProfessionalDrafts(Object.fromEntries(
+    const nextDrafts = Object.fromEntries(
       professionals.map((professional) => [
         professional.id,
         {
@@ -111,7 +113,19 @@ export default function PaginaPublicaTab({ clinic }: { clinic: Clinic }) {
           photoUrl: professional.photoUrl ?? null,
         },
       ]),
-    ))
+    )
+
+    setProfessionalDrafts(previous => {
+      const previousIds = Object.keys(previous)
+      const nextIds = Object.keys(nextDrafts)
+      if (previousIds.length !== nextIds.length) return nextDrafts
+      if (nextIds.some(id => {
+        const before = previous[id]
+        const after = nextDrafts[id]
+        return !before || before.bio !== after.bio || before.photoUrl !== after.photoUrl
+      })) return nextDrafts
+      return previous
+    })
   }, [professionals])
 
   const publicUrl = useMemo(() => {

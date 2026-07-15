@@ -3,15 +3,18 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthContext } from './contexts/AuthContext'
 import { FullScreenLoader, PageLoader } from './components/ui/PageLoader'
 
-// ─── Eager imports — rendered outside of route transitions ───────────────────
-// These must be sync: they cover auth states that appear before any route shell.
-import NovaSenhaPage    from './pages-v1/NovaSenhaPage'    // recoveryMode intercept
-import OnboardingPage   from './pages-v1/OnboardingPage'   // !profile gate
-import AppLayout        from './components/layout/AppLayout'
-import PatientPortalLayout from './components/layout/PatientPortalLayout'
+// ─── Small eager imports ─────────────────────────────────────────────────────
+// ErrorBoundary and loaders are needed while the auth/public worlds are being
+// selected. Route shells and auth-only screens stay lazy so public visitors do
+// not download the authenticated application before they need it.
 import ErrorBoundary    from './components/ErrorBoundary'
 import { EMAIL_VERIFICATION_PATH } from './lib/emailVerification'
 import { APP_ROUTES, isProtectedAppPath } from './lib/appRoutes'
+
+const NovaSenhaPage       = lazy(() => import('./pages-v1/NovaSenhaPage'))
+const OnboardingPage      = lazy(() => import('./pages-v1/OnboardingPage'))
+const AppLayout           = lazy(() => import('./components/layout/AppLayout'))
+const PatientPortalLayout = lazy(() => import('./components/layout/PatientPortalLayout'))
 
 // ─── Lazy route bundles ───────────────────────────────────────────────────────
 // Each import() becomes a separate JS chunk — only fetched when that "world"
@@ -31,7 +34,13 @@ function App() {
 
   // ── Password-reset flow (email link) ───────────────────────────────────────
   // Must intercept before route rendering so the hash token is consumed first.
-  if (recoveryMode) return <NovaSenhaPage />
+  if (recoveryMode) {
+    return (
+      <Suspense fallback={<FullScreenLoader />}>
+        <NovaSenhaPage />
+      </Suspense>
+    )
+  }
 
   if (isStandalonePublicRoute) {
     return (
@@ -59,17 +68,25 @@ function App() {
   }
 
   // ── Signed-in but profile not yet created (first OAuth login) ───────────────
-  if (!profile) return <OnboardingPage />
+  if (!profile) {
+    return (
+      <Suspense fallback={<FullScreenLoader />}>
+        <OnboardingPage />
+      </Suspense>
+    )
+  }
 
   // ── Patient portal ──────────────────────────────────────────────────────────
   if (role === 'patient') {
     return (
       <ErrorBoundary>
-        <PatientPortalLayout>
-          <Suspense fallback={<PageLoader />}>
-            <PatientRoutes />
-          </Suspense>
-        </PatientPortalLayout>
+        <Suspense fallback={<FullScreenLoader />}>
+          <PatientPortalLayout>
+            <Suspense fallback={<PageLoader />}>
+              <PatientRoutes />
+            </Suspense>
+          </PatientPortalLayout>
+        </Suspense>
       </ErrorBoundary>
     )
   }
@@ -85,11 +102,13 @@ function App() {
     <>
       <Routes>
         <Route path="*" element={
-          <AppLayout>
-            <Suspense fallback={<PageLoader />}>
-              <StaffRoutes />
-            </Suspense>
-          </AppLayout>
+          <Suspense fallback={<FullScreenLoader />}>
+            <AppLayout>
+              <Suspense fallback={<PageLoader />}>
+                <StaffRoutes />
+              </Suspense>
+            </AppLayout>
+          </Suspense>
         } />
       </Routes>
     </>

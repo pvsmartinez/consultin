@@ -256,16 +256,28 @@ export default function AppointmentModal({
   const canManagePatients = hasPermission('canManagePatients')
   const canManageProfessionals = hasPermission('canManageProfessionals')
 
-  const activeServiceTypes = serviceTypes.filter(s => s.active)
-  const activeProfessionals = professionals.filter(p => p.active)
-  const activeRooms         = rooms.filter(r => r.active)
+  const activeServiceTypes = useMemo(
+    () => serviceTypes.filter(s => s.active),
+    [serviceTypes],
+  )
+  const activeProfessionals = useMemo(
+    () => professionals.filter(p => p.active),
+    [professionals],
+  )
+  const activeRooms = useMemo(
+    () => rooms.filter(r => r.active),
+    [rooms],
+  )
   const { hasSelectableRooms, requiresRoomSelection } = getAppointmentRoomRequirement(rooms)
-  const selectedServiceType = activeServiceTypes.find(s => s.id === (watch('serviceTypeId') ?? '')) ?? null
+  const selectedServiceType = activeServiceTypes.find(s => s.id === watchedServiceTypeId) ?? null
   const selectedServiceSuggestions = selectedServiceType?.inventorySuggestions ?? []
-  const appointmentSuggestedMaterialIds = new Set(
-    appointmentInventoryMovements
-      .filter(movement => movement.metadata.source === 'appointment_service_suggestion')
-      .map(movement => movement.materialId)
+  const appointmentSuggestedMaterialIds = useMemo(
+    () => new Set(
+      appointmentInventoryMovements
+        .filter(movement => movement.metadata.source === 'appointment_service_suggestion')
+        .map(movement => movement.materialId),
+    ),
+    [appointmentInventoryMovements],
   )
   const currentPatientId = selectedPatient?.id ?? watchedPatientId ?? appointment?.patientId ?? ''
   const { appointments: patientAppointments = [], loading: loadingPatientAppointments } = usePatientAppointments(currentPatientId)

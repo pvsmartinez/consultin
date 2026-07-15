@@ -26,6 +26,22 @@ const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
   { value: 'boolean',     label: 'Sim / Não' },
 ]
 
+const EMPTY_FIELD_CONFIG: FieldConfig = {}
+const EMPTY_CUSTOM_FIELDS: CustomFieldDef[] = []
+
+function sameFieldConfig(left: FieldConfig, right: FieldConfig): boolean {
+  const leftKeys = Object.keys(left)
+  const rightKeys = Object.keys(right)
+  if (leftKeys.length !== rightKeys.length) return false
+  return leftKeys.every(key => left[key] === right[key])
+}
+
+function sameCustomFields(left: CustomFieldDef[], right: CustomFieldDef[]): boolean {
+  if (left === right) return true
+  if (left.length !== right.length) return false
+  return left.every((field, index) => JSON.stringify(field) === JSON.stringify(right[index]))
+}
+
 // ─── FieldToggleList helper ───────────────────────────────────────────────────
 
 function FieldToggleList({
@@ -88,13 +104,19 @@ export default function EntityFieldsPanel({
   onNext,
 }: EntityFieldsPanelProps) {
   const { update } = useClinic()
-  const [config, setConfig] = useState<FieldConfig>(fieldConfig)
-  const [fields, setFields] = useState<CustomFieldDef[]>(customFields)
+  const [config, setConfig] = useState<FieldConfig>(() => fieldConfig ?? EMPTY_FIELD_CONFIG)
+  const [fields, setFields] = useState<CustomFieldDef[]>(() => customFields ?? EMPTY_CUSTOM_FIELDS)
   const [saving, setSaving]  = useState(false)
 
   // Resync when parent data changes (e.g. switching entity sub-tab in settings)
-  useEffect(() => { setConfig(fieldConfig) }, [fieldConfig])
-  useEffect(() => { setFields(customFields)  }, [customFields])
+  useEffect(() => {
+    const nextConfig = fieldConfig ?? EMPTY_FIELD_CONFIG
+    setConfig(previous => sameFieldConfig(previous, nextConfig) ? previous : nextConfig)
+  }, [fieldConfig])
+  useEffect(() => {
+    const nextFields = customFields ?? EMPTY_CUSTOM_FIELDS
+    setFields(previous => sameCustomFields(previous, nextFields) ? previous : nextFields)
+  }, [customFields])
 
   const [newField, setNewField] = useState<Partial<CustomFieldDef & { optionsRaw: string }>>({
     type: 'text', required: false, optionsRaw: '',

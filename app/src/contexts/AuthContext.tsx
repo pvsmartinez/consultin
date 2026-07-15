@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
@@ -279,21 +279,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { settle(); subscription.unsubscribe() }
   }, [])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     // Clear local state immediately — never wait for network (can hang silently)
     setSession(null)
     setProfile(null)
     setCachedProfile(null)
     supabase.auth.signOut().catch(() => { /* ignore */ })
-  }
-  const clearRecoveryMode = () => setRecoveryMode(false)
+  }, [])
+  const clearRecoveryMode = useCallback(() => setRecoveryMode(false), [])
 
-  const hasPermission = (key: string): boolean => {
+  const hasPermission = useCallback((key: string): boolean => {
     if (!profile) return false
     return mergedPermissions(profile.roles, profile.permissionOverrides)[key] ?? false
-  }
+  }, [profile])
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
       // getUser() validates the token server-side (unlike getSession which is cached)
       const { data: { user } } = await supabase.auth.getUser()
@@ -304,9 +304,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('refreshProfile error:', e)
     }
-  }
+  }, [])
 
-  const switchClinicContext = async (clinicId: string) => {
+  const switchClinicContext = useCallback(async (clinicId: string) => {
     if (!session?.user.id || !profile || clinicId === profile.clinicId) return
 
     const { data, error } = await supabase.rpc('switch_patient_clinic', {
@@ -328,17 +328,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     qc.invalidateQueries({ queryKey: QK.rooms.list(next.clinicId) })
     qc.invalidateQueries({ queryKey: QK.dashboard.clinicKPIsAll() })
     qc.removeQueries({ queryKey: QK.patients.clinics(session.user.id, profile.clinicId) })
-  }
+  }, [profile, qc, session])
+
+  const role = profile ? primaryRole(profile.roles) : null
+  const contextValue = useMemo<AuthContextValue>(() => ({
+    session,
+    profile,
+    role,
+    loading,
+    isSuperAdmin: profile?.isSuperAdmin ?? false,
+    recoveryMode,
+    clearRecoveryMode,
+    signOut,
+    hasPermission,
+    refreshProfile,
+    switchClinicContext,
+  }), [
+    clearRecoveryMode,
+    hasPermission,
+    loading,
+    profile,
+    recoveryMode,
+    refreshProfile,
+    role,
+    session,
+    signOut,
+    switchClinicContext,
+  ])
 
   return (
-    <AuthContext.Provider value={{
-      session, profile, role: profile ? primaryRole(profile.roles) : null, loading,
-      isSuperAdmin: profile?.isSuperAdmin ?? false,
-      recoveryMode, clearRecoveryMode,
-      signOut, hasPermission,
-      refreshProfile,
-      switchClinicContext,
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

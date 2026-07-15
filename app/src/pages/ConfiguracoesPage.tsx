@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo,
@@ -384,7 +384,6 @@ export default function ConfiguracoesPage() {
   const navigate = useNavigate()
   const { data: clinic, isLoading: clinicLoading, update } = useClinic()
   const {
-    modules,
     hasRooms,
     hasStaff,
     hasWhatsApp,
@@ -426,7 +425,7 @@ export default function ConfiguracoesPage() {
     }
   }, [location.search, location.state])
 
-  const moduleActiveMap: Record<ClinicModule, boolean> = {
+  const moduleActiveMap = useMemo<Record<ClinicModule, boolean>>(() => ({
     rooms: hasRooms,
     staff: hasStaff,
     services: hasServices,
@@ -434,7 +433,7 @@ export default function ConfiguracoesPage() {
     financial: hasFinancial,
     insurance: hasInsurance,
     inventory: hasInventory,
-  }
+  }), [hasFinancial, hasInsurance, hasInventory, hasRooms, hasServices, hasStaff, hasWhatsApp])
 
   async function handleModuleToggle(key: ClinicModule) {
     setToggling(key)
@@ -451,7 +450,10 @@ export default function ConfiguracoesPage() {
     }
   }
 
-  const visibleTabs = TABS.filter(t => !t.moduleRequired || moduleActiveMap[t.moduleRequired])
+  const visibleTabs = useMemo(
+    () => TABS.filter(t => !t.moduleRequired || moduleActiveMap[t.moduleRequired]),
+    [moduleActiveMap],
+  )
   const resolvedActiveTab = visibleTabs.some(tab => tab.id === activeTab) ? activeTab : 'modulos'
   const activeTabMeta = TABS.find(tab => tab.id === resolvedActiveTab) ?? TABS[0]
 
@@ -460,7 +462,7 @@ export default function ConfiguracoesPage() {
       setActiveTab('modulos')
       navigate(buildLocalSettingsPath('modulos'), { replace: true })
     }
-  }, [activeTab, modules, navigate, visibleTabs])
+  }, [activeTab, navigate, setupRequested, visibleTabs])
 
   const TabComponent = resolvedActiveTab === 'modulos' ? null : TAB_CONTENT[resolvedActiveTab]
   const showSetupGuide = !!clinic && (!clinic.onboardingCompleted || setupRequested)
