@@ -61,6 +61,23 @@ describe('AgendaTab', () => {
     })
   })
 
+  it('saves the calendar days and visible time range separately from clinic hours', async () => {
+    setup({ workingHours: { mon: { start: '08:00', end: '18:00' } } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apenas dias úteis' }))
+    fireEvent.change(screen.getByLabelText('Das'), { target: { value: '08:00' } })
+    fireEvent.change(screen.getByLabelText('às'), { target: { value: '18:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /salvar/i }))
+
+    await waitFor(() => {
+      expect(mockUpdate.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({
+        calendarVisibleDays: [1, 2, 3, 4, 5],
+        calendarDisplayStartTime: '08:00',
+        calendarDisplayEndTime: '18:00',
+      }))
+    })
+  })
+
   it('shows working hours inputs when a day is toggled on', () => {
     setup({ workingHours: { mon: { start: '08:00', end: '18:00' } } })
     // Monday should already show hour inputs

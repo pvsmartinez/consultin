@@ -14,21 +14,61 @@ const WEEKDAYS = [
 ] as const
 
 const SLOT_DURATIONS = [15, 20, 30, 45, 60]
+const CALENDAR_DAYS = [
+  { value: 1, label: 'Seg' },
+  { value: 2, label: 'Ter' },
+  { value: 3, label: 'Qua' },
+  { value: 4, label: 'Qui' },
+  { value: 5, label: 'Sex' },
+  { value: 6, label: 'Sáb' },
+  { value: 0, label: 'Dom' },
+] as const
+const ALL_CALENDAR_DAYS = CALENDAR_DAYS.map(day => day.value)
+const BUSINESS_DAYS = [1, 2, 3, 4, 5]
+
+function timeForInput(value: string | null | undefined) {
+  return value?.slice(0, 5) ?? ''
+}
+
+function getCalendarBounds(hours: Partial<Record<string, WorkingHours>>) {
+  const values = Object.values(hours)
+  const starts = values.map(hour => hour?.start).filter((time): time is string => !!time).sort()
+  const ends = values.map(hour => hour?.end).filter((time): time is string => !!time).sort()
+  return { start: starts[0] ?? '07:00', end: ends[ends.length - 1] ?? '20:00' }
+}
 
 export default function AgendaTab({ clinic }: { clinic: Clinic }) {
   const { update } = useClinic()
+  const initialCalendarBounds = getCalendarBounds(clinic.workingHours ?? {})
   const [slotDuration,         setSlotDuration]         = useState(clinic.slotDurationMinutes)
   const [allowProfSelection,   setAllowProfSelection]   = useState(clinic.allowProfessionalSelection ?? true)
   const [hours, setHours] = useState<Partial<Record<string, WorkingHours>>>(clinic.workingHours ?? {})
+  const [calendarVisibleDays, setCalendarVisibleDays] = useState<number[]>(
+    clinic.calendarVisibleDays?.length ? clinic.calendarVisibleDays : ALL_CALENDAR_DAYS,
+  )
+  const [calendarStartTime, setCalendarStartTime] = useState(
+    timeForInput(clinic.calendarDisplayStartTime) || initialCalendarBounds.start,
+  )
+  const [calendarEndTime, setCalendarEndTime] = useState(
+    timeForInput(clinic.calendarDisplayEndTime) || initialCalendarBounds.end,
+  )
   const [saving, setSaving] = useState(false)
 
   async function save() {
+    if (calendarStartTime >= calendarEndTime) {
+      toast.error('O horário inicial precisa ser anterior ao horário final')
+      return
+    }
+
     setSaving(true)
     try {
       await update.mutateAsync({
         slotDurationMinutes:        slotDuration,
         workingHours:               hours as Record<string, WorkingHours>,
         allowProfessionalSelection: allowProfSelection,
+        calendarVisibleDays,
+        calendarDisplayStartTime: calendarStartTime,
+        calendarDisplayEndTime: calendarEndTime,
       })
       toast.success('Configurações de agenda salvas')
     } catch {
@@ -49,6 +89,15 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
 
   function updateHour(key: string, field: 'start' | 'end', value: string) {
     setHours(prev => ({ ...prev, [key]: { ...prev[key]!, [field]: value } }))
+  }
+
+  function toggleCalendarDay(day: number) {
+    setCalendarVisibleDays(current => {
+      if (current.includes(day)) {
+        return current.length === 1 ? current : current.filter(value => value !== day)
+      }
+      return [...current, day]
+    })
   }
 
   return (
@@ -74,6 +123,93 @@ export default function AgendaTab({ clinic }: { clinic: Clinic }) {
           </button>
         </div>
       </div>
+
+      {/* Calendar display */}
+      <section className="border-t border-gray-100 pt-6" aria-labelledby="calendar-display-heading">
+        <div className="mb-4">
+          <h2 id="calendar-display-heading" className="text-sm font-medium text-gray-700">Visualização do calendário</h2>
+          <p className="mt-1 text-xs text-gray-400">
+            Ajuste o que a equipe vê na agenda. Isso não altera os horários de funcionamento nem impede agendamentos.
+          </p>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-[#f8fafb] p-4">
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700">Dias mostrados</legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {CALENDAR_DAYS.map(day => {
+                const selected = calendarVisibleDays.includes(day.value)
+                return (
+                  <button
+                    key={day.value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => toggleCalendarDay(day.value)}
+                    className={`min-h-10 rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0ea5b0] ${
+                      selected
+                        ? 'border-[#0ea5b0] bg-teal-50 text-[#006970]'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-[#0ea5b0]/50 hover:text-[#006970]'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCalendarVisibleDays(BUSINESS_DAYS)}
+                className="rounded-md px-2 py-1 text-xs font-medium text-[#006970] hover:bg-teal-50"
+              >
+                Apenas dias úteis
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarVisibleDays(ALL_CALENDAR_DAYS)}
+                className="rounded-md px-2 py-1 text-xs font-medium text-[#006970] hover:bg-teal-50"
+              >
+                Mostrar todos
+              </button>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700">Faixa de horários exibida</legend>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                Das
+                <input
+                  type="time"
+                  value={calendarStartTime}
+                  onChange={event => setCalendarStartTime(event.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                às
+                <input
+                  type="time"
+                  value={calendarEndTime}
+                  onChange={event => setCalendarEndTime(event.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-800"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const bounds = getCalendarBounds(hours)
+                  setCalendarStartTime(bounds.start)
+                  setCalendarEndTime(bounds.end)
+                }}
+                className="rounded-md px-2 py-1 text-xs font-medium text-[#006970] hover:bg-teal-50"
+              >
+                Usar horário de funcionamento
+              </button>
+            </div>
+          </fieldset>
+        </div>
+      </section>
 
       {/* Slot duration */}
       <div>

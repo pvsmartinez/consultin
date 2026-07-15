@@ -128,6 +128,10 @@ function minutesToFcDuration(totalMinutes: number) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
 }
 
+function toFullCalendarTime(value: string) {
+  return value.length === 5 ? `${value}:00` : value
+}
+
 function renderAppointmentEvent(arg: EventContentArg) {
   const appointment = arg.event.extendedProps.appointment as Appointment | undefined
   if (!appointment) {
@@ -636,6 +640,12 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   }, [clinic?.workingHours])
 
   const isPersonalView = myOnly || role === 'professional'
+  const calendarVisibleDays = clinic?.calendarVisibleDays?.length
+    ? clinic.calendarVisibleDays
+    : [0, 1, 2, 3, 4, 5, 6]
+  const calendarHiddenDays = [0, 1, 2, 3, 4, 5, 6].filter(day => !calendarVisibleDays.includes(day))
+  const calendarSlotMin = clinic?.calendarDisplayStartTime ?? slotMin
+  const calendarSlotMax = clinic?.calendarDisplayEndTime ?? slotMax
   const activeRooms = rooms.filter(r => r.active)
   const activeProfessionals = professionals.filter(p => p.active)
   const currentClinicProfessionalIds = myProfRecords
@@ -1263,8 +1273,8 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           locale="pt-br"
           headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
           buttonText={fcButtonText}
-          slotMinTime={`${slotMin}:00`}
-          slotMaxTime={`${slotMax}:00`}
+          slotMinTime={toFullCalendarTime(calendarSlotMin)}
+          slotMaxTime={toFullCalendarTime(calendarSlotMax)}
           slotDuration={slotDuration}
           snapDuration={slotDuration}
           businessHours={calendarBusinessHours}
@@ -1276,6 +1286,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           selectable={!isPersonalView}
           selectMirror
           dayMaxEvents
+          hiddenDays={calendarHiddenDays}
           slotEventOverlap={false}
           eventClassNames={() => ['consultin-agenda-event']}
           eventContent={renderAppointmentEvent}

@@ -102,6 +102,11 @@ export interface Clinic {
   state: string | null
   slotDurationMinutes: number
   workingHours: Partial<Record<'mon'|'tue'|'wed'|'thu'|'fri'|'sat'|'sun', WorkingHours>>
+  /** Days shown in the calendar: 0=Sunday through 6=Saturday. */
+  calendarVisibleDays?: number[]
+  /** Optional visual bounds for the calendar; they don't restrict booking availability. */
+  calendarDisplayStartTime?: string | null
+  calendarDisplayEndTime?: string | null
   // Patient form config
   customPatientFields: CustomFieldDef[]
   patientFieldConfig: FieldConfig

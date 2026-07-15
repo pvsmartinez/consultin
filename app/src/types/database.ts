@@ -528,6 +528,9 @@ export type Database = {
           asaas_customer_id: string | null
           asaas_subscription_id: string | null
           billing_override_enabled: boolean
+          calendar_display_end_time: string | null
+          calendar_display_start_time: string | null
+          calendar_visible_days: number[] | null
           cancellation_hours: number
           city: string | null
           clinical_document_signing: Json
@@ -581,6 +584,9 @@ export type Database = {
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_override_enabled?: boolean
+          calendar_display_end_time?: string | null
+          calendar_display_start_time?: string | null
+          calendar_visible_days?: number[] | null
           cancellation_hours?: number
           city?: string | null
           clinical_document_signing?: Json
@@ -634,6 +640,9 @@ export type Database = {
           asaas_customer_id?: string | null
           asaas_subscription_id?: string | null
           billing_override_enabled?: boolean
+          calendar_display_end_time?: string | null
+          calendar_display_start_time?: string | null
+          calendar_visible_days?: number[] | null
           cancellation_hours?: number
           city?: string | null
           clinical_document_signing?: Json
