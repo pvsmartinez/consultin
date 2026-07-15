@@ -5,7 +5,7 @@
  * renderHook to get a live AuthContext value with a known profile.
  * The profile is injected by intercepting the fetchProfile supabase call.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -16,6 +16,7 @@ import { AuthProvider, useAuthContext } from '../contexts/AuthContext'
 const mockState = vi.hoisted(() => ({
   mockUnsubscribe: vi.fn(),
   mockRpc: vi.fn(),
+  mockProfileQuery: vi.fn(),
   mockSignOut: vi.fn(),
   currentSession: null as { user: { id: string; app_metadata?: { provider?: string } } } | null,
 }))
@@ -31,6 +32,13 @@ vi.mock('../services/supabase', () => ({
       getUser: vi.fn().mockImplementation(() => Promise.resolve({ data: { user: mockState.currentSession?.user ?? null } })),
     },
     rpc: (...args: unknown[]) => mockState.mockRpc(...args),
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => mockState.mockProfileQuery(),
+        }),
+      }),
+    }),
   },
 }))
 
@@ -60,6 +68,7 @@ function makeStartupPayload(role: string) {
 function mockSupabaseWithProfile(role: string) {
   mockState.currentSession = { user: { id: 'user-test-1', app_metadata: { provider: 'email' } } }
   mockState.mockRpc.mockResolvedValue({ data: makeStartupPayload(role), error: null })
+  mockState.mockProfileQuery.mockResolvedValue({ data: makeStartupPayload(role).profile, error: null })
 }
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -74,7 +83,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe('hasPermission — admin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    window.localStorage.clear()
     mockSupabaseWithProfile('admin')
   })
 
@@ -112,7 +121,7 @@ describe('hasPermission — admin', () => {
 describe('hasPermission — receptionist', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    window.localStorage.clear()
     mockSupabaseWithProfile('receptionist')
   })
 
@@ -150,7 +159,7 @@ describe('hasPermission — receptionist', () => {
 describe('hasPermission — professional', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    window.localStorage.clear()
     mockSupabaseWithProfile('professional')
   })
 
@@ -182,7 +191,7 @@ describe('hasPermission — professional', () => {
 describe('hasPermission — patient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    window.localStorage.clear()
     mockSupabaseWithProfile('patient')
   })
 
@@ -199,7 +208,7 @@ describe('hasPermission — patient', () => {
 describe('hasPermission — no session', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorage.clear()
+    window.localStorage.clear()
     mockState.currentSession = null
     mockState.mockRpc.mockReset()
   })
@@ -209,5 +218,33 @@ describe('hasPermission — no session', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.hasPermission('canViewPatients')).toBe(false)
     expect(result.current.hasPermission('canManageSettings')).toBe(false)
+  })
+})
+
+describe('Auth startup fallback', () => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.localStorage.clear()
+    mockState.currentSession = { user: { id: 'user-test-1', app_metadata: { provider: 'email' } } }
+    mockState.mockRpc.mockResolvedValue({ data: null, error: new Error('startup RPC unavailable') })
+    mockState.mockProfileQuery.mockResolvedValue({ data: makeStartupPayload('admin').profile, error: null })
+  })
+
+  afterEach(() => {
+    consoleError.mockClear()
+  })
+
+  it('keeps an existing staff user signed in when the startup RPC is temporarily unavailable', async () => {
+    const { result } = renderHook(() => useAuthContext(), { wrapper })
+
+    await waitFor(
+      () => expect(result.current.profile?.roles).toEqual(['admin']),
+      { timeout: 2_000 },
+    )
+
+    expect(mockState.mockProfileQuery).toHaveBeenCalledTimes(1)
+    expect(result.current.loading).toBe(false)
   })
 })

@@ -70,16 +70,16 @@ function profileFromRow(d: Record<string, unknown>): UserProfile {
 }
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
-  const doFetch = () => supabase
-    .from('user_profiles')
-    .select('id, clinic_id, roles, name, is_super_admin, avatar_url, permission_overrides, notification_phone, notif_new_appointment, notif_cancellation, notif_no_show, notif_payment_overdue')
-    .eq('id', userId)
-    .single()
-    .then(({ data }) => {
-      if (!data) return null
-      const d = data as unknown as Record<string, unknown>
-      return profileFromRow(d)
-    })
+  const doFetch = async () => {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('id, clinic_id, roles, name, is_super_admin, avatar_url, permission_overrides, notification_phone, notif_new_appointment, notif_cancellation, notif_no_show, notif_payment_overdue')
+      .eq('id', userId)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
+    return profileFromRow(data as unknown as Record<string, unknown>)
+  }
 
   // null = no profile row yet (valid, don't retry). Only retry on thrown errors / timeout.
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -89,11 +89,11 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     try {
       return await Promise.race([doFetch(), timeout])
     } catch (e) {
-      if (attempt === 1) return null   // give up; caller uses cached profile
+      if (attempt === 1) throw e
       await new Promise(r => setTimeout(r, 500))
     }
   }
-  return null
+  throw new Error('fetchProfile failed')
 }
 
 /**
@@ -135,8 +135,9 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
 
   // null = no profile row yet (valid state — new user). Return immediately.
   // Only retry on thrown errors (network error, timeout). Max 2 attempts, 3s each.
-  // No fallback to fetchProfile — if the RPC is unreachable the caller uses the
-  // cached profile and we avoid blocking the UI for an extra 6+ seconds.
+  // A final error is deliberately propagated: the caller falls back to the
+  // direct profile query. Treating an unavailable RPC as "no profile" sends
+  // existing staff to the no-access onboarding screen.
   for (let attempt = 0; attempt < 2; attempt++) {
     const timeout = new Promise<null>((_, reject) =>
       setTimeout(() => reject(new Error('fetchStartupData timeout')), 3000)
@@ -144,11 +145,11 @@ async function fetchStartupData(userId: string, qc: QueryClient): Promise<UserPr
     try {
       return await Promise.race([doFetch(), timeout])
     } catch (e) {
-      if (attempt === 1) return null   // give up; caller falls back to cached profile
+      if (attempt === 1) throw e
       await new Promise(r => setTimeout(r, 500))
     }
   }
-  return null
+  throw new Error('fetchStartupData failed')
 }
 
 // True when Supabase has stored a session in localStorage (user was previously logged in).
@@ -250,13 +251,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const p = await fetchStartupData(session.user.id, qc)
-        // fetchStartupData returns null on DB failure — fall back to cached profile
+        // null is a confirmed absence of a profile (valid for a new user).
         setProfile(p ?? cached)
         if (p) setCachedProfile(p)
         else if (!cached) setCachedProfile(null)
       } catch (e) {
         console.error('fetchStartupData error:', e)
-        if (!cached) { setProfile(null); setCachedProfile(null) }
+        // The optimized startup RPC is not the source of truth for access.
+        // If it is briefly unavailable (or a deployment has not yet applied it),
+        // read the caller's own RLS-protected profile before declaring them
+        // unprovisioned.
+        try {
+          const p = await fetchProfile(session.user.id)
+          setProfile(p ?? cached)
+          if (p) setCachedProfile(p)
+          else if (!cached) setCachedProfile(null)
+        } catch (profileError) {
+          console.error('fetchProfile fallback error:', profileError)
+          if (!cached) { setProfile(null); setCachedProfile(null) }
+        }
       } finally {
         startupFetchInProgressRef.current = false
         setLoading(false) // no-op if already false

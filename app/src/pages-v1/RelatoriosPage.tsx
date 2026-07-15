@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner'
 import { supabase } from '../services/supabase'
 import { useAuthContext } from '../contexts/AuthContext'
+import { loadAllPatientsForExport } from '../utils/patientExport'
 
 // ─── PDF export ──────────────────────────────────────────────────────────────
 
@@ -191,10 +192,9 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
   async function handleExportPatients() {
     setExportingPatients(true)
     try {
-      const { data: patients, error } = await supabase.from('patients').select('*').eq('clinic_id', clinicId!).order('name')
-      if (error) throw error
+      const patients = await loadAllPatientsForExport(clinicId!)
       exportPatientsCSV(
-        (patients ?? []).map(p => ({
+        patients.map(p => ({
           name:      p.name ?? '',
           cpf:       p.cpf ?? '',
           rg:        p.rg ?? '',
@@ -211,7 +211,7 @@ export default function RelatoriosPage({ month: controlledMonth, hideHeader = fa
         })),
         'pacientes.csv',
       )
-      toast.success(`${patients?.length ?? 0} pacientes exportados`)
+      toast.success(`${patients.length} pacientes exportados`)
     } catch {
       toast.error('Erro ao exportar pacientes')
     } finally {
