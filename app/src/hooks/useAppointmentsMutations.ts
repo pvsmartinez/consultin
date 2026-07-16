@@ -135,9 +135,11 @@ export function useAppointmentMutations() {
   const { profile } = useAuthContext()
   const clinicId = profile?.clinicId
   // Invalidate only the current clinic's appointment lists, not every clinic in the cache.
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: QK.appointments.forClinic(clinicId) })
-    qc.invalidateQueries({ queryKey: QK.appointments.today(clinicId) })
+  const invalidate = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: QK.appointments.forClinic(clinicId) }),
+      qc.invalidateQueries({ queryKey: QK.appointments.today(clinicId) }),
+    ])
   }
 
   const create = useMutation({

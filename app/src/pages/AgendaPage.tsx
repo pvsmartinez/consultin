@@ -3,7 +3,7 @@ import { Calendar, dateFnsLocalizer, type EventProps, type SlotInfo, type View }
 import withDragAndDrop, { type EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
-import { format, addDays, addMinutes, addMonths, addWeeks, endOfWeek, getDay, parse, startOfWeek } from 'date-fns'
+import { format, addDays, addMinutes, addMonths, addWeeks, endOfMonth, endOfWeek, getDay, parse, startOfDay, startOfMonth, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   CalendarBlank,
@@ -136,6 +136,22 @@ function timeToDate(value: string) {
   const date = new Date()
   date.setHours(hours || 0, minutes || 0, 0, 0)
   return date
+}
+
+function getCalendarQueryRange(date: Date, view: CalendarView) {
+  if (view === 'day') {
+    const start = startOfDay(date)
+    return { start: start.toISOString(), end: addDays(start, 1).toISOString() }
+  }
+
+  if (view === 'month') {
+    const start = startOfWeek(startOfMonth(date))
+    const end = addDays(endOfWeek(endOfMonth(date)), 1)
+    return { start: start.toISOString(), end: end.toISOString() }
+  }
+
+  const start = startOfWeek(date)
+  return { start: start.toISOString(), end: addDays(start, 7).toISOString() }
 }
 
 function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
@@ -485,10 +501,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const navigate = useNavigate()
   const today = new Date()
   const [calendarDate, setCalendarDate] = useState(today)
-  const [range, setRange] = useState({
-    start: startOfWeek(today).toISOString(),
-    end: endOfWeek(today).toISOString(),
-  })
 
   const [calendarView, setCalendarView]           = useState<CalendarView>('week')
   const [dayBreakdown, setDayBreakdown]           = useState<DayBreakdown>('none')
@@ -548,8 +560,19 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const queryProfessionalFilter = isPersonalView
     ? personalProfessionalFilter
     : (filterProfId || null)
+  // Keep data loading tied to the controlled calendar state. React Big Calendar
+  // can omit range-change callbacks during controlled navigation, which otherwise
+  // leaves the agenda rendering a new period with the previous period's data.
+  const calendarRange = useMemo(
+    () => getCalendarQueryRange(calendarDate, calendarView),
+    [calendarDate, calendarView],
+  )
 
-  const { data: appointments = [], isLoading } = useAppointmentsQuery(range.start, range.end, queryProfessionalFilter)
+  const { data: appointments = [], isLoading } = useAppointmentsQuery(
+    calendarRange.start,
+    calendarRange.end,
+    queryProfessionalFilter,
+  )
   const { update, cancel } = useAppointmentMutations()
 
   const clinicColorMap = Object.fromEntries(
@@ -948,21 +971,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       ? `${format(startOfWeek(calendarDate), 'dd/MM')} – ${format(endOfWeek(calendarDate), 'dd/MM')}`
       : format(calendarDate, "EEEE, d 'de' MMMM", { locale: ptBR })
 
-  function setCalendarRange(start: Date, end: Date) {
-    const nextRange = { start: start.toISOString(), end: end.toISOString() }
-    setRange(current => current.start === nextRange.start && current.end === nextRange.end ? current : nextRange)
-  }
-
-  function handleCalendarRangeChange(nextRange: Date[] | { start: Date; end: Date }) {
-    if (Array.isArray(nextRange)) {
-      const firstDay = nextRange[0]
-      const lastDay = nextRange[nextRange.length - 1]
-      if (firstDay && lastDay) setCalendarRange(firstDay, addDays(lastDay, 1))
-      return
-    }
-    setCalendarRange(nextRange.start, nextRange.end)
-  }
-
   function handleCalendarNavigate(nextDate: Date) {
     setCalendarDate(nextDate)
   }
@@ -1139,7 +1147,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           resourceTitleAccessor="title"
           onNavigate={handleCalendarNavigate}
           onView={view => setCalendarView(view === 'work_week' ? 'week' : view as CalendarView)}
-          onRangeChange={handleCalendarRangeChange}
           onSelectSlot={handleDateSelect}
           onSelectEvent={handleEventClick}
           onEventDrop={handleEventDrop}

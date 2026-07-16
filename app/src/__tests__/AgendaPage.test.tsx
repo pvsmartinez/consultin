@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import type { ComponentType } from 'react'
 
 const calendarProps = vi.fn()
+const appointmentsQuery = vi.fn()
 
 vi.mock('react-big-calendar', () => ({
   Calendar: function CalendarMock(props: Record<string, unknown>) {
@@ -29,7 +30,10 @@ vi.mock('../hooks/useRoomAvailability', () => ({
   useClinicAvailabilitySlots: () => ({ data: [] }),
 }))
 vi.mock('../hooks/useAppointmentsMutations', () => ({
-  useAppointmentsQuery: () => ({ data: [], isLoading: false }),
+  useAppointmentsQuery: (...args: unknown[]) => {
+    appointmentsQuery(args)
+    return { data: [], isLoading: false }
+  },
   useAppointmentMutations: () => ({ update: { isPending: false }, cancel: { mutateAsync: vi.fn() } }),
   useMyProfessionalRecords: () => ({ data: [] }),
 }))
@@ -43,6 +47,11 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 import AgendaPage from '../pages/AgendaPage'
 
 describe('AgendaPage', () => {
+  beforeEach(() => {
+    calendarProps.mockClear()
+    appointmentsQuery.mockClear()
+  })
+
   it('uses the free calendar without a datesSet render loop', () => {
     render(<AgendaPage />)
 
@@ -53,5 +62,17 @@ describe('AgendaPage', () => {
       view: 'week',
       views: ['month', 'week', 'work_week', 'day'],
     })
+  })
+
+  it('reloads the visible week when controlled navigation changes date', () => {
+    render(<AgendaPage />)
+
+    const props = calendarProps.mock.calls[0]?.[0] as { onNavigate: (date: Date) => void }
+    act(() => props.onNavigate(new Date('2026-08-13T12:00:00')))
+
+    const [start, end] = appointmentsQuery.mock.calls.at(-1)?.[0] as [string, string]
+    expect(new Date(start).getDay()).toBe(0)
+    expect(new Date(end).getDay()).toBe(0)
+    expect(new Date(end).getTime() - new Date(start).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
   })
 })
