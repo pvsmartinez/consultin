@@ -95,6 +95,12 @@ function normalizeName(name: string | null | undefined) {
   return (name ?? '').replace(/\s+/g, ' ').trim()
 }
 
+function getInitials(name: string) {
+  const parts = normalizeName(name).split(' ').filter(Boolean)
+  if (parts.length === 0) return '?'
+  return parts.slice(0, 2).map(part => part[0]).join('').toUpperCase()
+}
+
 function getContrastingTextColor(hexColor: string) {
   const hex = hexColor.replace('#', '')
   const normalized = hex.length === 3
@@ -155,32 +161,64 @@ function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
   const isCompact = durationMin <= 30
   const StatusIcon = getStatusIcon(appointment.status)
   const conflictTitle = hasConflict ? `Conflito de horário com: ${conflictNames.join(', ')}` : undefined
+  const professionalName = normalizeName(appointment.professional?.name)
+  const avatarName = professionalName || patientFullName
+  const timeLabel = `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`
+  const statusLabel = APPOINTMENT_STATUS_LABELS[appointment.status]
 
   return (
     <div
-      className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden px-1.5 py-1 ${hasConflict ? 'pr-5' : ''}`}
+      className={`relative flex h-full min-w-0 flex-col overflow-hidden px-1.5 py-1 ${hasConflict ? 'pr-5' : ''}`}
       style={{ color: getContrastingTextColor(color) }}
-      title={conflictTitle ?? `${patientFullName} · ${APPOINTMENT_STATUS_LABELS[appointment.status]}`}
+      title={conflictTitle ?? `${timeLabel} · ${patientFullName} · ${statusLabel}`}
     >
-      <div className="flex min-w-0 items-center gap-1.5">
-        {appointment.serviceType && (
-          <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/80 shadow-sm"
-            style={{ backgroundColor: appointment.serviceType.color }}
-            role="img"
-            aria-label={`Tipo de atendimento: ${appointment.serviceType.name}`}
-            title={appointment.serviceType.name}
-          />
-        )}
-        <p className={`min-w-0 font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'truncate text-[11px]' : isCompact ? 'line-clamp-2 text-[12px]' : 'line-clamp-2 text-[14px]'}`}>
-          {patientFullName}
+      <div className="flex min-w-0 items-start justify-between gap-1">
+        <p className={`min-w-0 truncate font-medium leading-none tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[11px]' : 'text-[12px]'}`}>
+          {timeLabel}
         </p>
+        <span
+          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white shadow-sm"
+          style={{ color: STATUS_COLORS[appointment.status] }}
+          role="img"
+          aria-label={`Status: ${statusLabel}`}
+          title={statusLabel}
+        >
+          <StatusIcon size={isFifteenMinuteEvent ? 10 : 11} weight="bold" aria-hidden="true" />
+        </span>
       </div>
-      {!isCompact && appointment.serviceType && (
-        <p className="mt-0.5 truncate pl-4 text-[10px] font-medium opacity-85">{appointment.serviceType.name}</p>
-      )}
+
+      <div className={`mt-1 flex min-w-0 items-center ${isFifteenMinuteEvent ? 'gap-1' : 'gap-1.5'}`}>
+        {appointment.professional?.photoUrl ? (
+          <img
+            src={appointment.professional.photoUrl}
+            alt=""
+            className={`shrink-0 rounded-full border border-white/70 object-cover ${isFifteenMinuteEvent ? 'h-4 w-4' : 'h-5 w-5'}`}
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className={`flex shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/20 font-bold ${isFifteenMinuteEvent ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[8px]'}`}
+          >
+            {getInitials(avatarName)}
+          </span>
+        )}
+        <div className="min-w-0">
+          <p className={`truncate font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[12px]' : 'text-[14px]'}`}>
+            {patientFullName}
+          </p>
+          {appointment.serviceType && (
+            <p className={`flex min-w-0 items-center gap-1 truncate font-medium opacity-90 ${isFifteenMinuteEvent ? 'text-[8px]' : 'text-[10px]'}`}>
+              <span
+                className="h-2 w-2 shrink-0 rounded-full border border-white/80"
+                style={{ backgroundColor: appointment.serviceType.color }}
+                aria-hidden="true"
+              />
+              <span className="truncate">{appointment.serviceType.name}</span>
+            </p>
+          )}
+        </div>
+      </div>
       {hasConflict && <Warning size={13} weight="fill" className="absolute right-1 top-1 text-red-100 drop-shadow" aria-label={conflictTitle} />}
-      <span className="sr-only"><StatusIcon />{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
     </div>
   )
 }
