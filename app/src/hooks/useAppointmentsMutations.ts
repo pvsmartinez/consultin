@@ -194,16 +194,33 @@ export function useAppointmentMutations() {
 
   const cancel = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('appointments')
         .update({ status: 'cancelled' })
         .eq('id', id)
+        .select('id, status')
+        .single()
       if (error) throw error
+      if (!data || data.status !== 'cancelled') throw new Error('Não foi possível confirmar o cancelamento da consulta')
     },
     onSuccess: invalidate,
   })
 
-  return { create, update, cancel }
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .single()
+      if (error) throw error
+      if (!data?.id) throw new Error('Não foi possível confirmar a exclusão da consulta')
+    },
+    onSuccess: invalidate,
+  })
+
+  return { create, update, cancel, remove }
 }
 
 /** Lightweight mutation for quick status changes (e.g. "Chegou", "Realizado", "Falta")
@@ -215,11 +232,14 @@ export function useUpdateAppointmentStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: AppointmentStatus }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('appointments')
         .update({ status })
         .eq('id', id)
+        .select('id, status')
+        .single()
       if (error) throw error
+      if (!data || data.status !== status) throw new Error('Não foi possível confirmar a atualização da consulta')
     },
     onSuccess: () => {
       if (clinicId) {

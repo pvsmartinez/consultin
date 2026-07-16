@@ -150,7 +150,9 @@ describe('useAppointmentMutations', () => {
   })
 
   it('cancels an appointment by setting cancelled status', async () => {
-    const eqMock = vi.fn().mockResolvedValue({ error: null })
+    const singleMock = vi.fn().mockResolvedValue({ data: { id: 'appt-1', status: 'cancelled' }, error: null })
+    const selectMock = vi.fn(() => ({ single: singleMock }))
+    const eqMock = vi.fn(() => ({ select: selectMock }))
     const updateMock = vi.fn(() => ({ eq: eqMock }))
     mockFrom.mockReturnValue({ update: updateMock })
 
@@ -164,6 +166,43 @@ describe('useAppointmentMutations', () => {
 
     expect(updateMock).toHaveBeenCalledWith({ status: 'cancelled' })
     expect(eqMock).toHaveBeenCalledWith('id', 'appt-1')
+    expect(selectMock).toHaveBeenCalledWith('id, status')
+  })
+
+  it('does not report a cancelled appointment when the database rejects the update', async () => {
+    const singleMock = vi.fn().mockResolvedValue({ data: null, error: { message: 'permission denied' } })
+    const selectMock = vi.fn(() => ({ single: singleMock }))
+    const eqMock = vi.fn(() => ({ select: selectMock }))
+    const updateMock = vi.fn(() => ({ eq: eqMock }))
+    mockFrom.mockReturnValue({ update: updateMock })
+
+    const { result } = renderHook(() => useAppointmentMutations(), {
+      wrapper: makeWrapper(),
+    })
+
+    await act(async () => {
+      await expect(result.current.cancel.mutateAsync('appt-1')).rejects.toEqual({ message: 'permission denied' })
+    })
+  })
+
+  it('deletes an appointment only after the database confirms the row', async () => {
+    const singleMock = vi.fn().mockResolvedValue({ data: { id: 'appt-1' }, error: null })
+    const selectMock = vi.fn(() => ({ single: singleMock }))
+    const eqMock = vi.fn(() => ({ select: selectMock }))
+    const deleteMock = vi.fn(() => ({ eq: eqMock }))
+    mockFrom.mockReturnValue({ delete: deleteMock })
+
+    const { result } = renderHook(() => useAppointmentMutations(), {
+      wrapper: makeWrapper(),
+    })
+
+    await act(async () => {
+      await result.current.remove.mutateAsync('appt-1')
+    })
+
+    expect(deleteMock).toHaveBeenCalledOnce()
+    expect(eqMock).toHaveBeenCalledWith('id', 'appt-1')
+    expect(selectMock).toHaveBeenCalledWith('id')
   })
 })
 
@@ -173,7 +212,9 @@ describe('useUpdateAppointmentStatus', () => {
   })
 
   it('updates only the appointment status and invalidates dependent summaries', async () => {
-    const eqMock = vi.fn().mockResolvedValue({ error: null })
+    const singleMock = vi.fn().mockResolvedValue({ data: { id: 'appt-1', status: 'completed' }, error: null })
+    const selectMock = vi.fn(() => ({ single: singleMock }))
+    const eqMock = vi.fn(() => ({ select: selectMock }))
     const updateMock = vi.fn(() => ({ eq: eqMock }))
     mockFrom.mockReturnValue({ update: updateMock })
 
@@ -189,6 +230,7 @@ describe('useUpdateAppointmentStatus', () => {
 
     expect(updateMock).toHaveBeenCalledWith({ status: 'completed' })
     expect(eqMock).toHaveBeenCalledWith('id', 'appt-1')
+    expect(selectMock).toHaveBeenCalledWith('id, status')
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['appointments', 'clinic-1'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['today-appointments', 'clinic-1'] })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard-clinic-kpis', 'clinic-1'] })

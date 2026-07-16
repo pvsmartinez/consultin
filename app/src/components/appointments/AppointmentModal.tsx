@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { FieldErrors } from 'react-hook-form'
-import { X, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle } from '@phosphor-icons/react'
+import { X, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle, Trash } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
@@ -208,11 +208,11 @@ export default function AppointmentModal({
 }: Props) {
   const isEditing = !!appointment
   const navigate = useNavigate()
-  const { hasPermission } = useAuthContext()
+  const { hasPermission, role, isSuperAdmin } = useAuthContext()
   const { hasStaff, hasFinancial, hasInventory } = useClinicModules()
   const { data: professionals = [] } = useProfessionals()
-  const { create, update, cancel } = useAppointmentMutations()
-  const { data: payments = [] } = useAppointmentPayments(appointment?.id)
+  const { create, update, cancel, remove } = useAppointmentMutations()
+  const { data: payments = [], isLoading: loadingPayments } = useAppointmentPayments(appointment?.id)
   const { data: rooms = [] } = useRooms()
   const { data: serviceTypes = [] } = useServiceTypes()
   const { data: inventoryMaterials = [] } = useInventoryMaterials(hasInventory)
@@ -220,6 +220,7 @@ export default function AppointmentModal({
   const createInventoryMovement = useCreateInventoryMovement()
   const createPatient = useCreatePatient()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [roomRequirementDialogOpen, setRoomRequirementDialogOpen] = useState(false)
   const [showExtras, setShowExtras]       = useState(false)
   const [showCreateDetails, setShowCreateDetails] = useState(false)
@@ -254,6 +255,8 @@ export default function AppointmentModal({
   const watchedServiceTypeId = watch('serviceTypeId')
   const latestPayment = payments[0] ?? null
   const canManagePayments = isEditing && !!appointment && hasFinancial && hasPermission('canViewFinancial')
+  const canDeleteAppointment = isEditing && (role === 'admin' || role === 'receptionist' || isSuperAdmin)
+  const isCancelled = (watchedStatus ?? appointment?.status) === 'cancelled'
   const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
   const canManagePatients = hasPermission('canManagePatients')
   const canManageProfessionals = hasPermission('canManageProfessionals')
@@ -369,6 +372,7 @@ export default function AppointmentModal({
   useEffect(() => {
     if (!open) {
       setConfirmCancel(false)
+      setConfirmDelete(false)
       setRoomRequirementDialogOpen(false)
       setPatientSearch('')
       setSelectedPatient(null)
@@ -661,12 +665,32 @@ export default function AppointmentModal({
 
   async function handleCancel() {
     if (!appointment) return
+    if (appointment.status === 'cancelled') {
+      setConfirmCancel(false)
+      return
+    }
     try {
       await cancel.mutateAsync(appointment.id)
       toast.success('Consulta cancelada')
       onClose()
-    } catch {
-      toast.error('Erro ao cancelar')
+    } catch (error) {
+      toast.error(getAppointmentSaveErrorMessage(error, 'Não foi possível cancelar a consulta'))
+    }
+  }
+
+  async function handleDelete() {
+    if (!appointment) return
+    if (payments.length > 0) {
+      setConfirmDelete(false)
+      toast.error('Essa consulta possui cobrança vinculada e não pode ser excluída. Cancele-a para preservar o histórico financeiro.')
+      return
+    }
+    try {
+      await remove.mutateAsync(appointment.id)
+      toast.success('Consulta excluída definitivamente')
+      onClose()
+    } catch (error) {
+      toast.error(getAppointmentSaveErrorMessage(error, 'Não foi possível excluir a consulta'))
     }
   }
 
@@ -1609,12 +1633,45 @@ export default function AppointmentModal({
                       </button>
                     </div>
                   </div>
+                ) : confirmDelete ? (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-sm font-medium text-red-700">Excluir esta consulta definitivamente? Essa ação não pode ser desfeita.</span>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setConfirmDelete(false)}
+                        className="min-h-10 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">
+                        Voltar
+                      </button>
+                      <button type="button" onClick={handleDelete} disabled={remove.isPending}
+                        className="min-h-10 rounded-xl bg-red-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-800 disabled:opacity-50">
+                        {remove.isPending ? 'Excluindo...' : 'Excluir definitivamente'}
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                     <div className="flex items-center justify-between gap-2">
-                      <button type="button" onClick={() => setConfirmCancel(true)}
-                        className="min-h-11 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:border-red-300 hover:bg-red-50">
-                        Cancelar consulta
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {!isCancelled && (
+                          <button type="button" onClick={() => setConfirmCancel(true)} disabled={cancel.isPending}
+                            className="min-h-11 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:border-red-300 hover:bg-red-50 disabled:opacity-50">
+                            {cancel.isPending ? 'Cancelando...' : 'Cancelar consulta'}
+                          </button>
+                        )}
+                        {canDeleteAppointment && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(true)}
+                            disabled={loadingPayments || payments.length > 0}
+                            title={loadingPayments
+                              ? 'Verificando cobranças vinculadas...'
+                              : payments.length > 0
+                                ? 'Consultas com cobrança devem ser canceladas para preservar o histórico financeiro.'
+                                : undefined}
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Trash size={15} /> Excluir
+                          </button>
+                        )}
+                      </div>
                       <button type="submit" disabled={isSubmitting || !hasActiveProfessional}
                         className="min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium text-white transition-all active:scale-[0.99] disabled:opacity-50"
                         style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}>

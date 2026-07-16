@@ -10,6 +10,10 @@ export function getAppointmentSaveErrorMessage(error: unknown, fallback = 'Erro 
     return 'Conflito de sala — já existe consulta nessa sala nesse horário'
   }
 
+  if (normalized.includes('appointment_has_payments')) {
+    return 'Essa consulta possui cobrança vinculada e não pode ser excluída. Cancele-a para preservar o histórico financeiro.'
+  }
+
   if (normalized.includes('appointments_room_id_fkey') || normalized.includes('clinic_rooms')) {
     return 'Sala inválida — selecione uma sala ativa antes de salvar'
   }
