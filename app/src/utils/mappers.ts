@@ -22,6 +22,7 @@ export function mapAppointment(row: Record<string, unknown>): Appointment {
   const patientRow = (row.patient as Record<string, unknown> | null) ?? null
   const professionalRow = (row.professional as Record<string, unknown> | null) ?? null
   const clinicRoomRow = (row.clinic_room as Record<string, unknown> | null) ?? null
+  const serviceTypeRow = (row.service_type as Record<string, unknown> | null) ?? null
 
   return {
     id:                   row.id as string,
@@ -64,6 +65,13 @@ export function mapAppointment(row: Record<string, unknown>): Appointment {
           id: clinicRoomRow.id as string,
           name: clinicRoomRow.name as string,
           color: clinicRoomRow.color as string,
+        }
+      : undefined,
+    serviceType: serviceTypeRow
+      ? {
+          id: serviceTypeRow.id as string,
+          name: serviceTypeRow.name as string,
+          color: serviceTypeRow.color as string,
         }
       : undefined,
   }

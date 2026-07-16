@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { FieldErrors } from 'react-hook-form'
-import { X, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle, Trash } from '@phosphor-icons/react'
+import { X, Plus, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle, Trash } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
@@ -22,7 +22,7 @@ import { usePatientClinicalItems } from '../../hooks/usePatientClinicalItems'
 import { useRooms } from '../../hooks/useRooms'
 import { useClinicModules } from '../../hooks/useClinicModules'
 import { useDebounce } from '../../hooks/useDebounce'
-import { useServiceTypes } from '../../hooks/useServiceTypes'
+import { useCreateServiceType, useServiceTypes } from '../../hooks/useServiceTypes'
 import { useAppointmentInventoryMovements, useCreateInventoryMovement, useInventoryMaterials } from '../../hooks/useInventory'
 import { useAuthContext } from '../../contexts/AuthContext'
 import PatientDrawer from '../patients/PatientDrawer'
@@ -36,6 +36,7 @@ import {
   INVENTORY_MOVEMENT_TYPE_LABELS,
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
+  SERVICE_TYPE_COLORS,
   type Appointment,
   type AppointmentStatus,
   type ServiceTypeInventorySuggestion,
@@ -215,6 +216,7 @@ export default function AppointmentModal({
   const { data: payments = [], isLoading: loadingPayments } = useAppointmentPayments(appointment?.id)
   const { data: rooms = [] } = useRooms()
   const { data: serviceTypes = [] } = useServiceTypes()
+  const createServiceType = useCreateServiceType()
   const { data: inventoryMaterials = [] } = useInventoryMaterials(hasInventory)
   const { data: appointmentInventoryMovements = [] } = useAppointmentInventoryMovements(appointment?.id)
   const createInventoryMovement = useCreateInventoryMovement()
@@ -224,6 +226,9 @@ export default function AppointmentModal({
   const [roomRequirementDialogOpen, setRoomRequirementDialogOpen] = useState(false)
   const [showExtras, setShowExtras]       = useState(false)
   const [showCreateDetails, setShowCreateDetails] = useState(false)
+  const [showQuickServiceType, setShowQuickServiceType] = useState(false)
+  const [quickServiceTypeName, setQuickServiceTypeName] = useState('')
+  const [quickServiceTypeColor, setQuickServiceTypeColor] = useState(SERVICE_TYPE_COLORS[0])
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [returnPreset, setReturnPreset]   = useState<ReturnPreset>('none')
   const [patientSearch, setPatientSearch] = useState('')
@@ -260,6 +265,7 @@ export default function AppointmentModal({
   const patientNeedsCpfForCharge = canManagePayments && !appointment?.patient?.cpf
   const canManagePatients = hasPermission('canManagePatients')
   const canManageProfessionals = hasPermission('canManageProfessionals')
+  const canManageServiceTypes = hasPermission('canManageSettings') || isSuperAdmin
 
   const activeServiceTypes = useMemo(
     () => serviceTypes.filter(s => s.active),
@@ -381,6 +387,9 @@ export default function AppointmentModal({
       setQuickCpf('')
       setShowExtras(false)
       setShowCreateDetails(false)
+      setShowQuickServiceType(false)
+      setQuickServiceTypeName('')
+      setQuickServiceTypeColor(SERVICE_TYPE_COLORS[0])
       setShowEditFields(false)
       return
     }
@@ -440,6 +449,9 @@ export default function AppointmentModal({
       setShowEditFields(true)
       setShowExtras(true)
       setShowCreateDetails(false)
+      setShowQuickServiceType(false)
+      setQuickServiceTypeName('')
+      setQuickServiceTypeColor(SERVICE_TYPE_COLORS[0])
     }
     setReturnPreset('none')
   }, [open, appointment, initialDate, initialTime, initialDurationMin, initialProfessionalId, initialRoomId, initialPatientId, initialPatientName, reset])
@@ -643,6 +655,30 @@ export default function AppointmentModal({
           ? error.message
           : 'Não foi possível registrar a baixa.'
       toast.error(message)
+    }
+  }
+
+  async function handleQuickServiceType() {
+    const name = quickServiceTypeName.trim()
+    if (!name) {
+      toast.error('Informe o nome do tipo de atendimento')
+      return
+    }
+
+    try {
+      const serviceType = await createServiceType.mutateAsync({
+        name,
+        durationMinutes: Math.max(15, parseInt(durationMinVal || '30', 10) || 30),
+        priceCents: null,
+        color: quickServiceTypeColor,
+        active: true,
+      })
+      setValue('serviceTypeId', serviceType.id, { shouldDirty: true, shouldTouch: true, shouldValidate: true })
+      setShowQuickServiceType(false)
+      setQuickServiceTypeName('')
+      toast.success(`Tipo “${serviceType.name}” adicionado`)
+    } catch {
+      toast.error('Não foi possível adicionar o tipo de atendimento')
     }
   }
 
@@ -1259,77 +1295,106 @@ export default function AppointmentModal({
               </div>
             )}
 
-            {!isEditing && (
-              <button
-                type="button"
-                onClick={() => setShowCreateDetails(current => !current)}
-                className="flex w-full items-center justify-between rounded-xl border border-dashed border-gray-300 bg-white px-3 py-2.5 text-left text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0]/60 hover:text-[#006970]"
-                aria-expanded={showCreateDetails}
-              >
-                <span>{showCreateDetails ? 'Ocultar detalhes opcionais' : 'Adicionar serviço, valores, observações ou retorno'}</span>
-                <span aria-hidden="true" className={`text-[#0ea5b0] transition-transform ${showCreateDetails ? 'rotate-90' : ''}`}>›</span>
-              </button>
-            )}
+            <section className="rounded-2xl border border-teal-200 bg-teal-50/70 p-3 shadow-sm">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#006970]">Tipo de atendimento</p>
+                  <p className="mt-1 text-xs text-[#006970]/75">A cor facilita a leitura da agenda ao longo do dia.</p>
+                </div>
+                {canManageServiceTypes && !showQuickServiceType && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickServiceType(true)}
+                    className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-teal-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#006970] transition hover:bg-teal-100"
+                  >
+                    <Plus size={13} /> Novo tipo
+                  </button>
+                )}
+              </div>
 
-            {/* Service type — optional, auto-fills duration + price when creating */}
-            {(isEditing || showCreateDetails) && activeServiceTypes.length > 0 && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Atendimento</p>
-                <div className="space-y-2">
-                  <select
-                    value={watch('serviceTypeId') ?? ''}
-                    onChange={e => {
-                      setValue('serviceTypeId', e.target.value || '')
-                      if (!isEditing) {
-                        const st = activeServiceTypes.find(s => s.id === e.target.value)
-                        if (st) {
-                          setValue('durationMin', String(st.durationMinutes))
-                          if (st.priceCents != null) {
-                            setValue('chargeAmount', (st.priceCents / 100).toFixed(2).replace('.', ','))
-                          }
+              <div className="relative">
+                <span
+                  className="pointer-events-none absolute left-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border border-white shadow-sm"
+                  style={{ backgroundColor: selectedServiceType?.color ?? '#cbd5e1' }}
+                  aria-hidden="true"
+                />
+                <select
+                  value={watchedServiceTypeId ?? ''}
+                  onChange={e => {
+                    setValue('serviceTypeId', e.target.value || '', { shouldDirty: true, shouldTouch: true })
+                    if (!isEditing) {
+                      const serviceType = activeServiceTypes.find(service => service.id === e.target.value)
+                      if (serviceType) {
+                        setValue('durationMin', String(serviceType.durationMinutes))
+                        if (serviceType.priceCents != null) {
+                          setValue('chargeAmount', (serviceType.priceCents / 100).toFixed(2).replace('.', ','))
                         }
                       }
+                    }
+                  }}
+                  className="w-full rounded-xl border border-teal-200 bg-white py-2.5 pl-8 pr-3 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                >
+                  <option value="">Selecionar tipo de atendimento</option>
+                  {activeServiceTypes.map(service => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} · {service.durationMinutes} min{service.priceCents != null ? ` · R$ ${(service.priceCents / 100).toFixed(2).replace('.', ',')}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {showQuickServiceType && (
+                <div className="mt-3 rounded-xl border border-teal-200 bg-white p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-800">Novo tipo de atendimento</p>
+                    <button type="button" onClick={() => setShowQuickServiceType(false)} className="text-xs font-medium text-gray-500 hover:text-gray-800">Cancelar</button>
+                  </div>
+                  <input
+                    value={quickServiceTypeName}
+                    onChange={event => setQuickServiceTypeName(event.target.value)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void handleQuickServiceType()
+                      }
                     }}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                  >
-                    <option value="">Selecionar serviço... (opcional)</option>
-                    {activeServiceTypes.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} · {s.durationMinutes}min{s.priceCents != null ? ` · R$${(s.priceCents / 100).toFixed(2).replace('.', ',')}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {!isEditing && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div>
-                        <Input label="Valor (R$)" placeholder="0,00" {...register('chargeAmount')} />
-                        {!!selectedServiceType?.priceCents && (
-                          <button
-                            type="button"
-                            onClick={() => setValue('chargeAmount', (selectedServiceType.priceCents! / 100).toFixed(2).replace('.', ','))}
-                            className="mt-1 text-xs font-medium text-[#0ea5b0] hover:text-[#006970]"
-                          >
-                            Usar preço padrão ({(selectedServiceType.priceCents / 100).toFixed(2).replace('.', ',')})
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <Input label="Repasse (R$)" placeholder="0,00" {...register('professionalFee')} />
-                      </div>
+                    placeholder="Ex.: limpeza, avaliação, retorno"
+                    className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                    autoFocus
+                  />
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5" aria-label="Cor do tipo de atendimento">
+                      {SERVICE_TYPE_COLORS.slice(0, 6).map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setQuickServiceTypeColor(color)}
+                          className={`h-5 w-5 rounded-full transition ${quickServiceTypeColor === color ? 'ring-2 ring-offset-2 ring-[#006970]' : 'hover:scale-110'}`}
+                          style={{ backgroundColor: color }}
+                          aria-label={`Usar a cor ${color}`}
+                          aria-pressed={quickServiceTypeColor === color}
+                        />
+                      ))}
                     </div>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickServiceType()}
+                      disabled={createServiceType.isPending}
+                      className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-[#006970] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#00555b] disabled:opacity-50"
+                    >
+                      <Plus size={13} /> {createServiceType.isPending ? 'Adicionando...' : 'Adicionar'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {!isEditing && showCreateDetails && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Observações</p>
-                <TextArea label="" rows={2} placeholder="Observação sobre o agendamento..." {...register('notes')} />
+              <div className="mt-3 border-t border-teal-200/80 pt-3">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#006970]">Observação da consulta</label>
+                <TextArea label="" rows={2} placeholder="Ex.: paciente relatou sensibilidade no dente 24" {...register('notes')} />
               </div>
-            )}
+            </section>
 
-            {(isEditing || showCreateDetails) && hasInventory && selectedServiceSuggestions.length > 0 && (
+            {hasInventory && selectedServiceSuggestions.length > 0 && (
               <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 rounded-xl bg-white p-2 text-sky-700">
@@ -1412,6 +1477,18 @@ export default function AppointmentModal({
               </div>
             </div>
 
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={() => setShowCreateDetails(current => !current)}
+                className="flex w-full items-center justify-between rounded-xl border border-dashed border-gray-300 bg-white px-3 py-2.5 text-left text-sm font-medium text-gray-600 transition hover:border-[#0ea5b0]/60 hover:text-[#006970]"
+                aria-expanded={showCreateDetails}
+              >
+                <span>{showCreateDetails ? 'Ocultar valores e retorno' : 'Adicionar valores ou retorno'}</span>
+                <span aria-hidden="true" className={`text-[#0ea5b0] transition-transform ${showCreateDetails ? 'rotate-90' : ''}`}>›</span>
+              </button>
+            )}
+
             {/* Opções secundárias de agendamento */}
             {(isEditing ? showExtras : showCreateDetails) && (
               <div className="space-y-4">
@@ -1437,48 +1514,66 @@ export default function AppointmentModal({
                 )}
 
                 {!isEditing && (
-                  <div className="rounded-2xl border border-gray-200 bg-[#f8fafb] p-3 space-y-2 shadow-sm">
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                      <RepeatOnce size={14} className="text-gray-400" />
-                      Retorno / recorrência
-                    </label>
-                    <select
-                      value={returnPreset}
-                      onChange={e => setReturnPreset(e.target.value as ReturnPreset)}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                    >
-                      {RETURN_PRESETS.map(p => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
-                      ))}
-                    </select>
-
-                    {returnPreset === 'custom' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600">Frequência</label>
-                          <select
-                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                            {...register('recurrenceType')}
+                  <div className="space-y-3">
+                    <div className="grid gap-3 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm sm:grid-cols-2">
+                      <div>
+                        <Input label="Valor (R$)" placeholder="0,00" {...register('chargeAmount')} />
+                        {!!selectedServiceType?.priceCents && (
+                          <button
+                            type="button"
+                            onClick={() => setValue('chargeAmount', (selectedServiceType.priceCents! / 100).toFixed(2).replace('.', ','))}
+                            className="mt-1 text-xs font-medium text-[#0ea5b0] hover:text-[#006970]"
                           >
-                            {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
-                              <option key={v} value={v}>{l}</option>
-                            ))}
-                          </select>
-                        </div>
-                        {recurrenceType !== 'none' && (
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">Ocorrências</label>
-                            <input
-                              type="number"
-                              min={2}
-                              max={52}
-                              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
-                              {...register('recurrenceCount')}
-                            />
-                          </div>
+                            Usar preço padrão ({(selectedServiceType.priceCents / 100).toFixed(2).replace('.', ',')})
+                          </button>
                         )}
                       </div>
-                    )}
+                      <Input label="Repasse (R$)" placeholder="0,00" {...register('professionalFee')} />
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 bg-[#f8fafb] p-3 space-y-2 shadow-sm">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        <RepeatOnce size={14} className="text-gray-400" />
+                        Retorno / recorrência
+                      </label>
+                      <select
+                        value={returnPreset}
+                        onChange={e => setReturnPreset(e.target.value as ReturnPreset)}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                      >
+                        {RETURN_PRESETS.map(p => (
+                          <option key={p.value} value={p.value}>{p.label}</option>
+                        ))}
+                      </select>
+
+                      {returnPreset === 'custom' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-600">Frequência</label>
+                            <select
+                              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                              {...register('recurrenceType')}
+                            >
+                              {Object.entries(RECURRENCE_LABELS).map(([v, l]) => (
+                                <option key={v} value={v}>{l}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {recurrenceType !== 'none' && (
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-600">Ocorrências</label>
+                              <input
+                                type="number"
+                                min={2}
+                                max={52}
+                                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
+                                {...register('recurrenceCount')}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1538,13 +1633,6 @@ export default function AppointmentModal({
 
             {isEditing && showExtras && (
               <>
-                <ManagementSection
-                  title="Observações"
-                  description="Resumo do atendimento, combinados e qualquer detalhe que a equipe precise ver no dia."
-                >
-                  <TextArea label="" rows={5} {...register('notes')} />
-                </ManagementSection>
-
                 <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                   <ManagementSection
                     title="Valor cobrado"

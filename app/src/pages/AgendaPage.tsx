@@ -95,14 +95,6 @@ function normalizeName(name: string | null | undefined) {
   return (name ?? '').replace(/\s+/g, ' ').trim()
 }
 
-function getNameInitials(name: string | null | undefined) {
-  const parts = normalizeName(name).split(' ').filter(Boolean)
-  return (parts.length ? parts : ['P'])
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
 function getContrastingTextColor(hexColor: string) {
   const hex = hexColor.replace('#', '')
   const normalized = hex.length === 3
@@ -155,9 +147,8 @@ function getCalendarQueryRange(date: Date, view: CalendarView) {
 }
 
 function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
-  const { appointment, conflictNames, color, start, end } = event
+  const { appointment, conflictNames, color, end, start } = event
   const hasConflict = !!conflictNames?.length
-  const professionalName = normalizeName(appointment.professional?.name) || 'Profissional'
   const patientFullName = normalizeName(appointment.patient?.name) || 'Paciente'
   const durationMin = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000))
   const isFifteenMinuteEvent = durationMin <= 15
@@ -167,27 +158,27 @@ function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
 
   return (
     <div
-      className={`relative flex h-full min-w-0 items-start gap-2 overflow-hidden px-1 py-0.5 ${hasConflict ? 'pr-5' : ''}`}
+      className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden px-1.5 py-1 ${hasConflict ? 'pr-5' : ''}`}
       style={{ color: getContrastingTextColor(color) }}
       title={conflictTitle ?? `${patientFullName} · ${APPOINTMENT_STATUS_LABELS[appointment.status]}`}
     >
-      <span
-        className={`relative mt-0.5 flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/20 font-semibold ${isFifteenMinuteEvent ? 'h-5 w-5 text-[8px]' : 'h-6 w-6 text-[9px]'}`}
-        role="img"
-        aria-label={`Profissional: ${professionalName}`}
-        title={professionalName}
-      >
-        {appointment.professional?.photoUrl ? (
-          <img src={appointment.professional.photoUrl} alt={professionalName} className="h-full w-full object-cover" />
-        ) : getNameInitials(appointment.professional?.name)}
-        <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-white" style={{ backgroundColor: STATUS_COLORS[appointment.status] }} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className={`font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'truncate text-[11px]' : isCompact ? 'line-clamp-2 text-[12px]' : 'line-clamp-3 text-[14px]'}`}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        {appointment.serviceType && (
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/80 shadow-sm"
+            style={{ backgroundColor: appointment.serviceType.color }}
+            role="img"
+            aria-label={`Tipo de atendimento: ${appointment.serviceType.name}`}
+            title={appointment.serviceType.name}
+          />
+        )}
+        <p className={`min-w-0 font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'truncate text-[11px]' : isCompact ? 'line-clamp-2 text-[12px]' : 'line-clamp-2 text-[14px]'}`}>
           {patientFullName}
         </p>
-        {!isCompact && <p className="mt-1 text-[11px] font-medium opacity-85">{format(start, 'HH:mm')}</p>}
       </div>
+      {!isCompact && appointment.serviceType && (
+        <p className="mt-0.5 truncate pl-4 text-[10px] font-medium opacity-85">{appointment.serviceType.name}</p>
+      )}
       {hasConflict && <Warning size={13} weight="fill" className="absolute right-1 top-1 text-red-100 drop-shadow" aria-label={conflictTitle} />}
       <span className="sr-only"><StatusIcon />{APPOINTMENT_STATUS_LABELS[appointment.status]}</span>
     </div>

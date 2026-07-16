@@ -389,6 +389,7 @@ export interface Appointment {
     photoUrl?: string | null
   }
   clinicRoom?: Pick<ClinicRoom, 'id' | 'name' | 'color'>
+  serviceType?: Pick<ServiceType, 'id' | 'name' | 'color'>
 }
 
 // ─── Availability slot ────────────────────────────────────────────────────────
