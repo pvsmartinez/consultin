@@ -172,10 +172,38 @@ function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
       style={{ color: getContrastingTextColor(color) }}
       title={conflictTitle ?? `${timeLabel} · ${patientFullName} · ${statusLabel}`}
     >
-      <div className="flex min-w-0 items-start justify-between gap-1">
-        <p className={`min-w-0 truncate font-medium leading-none tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[11px]' : 'text-[12px]'}`}>
-          {timeLabel}
-        </p>
+      <div className={`flex min-w-0 items-center justify-between ${isFifteenMinuteEvent ? 'gap-1' : 'gap-1.5'}`}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {appointment.professional?.photoUrl ? (
+            <img
+              src={appointment.professional.photoUrl}
+              alt=""
+              className={`shrink-0 rounded-full border border-white/70 object-cover ${isFifteenMinuteEvent ? 'h-4 w-4' : 'h-5 w-5'}`}
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className={`flex shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/20 font-bold ${isFifteenMinuteEvent ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[8px]'}`}
+            >
+              {getInitials(avatarName)}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className={`truncate font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[12px]' : 'text-[14px]'}`}>
+              {patientFullName}
+            </p>
+            {appointment.serviceType && (
+              <p className={`flex min-w-0 items-center gap-1 truncate font-medium opacity-90 ${isFifteenMinuteEvent ? 'text-[8px]' : 'text-[10px]'}`}>
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full border border-white/80"
+                  style={{ backgroundColor: appointment.serviceType.color }}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{appointment.serviceType.name}</span>
+              </p>
+            )}
+          </div>
+        </div>
         <span
           className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white shadow-sm"
           style={{ color: STATUS_COLORS[appointment.status] }}
@@ -185,38 +213,6 @@ function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
         >
           <StatusIcon size={isFifteenMinuteEvent ? 10 : 11} weight="bold" aria-hidden="true" />
         </span>
-      </div>
-
-      <div className={`mt-1 flex min-w-0 items-center ${isFifteenMinuteEvent ? 'gap-1' : 'gap-1.5'}`}>
-        {appointment.professional?.photoUrl ? (
-          <img
-            src={appointment.professional.photoUrl}
-            alt=""
-            className={`shrink-0 rounded-full border border-white/70 object-cover ${isFifteenMinuteEvent ? 'h-4 w-4' : 'h-5 w-5'}`}
-          />
-        ) : (
-          <span
-            aria-hidden="true"
-            className={`flex shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/20 font-bold ${isFifteenMinuteEvent ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[8px]'}`}
-          >
-            {getInitials(avatarName)}
-          </span>
-        )}
-        <div className="min-w-0">
-          <p className={`truncate font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[12px]' : 'text-[14px]'}`}>
-            {patientFullName}
-          </p>
-          {appointment.serviceType && (
-            <p className={`flex min-w-0 items-center gap-1 truncate font-medium opacity-90 ${isFifteenMinuteEvent ? 'text-[8px]' : 'text-[10px]'}`}>
-              <span
-                className="h-2 w-2 shrink-0 rounded-full border border-white/80"
-                style={{ backgroundColor: appointment.serviceType.color }}
-                aria-hidden="true"
-              />
-              <span className="truncate">{appointment.serviceType.name}</span>
-            </p>
-          )}
-        </div>
       </div>
       {hasConflict && <Warning size={13} weight="fill" className="absolute right-1 top-1 text-red-100 drop-shadow" aria-label={conflictTitle} />}
     </div>
