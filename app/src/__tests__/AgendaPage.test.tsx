@@ -4,6 +4,7 @@ import type { ComponentType } from 'react'
 
 const calendarProps = vi.fn()
 const appointmentsQuery = vi.fn()
+let appointmentsQueryResult: Record<string, unknown> = { data: [], isLoading: false }
 
 vi.mock('react-big-calendar', () => ({
   Calendar: function CalendarMock(props: Record<string, unknown>) {
@@ -32,7 +33,7 @@ vi.mock('../hooks/useRoomAvailability', () => ({
 vi.mock('../hooks/useAppointmentsMutations', () => ({
   useAppointmentsQuery: (...args: unknown[]) => {
     appointmentsQuery(args)
-    return { data: [], isLoading: false }
+    return appointmentsQueryResult
   },
   useAppointmentMutations: () => ({ update: { isPending: false }, cancel: { mutateAsync: vi.fn() } }),
   useMyProfessionalRecords: () => ({ data: [] }),
@@ -50,6 +51,7 @@ describe('AgendaPage', () => {
   beforeEach(() => {
     calendarProps.mockClear()
     appointmentsQuery.mockClear()
+    appointmentsQueryResult = { data: [], isLoading: false }
   })
 
   it('uses the free calendar without a datesSet render loop', () => {
@@ -74,5 +76,22 @@ describe('AgendaPage', () => {
     expect(new Date(start).getDay()).toBe(0)
     expect(new Date(end).getDay()).toBe(0)
     expect(new Date(end).getTime() - new Date(start).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
+  })
+
+  it('shows an actionable error when appointment loading fails', () => {
+    const refetch = vi.fn()
+    appointmentsQueryResult = {
+      data: [],
+      isLoading: false,
+      isFetching: false,
+      isError: true,
+      refetch,
+    }
+
+    render(<AgendaPage />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível carregar as consultas deste período.')
+    act(() => screen.getByRole('button', { name: 'Tentar novamente' }).click())
+    expect(refetch).toHaveBeenCalledTimes(1)
   })
 })

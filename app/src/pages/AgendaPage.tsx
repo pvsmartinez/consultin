@@ -545,7 +545,11 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const { hasRooms } = useClinicModules()
   const { data: rooms = [] }              = useRooms()
   const { data: professionals = [] }      = useProfessionals()
-  const { data: myProfRecords = [] }      = useMyProfessionalRecords()
+  const {
+    data: myProfRecords = [],
+    isLoading: isLoadingProfessionalRecords,
+    isError: isProfessionalRecordsError,
+  } = useMyProfessionalRecords()
 
   const { slotMin, slotMax, todayOpen, todayLabel } = useMemo(() => {
     const wh = clinic?.workingHours ?? {}
@@ -593,7 +597,13 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     [calendarDate, calendarView],
   )
 
-  const { data: appointments = [], isLoading } = useAppointmentsQuery(
+  const {
+    data: appointments = [],
+    isLoading,
+    isFetching,
+    isError: isAppointmentsError,
+    refetch: refetchAppointments,
+  } = useAppointmentsQuery(
     calendarRange.start,
     calendarRange.end,
     queryProfessionalFilter,
@@ -604,6 +614,13 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     myProfRecords.map((r, i) => [r.clinicId, CLINIC_PALETTE[i % CLINIC_PALETTE.length]])
   )
   const multiClinic = myProfRecords.length > 1
+  const isWaitingForProfessionalLink = isPersonalView
+    && isLoadingProfessionalRecords
+    && personalProfessionalFilter.length === 0
+  const hasProfessionalLinkError = isPersonalView
+    && !isLoadingProfessionalRecords
+    && personalProfessionalFilter.length === 0
+    && isProfessionalRecordsError
 
   const filteredAppointments = useMemo(() => (
     (appointments as (Appointment & { clinicName?: string | null })[]).filter(appointment => {
@@ -1153,11 +1170,41 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         </div>
       )}
 
-      <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 ${isLoading ? 'opacity-60' : ''}`}>
+      <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 ${isLoading || isFetching ? 'opacity-60' : ''}`}>
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
           <h2 className="capitalize text-base font-semibold text-gray-800">{calendarPeriodLabel}</h2>
           {hideWeekend && calendarView === 'week' && <span className="text-xs text-gray-500">Segunda a sexta</span>}
         </div>
+
+        {isAppointmentsError ? (
+          <div className="mb-3 flex flex-col gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between" role="alert">
+            <span>Não foi possível carregar as consultas deste período.</span>
+            <button
+              type="button"
+              onClick={() => { void refetchAppointments() }}
+              className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : isWaitingForProfessionalLink ? (
+          <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-800" role="status">
+            Carregando seu vínculo profissional para buscar as consultas…
+          </div>
+        ) : hasProfessionalLinkError ? (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800" role="alert">
+            Não foi possível identificar seu profissional nesta clínica. Atualize a página ou peça ao administrador para revisar seu vínculo.
+          </div>
+        ) : isLoading ? (
+          <div className="mb-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-800" role="status">
+            Carregando consultas…
+          </div>
+        ) : isFetching ? (
+          <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600" role="status">
+            Atualizando consultas…
+          </div>
+        ) : null}
+
         <DragAndDropCalendar
           localizer={localizer}
           culture="pt-BR"
