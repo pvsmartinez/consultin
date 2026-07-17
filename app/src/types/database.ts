@@ -2114,6 +2114,32 @@ export type Database = {
         Args: { p_professional_id: string }
         Returns: number
       }
+      search_patients: {
+        Args: { p_limit?: number; p_offset?: number; p_query?: string }
+        Returns: {
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
+          birth_date: string | null
+          clinic_id: string
+          cpf: string | null
+          created_at: string
+          custom_fields: Json
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          rg: string | null
+          sex: string | null
+          total_count: number
+          user_id: string | null
+        }[]
+      }
       store_clinic_whatsapp_token: {
         Args: { p_clinic_id: string; p_token: string }
         Returns: undefined

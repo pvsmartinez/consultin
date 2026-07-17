@@ -36,6 +36,7 @@ export const QK = {
     /** Prefix — invalidates every ['patients', ...] entry */
     all:          ()                              => ['patients']                          as const,
     list:         (clinicId: string | null | undefined, search: string, page: number)  => ['patients', clinicId, search, page]           as const,
+    search:       (clinicId: string | null | undefined, search: string, limit: number) => ['patient-search', clinicId, search, limit]    as const,
     detail:       (id: string)                    => ['patient', id]                      as const,
     my:           (userId: string | undefined, clinicId?: string | null) => ['my-patient', userId, clinicId] as const,
     clinics:      (userId: string | undefined, clinicId: string | null | undefined) => ['my-patient-clinics', userId, clinicId] as const,

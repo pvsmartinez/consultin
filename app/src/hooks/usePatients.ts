@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { useAuthContext } from '../contexts/AuthContext'
@@ -14,6 +14,7 @@ const PATIENT_LIST_COLS =
   'address_city,address_state,address_zip,notes,custom_fields,created_at'
 
 export const PATIENTS_PAGE_SIZE = 50
+export const PATIENT_SEARCH_LIMIT = 8
 
 // Map camelCase PatientInput -> snake_case for DB
 function mapInput(input: PatientInput) {
@@ -45,23 +46,18 @@ export function usePatients(search = '', page = 0) {
   const query = useQuery({
     queryKey: QK.patients.list(profile?.clinicId, search, page),
     staleTime: 2 * 60_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const from = page * PATIENTS_PAGE_SIZE
-      const to   = from + PATIENTS_PAGE_SIZE - 1
-      let q = supabase
-        .from('patients')
-        .select(PATIENT_LIST_COLS, { count: 'exact' })
-        .eq('clinic_id', profile!.clinicId!)
-        .order('name')
-        .range(from, to)
-      if (search.trim()) {
-        q = q.or(`name.ilike.%${search}%,cpf.ilike.%${search}%,phone.ilike.%${search}%`)
-      }
-      const { data, error, count } = await q
+      const { data, error } = await supabase.rpc('search_patients', {
+        p_query: search.trim(),
+        p_limit: PATIENTS_PAGE_SIZE,
+        p_offset: page * PATIENTS_PAGE_SIZE,
+      })
       if (error) throw new Error(error.message)
+      const rows = (data ?? []) as Array<Record<string, unknown> & { total_count?: number }>
       return {
-        patients: ((data ?? []) as unknown[]).map(r => mapPatient(r as Record<string, unknown>)),
-        total: count ?? 0,
+        patients: rows.map(row => mapPatient(row)),
+        total: rows[0]?.total_count ?? 0,
       }
     },
     enabled: !!profile?.clinicId,
@@ -109,10 +105,43 @@ export function usePatients(search = '', page = 0) {
     total:         query.data?.total ?? 0,
     pageCount:     Math.ceil((query.data?.total ?? 0) / PATIENTS_PAGE_SIZE),
     loading:       query.isPending && query.isFetching,
+    searching:     query.isFetching,
     error:         query.error?.message ?? null,
     refetch:       query.refetch,
     createPatient: (input: PatientInput) => createMut.mutateAsync(input),
     updatePatient: (id: string, input: Partial<PatientInput>) => updateMut.mutateAsync({ id, input }),
+  }
+}
+
+/**
+ * Small, server-ranked patient lookup for high-frequency selectors such as
+ * appointment scheduling. It intentionally has no exact count and never
+ * downloads the first page of all patients just to filter it in the browser.
+ */
+export function usePatientSearch(search = '') {
+  const { profile } = useAuthContext()
+  const normalizedSearch = search.trim()
+
+  const query = useQuery({
+    queryKey: QK.patients.search(profile?.clinicId, normalizedSearch, PATIENT_SEARCH_LIMIT),
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('search_patients', {
+        p_query: normalizedSearch,
+        p_limit: PATIENT_SEARCH_LIMIT,
+        p_offset: 0,
+      })
+      if (error) throw new Error(error.message)
+      return ((data ?? []) as unknown[]).map(row => mapPatient(row as Record<string, unknown>))
+    },
+    enabled: !!profile?.clinicId && normalizedSearch.length >= 2,
+  })
+
+  return {
+    patients: query.data ?? [],
+    loading: query.isPending && query.isFetching,
+    searching: query.isFetching,
+    error: query.error?.message ?? null,
   }
 }
 

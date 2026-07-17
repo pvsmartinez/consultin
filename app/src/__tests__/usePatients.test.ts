@@ -6,15 +6,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { usePatients } from '../hooks/usePatients'
+import { usePatientSearch, usePatients } from '../hooks/usePatients'
 
 // ─── Mock supabase ────────────────────────────────────────────────────────────
 
-const mockFrom = vi.fn()
+const mockRpc = vi.fn()
 
 vi.mock('../services/supabase', () => ({
   supabase: {
-    from: (table: string) => mockFrom(table),
+    rpc: (name: string, args: unknown) => mockRpc(name, args),
   },
 }))
 
@@ -69,15 +69,8 @@ describe('usePatients', () => {
   })
 
   it('starts in loading state', () => {
-    // Never resolves to keep it loading
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockReturnThis(),
-      or: vi.fn().mockReturnThis(),
-      then: vi.fn(), // never calls back
-    })
+    // Never resolves to keep it loading.
+    mockRpc.mockReturnValue(new Promise(() => {}))
 
     const { result } = renderHook(() => usePatients(), { wrapper: makeWrapper() })
     expect(result.current.loading).toBe(true)
@@ -85,19 +78,7 @@ describe('usePatients', () => {
   })
 
   it('maps DB rows to camelCase Patient objects', async () => {
-    const chainable = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockReturnThis(),
-      or: vi.fn().mockReturnThis(),
-    } as Record<string, unknown>
-    Object.assign(chainable, {
-      then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: [MOCK_DB_ROW], error: null, count: 1 }).then(resolve, reject)
-      },
-    })
-    mockFrom.mockReturnValue(chainable)
+    mockRpc.mockResolvedValue({ data: [{ ...MOCK_DB_ROW, total_count: 1 }], error: null })
 
     const { result } = renderHook(() => usePatients(), { wrapper: makeWrapper() })
 
@@ -118,19 +99,7 @@ describe('usePatients', () => {
   })
 
   it('sets error on supabase error', async () => {
-    const chainable = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockReturnThis(),
-      or: vi.fn().mockReturnThis(),
-    } as Record<string, unknown>
-    Object.assign(chainable, {
-      then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: null, error: { message: 'DB error' } }).then(resolve, reject)
-      },
-    })
-    mockFrom.mockReturnValue(chainable)
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'DB error' } })
 
     const { result } = renderHook(() => usePatients(), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -140,19 +109,7 @@ describe('usePatients', () => {
   })
 
   it('returns empty array when data is null', async () => {
-    const chainable = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockReturnThis(),
-      or: vi.fn().mockReturnThis(),
-    } as Record<string, unknown>
-    Object.assign(chainable, {
-      then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: null, error: null, count: 0 }).then(resolve, reject)
-      },
-    })
-    mockFrom.mockReturnValue(chainable)
+    mockRpc.mockResolvedValue({ data: null, error: null })
 
     const { result } = renderHook(() => usePatients(), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -160,25 +117,43 @@ describe('usePatients', () => {
     expect(result.current.patients).toEqual([])
   })
 
-  it('adds OR filter clause when search is provided', async () => {
-    const orMock = vi.fn().mockReturnThis()
-    const chainable = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      range: vi.fn().mockReturnThis(),
-      or: orMock,
-    } as Record<string, unknown>
-    Object.assign(chainable, {
-      then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
-        return Promise.resolve({ data: [], error: null, count: 0 }).then(resolve, reject)
-      },
-    })
-    mockFrom.mockReturnValue(chainable)
+  it('passes the search term and pagination to the database search function', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null })
 
     const { result } = renderHook(() => usePatients('João'), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.loading).toBe(false))
 
-    expect(orMock).toHaveBeenCalledWith(expect.stringContaining('João'))
+    expect(mockRpc).toHaveBeenCalledWith('search_patients', {
+      p_query: 'João',
+      p_limit: 50,
+      p_offset: 0,
+    })
+  })
+})
+
+describe('usePatientSearch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('waits for at least two characters before querying', () => {
+    const { result } = renderHook(() => usePatientSearch('J'), { wrapper: makeWrapper() })
+
+    expect(result.current.patients).toEqual([])
+    expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('uses the server search with a small result limit', async () => {
+    mockRpc.mockResolvedValue({ data: [MOCK_DB_ROW], error: null })
+
+    const { result } = renderHook(() => usePatientSearch('1199'), { wrapper: makeWrapper() })
+    await waitFor(() => expect(result.current.searching).toBe(false))
+
+    expect(result.current.patients).toHaveLength(1)
+    expect(mockRpc).toHaveBeenCalledWith('search_patients', {
+      p_query: '1199',
+      p_limit: 8,
+      p_offset: 0,
+    })
   })
 })

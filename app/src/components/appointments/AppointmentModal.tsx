@@ -17,7 +17,7 @@ import { useProfessionals } from '../../hooks/useProfessionals'
 import { usePatientAppointments } from '../../hooks/useAppointments'
 import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
 import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
-import { usePatients, useCreatePatient } from '../../hooks/usePatients'
+import { usePatientSearch, useCreatePatient } from '../../hooks/usePatients'
 import { usePatientClinicalItems } from '../../hooks/usePatientClinicalItems'
 import { useRooms } from '../../hooks/useRooms'
 import { useClinicModules } from '../../hooks/useClinicModules'
@@ -130,26 +130,6 @@ function formatAppointmentPreview(startsAt: string, endsAt: string): string {
   return `${format(parseISO(startsAt), 'dd/MM')} · ${format(parseISO(startsAt), 'HH:mm')}–${format(parseISO(endsAt), 'HH:mm')}`
 }
 
-function normalizeText(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
-function subsequenceScore(query: string, text: string): number {
-  let qi = 0
-  let score = 0
-  for (let i = 0; i < text.length && qi < query.length; i += 1) {
-    if (query[qi] === text[i]) {
-      score += qi === 0 ? 2 : 1
-      qi += 1
-    }
-  }
-  return qi === query.length ? score : 0
-}
-
 function SummaryChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-[#f8fafb] px-3 py-3">
@@ -240,9 +220,12 @@ export default function AppointmentModal({
   const [patientDrawerOpen, setPatientDrawerOpen] = useState(false)
   const [patientDrawerPatientId, setPatientDrawerPatientId] = useState<string | undefined>(undefined)
   const patientSearchRef = useRef<HTMLInputElement>(null)
-  const debouncedPatientSearch = useDebounce(patientSearch, 150)
-  const { patients = [] } = usePatients(debouncedPatientSearch)
-  const { patients: allPatients = [] } = usePatients('', 0)
+  const debouncedPatientSearch = useDebounce(patientSearch, 200)
+  const {
+    patients: patientSearchResults = [],
+    searching: patientSearchLoading,
+    error: patientSearchError,
+  } = usePatientSearch(debouncedPatientSearch)
 
   const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -334,40 +317,6 @@ export default function AppointmentModal({
   const clinicalDocumentCount = patientClinicalItems.filter(item => item.category === 'document').length
   const clinicalRequestCount = patientClinicalItems.filter(item => item.category === 'request').length
   const latestClinicalItem = patientClinicalItems[0] ?? null
-  const patientSearchResults = useMemo(() => {
-    const raw = patientSearch.trim()
-    if (!raw) return patients.slice(0, 8)
-
-    const query = normalizeText(raw)
-    const queryDigits = raw.replace(/\D/g, '')
-    const merged = [...patients, ...allPatients]
-    const uniquePatients = Array.from(new Map(merged.map(item => [item.id, item])).values())
-
-    return uniquePatients
-      .map(patient => {
-        const name = normalizeText(patient.name)
-        const cpfDigits = (patient.cpf ?? '').replace(/\D/g, '')
-        const phoneDigits = (patient.phone ?? '').replace(/\D/g, '')
-
-        let score = 0
-        if (name.includes(query)) {
-          score += 100 - Math.min(name.indexOf(query), 20)
-        } else {
-          score += subsequenceScore(query, name)
-        }
-
-        if (queryDigits.length >= 3 && (cpfDigits.includes(queryDigits) || phoneDigits.includes(queryDigits))) {
-          score += 60
-        }
-
-        return { patient, score }
-      })
-      .filter(item => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 8)
-      .map(item => item.patient)
-  }, [allPatients, patientSearch, patients])
-
   // Build duration options — include any custom value from drag selection or existing appointment
   const durationOptions = useMemo(() => {
     const custom = durationMinVal ? parseInt(durationMinVal) : null
@@ -1099,22 +1048,34 @@ export default function AppointmentModal({
                   />
                   {patientSearch.trim() && !showQuickPatient && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                      {patientSearchResults.map(p => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onMouseDown={e => e.preventDefault()}
-                          onClick={() => {
-                            setSelectedPatient({ id: p.id, name: p.name })
-                            setValue('patientId', p.id)
-                            setPatientSearch('')
-                          }}
-                          className="w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 border-b border-gray-100 last:border-0 flex items-baseline gap-2 transition-colors"
-                        >
-                          <span className="font-medium text-gray-800">{p.name}</span>
-                          {p.cpf && <span className="text-xs text-gray-400">{p.cpf}</span>}
-                        </button>
-                      ))}
+                      {patientSearch.trim().length < 2 ? (
+                        <p className="px-3 py-2.5 text-xs text-gray-500">Digite pelo menos 2 caracteres.</p>
+                      ) : patientSearchError ? (
+                        <p className="px-3 py-2.5 text-xs text-red-600" role="alert">Não foi possível buscar pacientes agora.</p>
+                      ) : patientSearchLoading ? (
+                        <p className="px-3 py-2.5 text-xs text-gray-500" role="status">Buscando paciente...</p>
+                      ) : patientSearchResults.length > 0 ? (
+                        patientSearchResults.map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => {
+                              setSelectedPatient({ id: p.id, name: p.name })
+                              setValue('patientId', p.id)
+                              setPatientSearch('')
+                            }}
+                            className="w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 border-b border-gray-100 last:border-0 transition-colors"
+                          >
+                            <span className="block truncate font-medium text-gray-800">{p.name}</span>
+                            <span className="mt-0.5 block truncate text-xs text-gray-400">
+                              {[p.cpf, p.phone].filter(Boolean).join(' · ') || 'Sem documento ou telefone cadastrado'}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2.5 text-xs text-gray-500">Nenhum paciente encontrado.</p>
+                      )}
                       <button
                         type="button"
                         onMouseDown={e => e.preventDefault()}

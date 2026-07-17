@@ -18,7 +18,7 @@ export default function PacientesPage() {
   const [page, setPage] = useState(0)
   const debouncedSearch = useDebounce(search, 300)
   useEffect(() => { setPage(0) }, [debouncedSearch])
-  const { patients, loading, refetch, total, pageCount, error } = usePatients(debouncedSearch, page)
+  const { patients, loading, searching, refetch, total, pageCount, error } = usePatients(debouncedSearch, page)
 
   return (
     <div className="space-y-6">
@@ -73,10 +73,11 @@ export default function PacientesPage() {
           <MagnifyingGlass size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             autoFocus
-            type="text"
+            type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por nome, CPF ou telefone..."
+            aria-label="Buscar pacientes por nome, CPF ou telefone"
             className="w-full border border-gray-200 bg-[#f8fafb] rounded-2xl pl-11 pr-10 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#0ea5b0]"
           />
           {search && (
@@ -92,6 +93,11 @@ export default function PacientesPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {searching && !loading && (
+          <div className="border-b border-teal-100 bg-teal-50 px-4 py-2 text-xs font-medium text-[#006970]" role="status">
+            Buscando pacientes...
+          </div>
+        )}
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-sm">Carregando...</div>
         ) : error ? (
