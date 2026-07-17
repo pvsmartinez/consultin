@@ -80,7 +80,7 @@ export function HomeGreeting({ name }: { name?: string | null }) {
           {greetingFor(hour)}
           {first ? `, ${first}` : ''}
         </h1>
-        <p className="mt-1 text-sm capitalize text-gray-500">{dateLabel}</p>
+        <p className="mt-1 text-sm first-letter:uppercase text-gray-500">{dateLabel}</p>
       </div>
       <div className="flex items-center gap-2 rounded-full border border-gray-100 bg-white px-3 py-1.5 text-sm font-semibold tabular-nums text-gray-700 shadow-sm">
         <Clock size={16} weight="duotone" className="text-[#0ea5b0]" />
@@ -121,7 +121,7 @@ export function NextAppointmentCard({
         <h2 className="mt-3 text-2xl font-bold text-gray-900">Nada mais na agenda de hoje</h2>
         <p className="mt-1 text-sm text-gray-600">
           {data.bookedToday > 0
-            ? 'Todos os atendimentos de hoje já foram encerrados.'
+            ? 'Nenhuma consulta a seguir hoje.'
             : 'Nenhuma consulta marcada para hoje.'}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">

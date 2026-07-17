@@ -809,7 +809,7 @@ export default function AppointmentModal({
                               type="button"
                               aria-pressed={selected}
                               onClick={() => setValue('status', status, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
-                              className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold transition ${selected
+                              className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold leading-tight transition ${selected
                                 ? `${APPOINTMENT_STATUS_COLORS[status]} border-current ring-1 ring-current/10`
                                 : 'border-gray-200 bg-white text-gray-600 hover:border-[#0ea5b0]/50 hover:text-[#006970]'}`}
                             >
@@ -1226,7 +1226,7 @@ export default function AppointmentModal({
               </div>
             )) : (
               <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Alocacao</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Alocação</p>
                 <div className={`grid gap-3 ${activeRooms.length > 1 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Profissional</label>
@@ -1295,11 +1295,11 @@ export default function AppointmentModal({
               </div>
             )}
 
-            <section className="rounded-2xl border border-teal-200 bg-teal-50/70 p-3 shadow-sm">
+            <section className="rounded-2xl border border-gray-200 bg-white p-3">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#006970]">Tipo de atendimento</p>
-                  <p className="mt-1 text-xs text-[#006970]/75">A cor facilita a leitura da agenda ao longo do dia.</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Tipo de atendimento</p>
+                  <p className="mt-1 text-xs text-gray-400">A cor facilita a leitura da agenda ao longo do dia.</p>
                 </div>
                 {canManageServiceTypes && !showQuickServiceType && (
                   <button
@@ -1388,8 +1388,8 @@ export default function AppointmentModal({
                 </div>
               )}
 
-              <div className="mt-3 border-t border-teal-200/80 pt-3">
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#006970]">Observação da consulta</label>
+              <div className="mt-3 border-t border-gray-200 pt-3">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Observação da consulta</label>
                 <TextArea label="" rows={2} placeholder="Ex.: paciente relatou sensibilidade no dente 24" {...register('notes')} />
               </div>
             </section>
@@ -1451,8 +1451,8 @@ export default function AppointmentModal({
                 </div>
               </div>
             )}
-            <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-3 shadow-sm">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#006970]">Quando será</p>
+            <div className="rounded-2xl border border-gray-200 bg-white p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">Quando será</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 <Input label="Data *" type="date" error={errors.date?.message} {...register('date')} />
                 <Input label="Horário *" type="time" error={errors.startTime?.message} {...register('startTime')} />

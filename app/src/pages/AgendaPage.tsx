@@ -166,10 +166,11 @@ function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
   const timeLabel = `${format(start, 'HH:mm')} – ${format(end, 'HH:mm')}`
   const statusLabel = APPOINTMENT_STATUS_LABELS[appointment.status]
 
+  const avatarText = getContrastingTextColor(color)
+
   return (
     <div
-      className={`relative flex h-full min-w-0 flex-col overflow-hidden px-1.5 py-1 ${hasConflict ? 'pr-5' : ''}`}
-      style={{ color: getContrastingTextColor(color) }}
+      className={`relative flex h-full min-w-0 flex-col justify-center gap-0.5 overflow-hidden px-1.5 py-0.5 text-[var(--ui-text)] ${hasConflict ? 'pr-5' : ''}`}
       title={conflictTitle ?? `${timeLabel} · ${patientFullName} · ${statusLabel}`}
     >
       <div className={`flex min-w-0 items-center justify-between ${isFifteenMinuteEvent ? 'gap-1' : 'gap-1.5'}`}>
@@ -178,43 +179,55 @@ function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
             <img
               src={appointment.professional.photoUrl}
               alt=""
-              className={`shrink-0 rounded-full border border-white/70 object-cover ${isFifteenMinuteEvent ? 'h-4 w-4' : 'h-5 w-5'}`}
+              className={`shrink-0 rounded-full object-cover ${isFifteenMinuteEvent ? 'h-4 w-4' : 'h-5 w-5'}`}
             />
           ) : (
             <span
               aria-hidden="true"
-              className={`flex shrink-0 items-center justify-center rounded-full border border-white/70 bg-white/20 font-bold ${isFifteenMinuteEvent ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[8px]'}`}
+              className={`flex shrink-0 items-center justify-center rounded-full font-bold ${isFifteenMinuteEvent ? 'h-4 w-4 text-[7px]' : 'h-5 w-5 text-[8px]'}`}
+              style={{ backgroundColor: color, color: avatarText }}
             >
               {getInitials(avatarName)}
             </span>
           )}
-          <div className="min-w-0">
-            <p className={`truncate font-bold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[12px]' : 'text-[14px]'}`}>
-              {patientFullName}
-            </p>
-            {appointment.serviceType && (
-              <p className={`flex min-w-0 items-center gap-1 truncate font-medium opacity-90 ${isFifteenMinuteEvent ? 'text-[8px]' : 'text-[10px]'}`}>
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full border border-white/80"
-                  style={{ backgroundColor: appointment.serviceType.color }}
-                  aria-hidden="true"
-                />
-                <span className="truncate">{appointment.serviceType.name}</span>
-              </p>
-            )}
-          </div>
+          <p className={`truncate font-semibold leading-tight tracking-tight ${isFifteenMinuteEvent ? 'text-[10px]' : isCompact ? 'text-[12px]' : 'text-[13px]'}`}>
+            {patientFullName}
+          </p>
+          {appointment.status !== 'scheduled' && (
+            <span
+              className="flex shrink-0 items-center justify-center"
+              style={{ color: STATUS_COLORS[appointment.status] }}
+              role="img"
+              aria-label={`Status: ${statusLabel}`}
+              title={statusLabel}
+            >
+              <StatusIcon size={isFifteenMinuteEvent ? 11 : 13} weight="fill" aria-hidden="true" />
+            </span>
+          )}
         </div>
-        <span
-          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white shadow-sm"
-          style={{ color: STATUS_COLORS[appointment.status] }}
-          role="img"
-          aria-label={`Status: ${statusLabel}`}
-          title={statusLabel}
-        >
-          <StatusIcon size={isFifteenMinuteEvent ? 10 : 11} weight="bold" aria-hidden="true" />
-        </span>
+        {isCompact && (
+          <span className="consultin-event-time shrink-0 text-[11px] font-medium tabular-nums text-[var(--ui-text-muted)]">
+            {format(start, 'HH:mm')}
+          </span>
+        )}
       </div>
-      {hasConflict && <Warning size={13} weight="fill" className="absolute right-1 top-1 text-red-100 drop-shadow" aria-label={conflictTitle} />}
+      {!isCompact && (
+        <p className="flex min-w-0 items-center gap-1 truncate text-[10px] font-medium text-[var(--ui-text-muted)]">
+          {appointment.serviceType ? (
+            <>
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: appointment.serviceType.color }}
+                aria-hidden="true"
+              />
+              <span className="truncate">{appointment.serviceType.name}</span>
+            </>
+          ) : (
+            <span className="truncate">{timeLabel}</span>
+          )}
+        </p>
+      )}
+      {hasConflict && <Warning size={13} weight="fill" className="absolute right-1 top-1 text-red-500 drop-shadow" aria-label={conflictTitle} />}
     </div>
   )
 }
@@ -1127,15 +1140,15 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           </div>
           {calendarView === 'day' && (
             <label className="flex min-h-11 w-full min-w-[210px] flex-col justify-center rounded-xl border border-gray-200 bg-[#f8fafb] px-3 py-2 text-xs font-medium text-gray-500 sm:w-auto">
-              Breakdown
+              Separar por
               <select
                 value={dayBreakdown}
                 onChange={e => handleDayBreakdownChange(e.target.value as DayBreakdown)}
                 className="mt-0.5 bg-transparent text-sm font-semibold text-gray-700 focus:outline-none"
               >
-                <option value="none">Sem breakdown</option>
-                <option value="room">Por sala</option>
-                <option value="professional">Por profissional</option>
+                <option value="none">Coluna única</option>
+                <option value="room">Sala</option>
+                <option value="professional">Profissional</option>
               </select>
             </label>
           )}
@@ -1172,7 +1185,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
 
       <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 ${isLoading || isFetching ? 'opacity-60' : ''}`}>
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
-          <h2 className="capitalize text-base font-semibold text-gray-800">{calendarPeriodLabel}</h2>
+          <h2 className="first-letter:uppercase text-base font-semibold text-gray-800">{calendarPeriodLabel}</h2>
           {hideWeekend && calendarView === 'week' && <span className="text-xs text-gray-500">Segunda a sexta</span>}
         </div>
 
@@ -1206,6 +1219,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         ) : null}
 
         <DragAndDropCalendar
+          className={`consultin-calendar consultin-view-${rbcView}`}
           localizer={localizer}
           culture="pt-BR"
           date={calendarDate}
@@ -1238,7 +1252,10 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           components={{ event: renderAppointmentEvent }}
           eventPropGetter={event => ({
             className: 'consultin-agenda-event',
-            style: { backgroundColor: event.color, borderColor: event.color, color: getContrastingTextColor(event.color) },
+            style: {
+              backgroundColor: `color-mix(in srgb, ${event.color} 15%, var(--ui-bg))`,
+              borderLeft: `3px solid ${event.color}`,
+            },
           })}
           formats={{
             timeGutterFormat: date => format(date, 'HH:mm'),

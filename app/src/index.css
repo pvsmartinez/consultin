@@ -140,16 +140,24 @@ body {
 .rbc-time-view, .rbc-month-view { border-color: var(--ui-border-2); border-radius: 0.75rem; overflow: hidden; }
 .rbc-header { border-color: var(--ui-border); background: var(--ui-bg); padding: 0.625rem 0.25rem; color: var(--ui-text-muted); font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
 .rbc-time-header-content, .rbc-time-content, .rbc-day-bg + .rbc-day-bg, .rbc-time-content > * + * > * { border-color: var(--ui-border); }
-.rbc-timeslot-group { border-bottom-color: var(--ui-surface-2); min-height: 4rem; }
+.rbc-timeslot-group { border-bottom-color: var(--ui-surface-2); min-height: 4.5rem; }
 .rbc-time-slot:not(:first-child) { border-top: 1px solid color-mix(in srgb, var(--ui-border) 55%, transparent); }
 .rbc-time-gutter .rbc-label { color: var(--ui-text-muted); font-size: 0.6875rem; padding-right: 0.5rem; }
-.rbc-today { background: rgba(20, 184, 166, 0.05); }
-.rbc-current-time-indicator { background-color: var(--ui-brand-primary); }
+.rbc-today { background: color-mix(in srgb, var(--ui-brand-primary) 3.5%, transparent); }
+.rbc-current-time-indicator { background-color: var(--ui-brand-primary); height: 2px; }
 .rbc-date-cell { padding: 0.375rem 0.5rem; color: var(--ui-text-muted); font-size: 0.75rem; }
 .rbc-now .rbc-button-link { align-items: center; background: var(--ui-brand-primary); border-radius: 999px; color: white; display: inline-flex; height: 1.5rem; justify-content: center; min-width: 1.5rem; }
-.rbc-event.consultin-agenda-event { border: 0; border-radius: 0.625rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16); min-height: 1.875rem; padding: 0.125rem; }
-.rbc-event.consultin-agenda-event:focus-visible { outline-color: white; }
+/* Hide RBC's injected time label — the grid position + our card already convey the time. */
+.rbc-event.consultin-agenda-event .rbc-event-label { display: none; }
+.rbc-event.consultin-agenda-event { border: 0; border-radius: 0.375rem; box-shadow: none; min-height: 1.75rem; padding: 0; overflow: hidden; transition: filter 120ms ease; }
+.rbc-event.consultin-agenda-event:hover { filter: brightness(0.97); }
+.rbc-event.consultin-agenda-event:focus-visible { outline-color: var(--ui-brand-primary); }
 .rbc-event-content { height: 100%; }
+/* Day view: the single column IS today — washing the whole grid just kills the canvas. */
+.consultin-view-day .rbc-today { background: transparent; }
+/* Compact cards carry a start-time on the right; only reveal it in day view, where there's width. */
+.consultin-event-time { display: none; }
+.consultin-view-day .rbc-event.consultin-agenda-event .consultin-event-time { display: inline-flex; }
 .rbc-show-more { color: var(--ui-brand-primary); font-size: 0.75rem; font-weight: 600; }
 .rbc-row-segment { padding: 0 2px 2px; }
 .rbc-month-row + .rbc-month-row, .rbc-day-bg + .rbc-day-bg, .rbc-header + .rbc-header { border-color: var(--ui-border); }

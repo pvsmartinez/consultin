@@ -19,7 +19,6 @@ export default function PacientesPage() {
   const debouncedSearch = useDebounce(search, 300)
   useEffect(() => { setPage(0) }, [debouncedSearch])
   const { patients, loading, refetch, total, pageCount, error } = usePatients(debouncedSearch, page)
-  const visibleCount = patients.length
 
   return (
     <div className="space-y-6">
@@ -39,13 +38,6 @@ export default function PacientesPage() {
               <p className="text-sm text-gray-500 mt-2">
                 Busque por nome, CPF ou telefone e entre direto na ficha do paciente.
               </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-              <div className="rounded-2xl bg-[#f8fafb] px-4 py-3 border border-gray-100 min-w-[140px]">
-                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Nesta página</p>
-                <p className="text-lg font-semibold text-gray-900">{visibleCount}</p>
-              </div>
             </div>
           </div>
 
