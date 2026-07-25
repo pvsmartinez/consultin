@@ -93,7 +93,34 @@ experience, not as a mandatory first-run blocker.
 | ----------------------- | ------------ | -------------------------------- |
 | Web (browser)           | Primary      | Any browser, mobile-responsive   |
 | Desktop (macOS/Windows) | Secondary    | Tauri v2 wrapper — same codebase |
-| Mobile app              | Future phase | React Native (Expo)              |
+| Mobile app              | Future phase | React Native (Expo) — status below |
+
+---
+
+### Mobile app status (2026-07-22, open decision — do not treat as settled)
+
+`mobile/` (Expo + EAS Build/Submit) was scaffolded 2026-07-21, is still untracked in git, and
+has never produced a working TestFlight build. Other pmatz mobile apps (flightdeck, puzzleleague)
+ship via a different, proven pattern: Vite + Capacitor + local Xcode archive
+(see `flightdeck/AGENT.md` and `flightdeck/scripts/build-ios.sh`).
+
+Known friction with the current Expo approach:
+
+- `@pvsmartinez/shared` peer-depends on `react-router-dom`/React 19; Expo/RN pins React 18
+  (RN 0.76 compat), so installing anything into `mobile/` needs `--legacy-peer-deps`. A
+  Capacitor app (plain Vite + React 19) would not have this conflict.
+- EAS pipeline still needs: `eas login` / `EXPO_TOKEN` (no session on this Mac), `eas init`
+  (no `projectId` in `app.json` yet), and a `GITHUB_TOKEN` wired as an `eas secret` so the
+  cloud build can install `@pvsmartinez/shared` (a local shell env var isn't enough — the
+  build runs in Expo's cloud, not locally).
+- Already fixed: `ITSAppUsesNonExemptEncryption` added to `app.json` (same "Missing
+  Compliance" gotcha that hit flightdeck); `eas-cli` added as a local devDependency.
+
+**Open call for Pedro:** keep the separate native Expo mobile app (purpose-built lightweight
+screens, different UX from the desktop layout) and finish wiring EAS, or consolidate onto the
+Capacitor pattern (reuses the proven pipeline + gotcha fixes, avoids the peer-dep friction, but
+means either a responsive pass on the existing desktop `app/` or a new lightweight Vite sibling
+app — not a drop-in swap). Not decided yet — don't assume either direction without confirming.
 
 ---
 

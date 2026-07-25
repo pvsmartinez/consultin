@@ -1,117 +1,53 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Consultin - Plataforma de gestão de serviços de saúde" />
+    <meta name="theme-color" content="#4F46E5" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
 
-<head>
-  <meta charset="UTF-8" />
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-R0H4QWW1YP"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-R0H4QWW1YP');
-    gtag('config', 'AW-18041761033');
-  </script>
-  <link rel="icon" type="image/svg+xml" href="/clinic.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="index, follow" />
-  <meta name="theme-color" content="#0d9488" />
-  <meta name="description" content="Consultin é um software de gestão para clínicas e consultórios no Brasil com agenda, prontuário, financeiro e WhatsApp em um só lugar." />
-  <link rel="canonical" href="https://consultin.pmatz.com/" />
-  <meta property="og:title" content="Consultin | Software de gestão para clínicas no Brasil" />
-  <meta property="og:description" content="Agenda médica, prontuário, financeiro e operação da clínica em um sistema simples para equipes brasileiras." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://consultin.pmatz.com/" />
-  <meta property="og:image" content="https://consultin.pmatz.com/og-consultin.svg" />
-  <meta property="og:site_name" content="Consultin" />
-  <meta property="og:locale" content="pt_BR" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Consultin | Software de gestão para clínicas no Brasil" />
-  <meta name="twitter:description" content="Agenda médica, prontuário, financeiro e operação da clínica em um sistema simples para equipes brasileiras." />
-  <meta name="twitter:image" content="https://consultin.pmatz.com/og-consultin.svg" />
-  <title>Consultin | Software de gestão para clínicas no Brasil</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/",
-        "logo": "https://consultin.pmatz.com/clinic.svg",
-        "description": "Software de gestão para clínicas e consultórios no Brasil com agenda, pacientes, financeiro e WhatsApp.",
-        "areaServed": "BR",
-        "inLanguage": "pt-BR",
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "contactType": "customer support",
-          "url": "https://consultin.pmatz.com/cadastro-clinica"
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <title>Consultin</title>
+
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/src/main.tsx" as="script" />
+    <link rel="preload" href="/src/index.css" as="style" />
+  </head>
+  <body>
+    <!-- Root element for React -->
+    <div id="root"></div>
+
+    <!-- Capacitor bridge initialization -->
+    <script>
+      // Prevent double tap to zoom on mobile
+      document.addEventListener('touchend', function(e) {
+        const now = Date.now();
+        if (now - (window.lastTouchEnd || 0) < 300) {
+          e.preventDefault();
         }
-      },
-      {
-        "@type": "WebSite",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/",
-        "inLanguage": "pt-BR",
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": {
-            "@type": "EntryPoint",
-            "urlTemplate": "https://consultin.pmatz.com/?q={search_term_string}"
-          },
-          "query-input": "required name=search_term_string"
-        }
-      },
-      {
-        "@type": "SoftwareApplication",
-        "name": "Consultin",
-        "url": "https://consultin.pmatz.com/",
-        "applicationCategory": "BusinessApplication",
-        "operatingSystem": "Web",
-        "inLanguage": "pt-BR",
-        "areaServed": "BR",
-        "description": "Consultin é um software de gestão para clínicas e consultórios no Brasil. Integra agenda médica, cadastro de pacientes, controle financeiro e confirmações via WhatsApp em uma única plataforma web.",
-        "offers": [
-          {
-            "@type": "Offer",
-            "name": "Plano Básico",
-            "priceCurrency": "BRL",
-            "price": "100.00",
-            "description": "Até 40 consultas por mês",
-            "availability": "https://schema.org/InStock",
-            "url": "https://consultin.pmatz.com/cadastro-clinica"
-          },
-          {
-            "@type": "Offer",
-            "name": "Plano Profissional",
-            "priceCurrency": "BRL",
-            "price": "200.00",
-            "description": "Até 100 consultas por mês",
-            "availability": "https://schema.org/InStock",
-            "url": "https://consultin.pmatz.com/cadastro-clinica"
-          },
-          {
-            "@type": "Offer",
-            "name": "Plano Ilimitado",
-            "priceCurrency": "BRL",
-            "price": "300.00",
-            "description": "Consultas ilimitadas",
-            "availability": "https://schema.org/InStock",
-            "url": "https://consultin.pmatz.com/cadastro-clinica"
-          }
-        ]
-      }
-    ]
-  }
-  </script>
-</head>
+        window.lastTouchEnd = now;
+      }, false);
 
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
+      // Prevent context menu on long press for native feel
+      window.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+      });
+    </script>
 
+    <!-- Main entry point -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
