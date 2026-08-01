@@ -50,6 +50,11 @@ export interface WeekDayCount {
 
 export interface HomeData {
   loading: boolean
+  /** true when one of the hook's internal queries failed */
+  isError: boolean
+  error: Error | null
+  /** re-runs the home queries (used by the retry button) */
+  refetch: () => Promise<unknown>
   /** current professional has no linked record — personal views can't show a day */
   personalViewUnavailable: boolean
 
@@ -109,7 +114,13 @@ export function useHomeData(): HomeData {
   // Personal view with no linked professional → the query is disabled by design.
   const personalViewUnavailable = isPersonal && !recordsPending && personalFilter.length === 0
 
-  const { data: weekAppts = [], isPending: apptsPending } = useAppointmentsQuery(
+  const {
+    data: weekAppts = [],
+    isPending: apptsPending,
+    isError: apptsError,
+    error: apptsErrorObject,
+    refetch: refetchWeekAppts,
+  } = useAppointmentsQuery(
     startsFrom,
     startsUntil,
     professionalFilter,
@@ -191,6 +202,9 @@ export function useHomeData(): HomeData {
 
     return {
       loading: clinicLoading || apptsPending || (isPersonal && recordsPending),
+      isError: apptsError,
+      error: apptsError ? (apptsErrorObject ?? new Error('Falha ao carregar consultas')) : null,
+      refetch: () => refetchWeekAppts(),
       personalViewUnavailable,
       today,
       nextAppointment,
@@ -222,6 +236,8 @@ export function useHomeData(): HomeData {
     isPersonal,
     recordsPending,
     apptsPending,
+    apptsError,
+    apptsErrorObject,
     clinicLoading,
     personalViewUnavailable,
   ])

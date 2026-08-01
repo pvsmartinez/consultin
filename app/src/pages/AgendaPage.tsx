@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react'
 import { Calendar, dateFnsLocalizer, type EventProps, type SlotInfo, type View } from 'react-big-calendar'
 import withDragAndDrop, { type EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import { format, addDays, addMinutes, addMonths, addWeeks, endOfMonth, endOfWeek, getDay, parse, startOfDay, startOfMonth, startOfWeek } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 import {
   CalendarBlank,
@@ -27,13 +28,15 @@ import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
 import { useRooms } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
-import AppointmentModal from '../components/appointments/AppointmentModal'
 import UpgradeModal from '../components/billing/UpgradeModal'
 import { useClinicQuota } from '../hooks/useClinicQuota'
+import { TZ_BR } from '../utils/date'
 import { APPOINTMENT_STATUS_LABELS, type Appointment, type AppointmentStatus } from '../types'
 import { getAppointmentSaveErrorMessage } from '../utils/appointmentErrors'
 import { fillMissingRoomSelections } from '../utils/agendaRoomSelections'
 import { APP_ROUTES } from '../lib/appRoutes'
+
+const AppointmentModal = lazy(() => import('../components/appointments/AppointmentModal'))
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = typeof DAY_ORDER[number]
@@ -370,7 +373,6 @@ function UnassignedRoomsModal({
 
         <div className="space-y-2 overflow-y-auto pr-1 max-h-[52vh]">
           {appointments.map(appointment => {
-            const startsAt = new Date(appointment.startsAt)
             const selectedRoomId = selectedRoomByAppointment[appointment.id] ?? ''
             const isAssigning = resolvingAppointmentId === appointment.id
             const isCanceling = cancelingAppointmentId === appointment.id
@@ -381,7 +383,7 @@ function UnassignedRoomsModal({
                 <div className="mb-2 min-w-0">
                   <p className="truncate text-sm font-semibold text-gray-900">{appointment.patient?.name ?? 'Paciente sem nome'}</p>
                   <p className="truncate text-xs text-gray-500">
-                    {format(startsAt, 'dd/MM HH:mm')} · {appointment.professional?.name ?? 'Sem profissional'}
+                    {formatInTimeZone(appointment.startsAt, TZ_BR, 'dd/MM HH:mm')} · {appointment.professional?.name ?? 'Sem profissional'}
                   </p>
                 </div>
 
@@ -1268,16 +1270,18 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         />
       </div>
 
-      <AppointmentModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        appointment={editingAppt}
-        initialDate={initialSlot?.date}
-        initialTime={initialSlot?.time}
-        initialDurationMin={initialSlot?.durationMin}
-        initialProfessionalId={initialSlot?.professionalId}
-        initialRoomId={initialSlot?.roomId}
-      />
+      <Suspense fallback={null}>
+        <AppointmentModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          appointment={editingAppt}
+          initialDate={initialSlot?.date}
+          initialTime={initialSlot?.time}
+          initialDurationMin={initialSlot?.durationMin}
+          initialProfessionalId={initialSlot?.professionalId}
+          initialRoomId={initialSlot?.roomId}
+        />
+      </Suspense>
 
       {extendConfirm && (
         <ExtendModal

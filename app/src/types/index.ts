@@ -491,6 +491,7 @@ export const ROLE_PERMISSIONS = {
     canViewFinancial:      true,
     canManageSettings:     true,
     canViewWhatsApp:       true,  // inbox: admin always
+    canManageInventory:    true,
     canManageOwnAvailability: false,
   },
   receptionist: {
@@ -501,6 +502,7 @@ export const ROLE_PERMISSIONS = {
     canViewFinancial:      true,   // recepcionista opera o caixa da clínica
     canManageSettings:     false,
     canViewWhatsApp:       true,  // inbox: receptionist is primary user
+    canManageInventory:    true,
     canManageOwnAvailability: false,
   },
   professional: {
@@ -511,6 +513,7 @@ export const ROLE_PERMISSIONS = {
     canViewFinancial:      false,
     canManageSettings:     false,
     canViewWhatsApp:       false,
+    canManageInventory:    false,
     canManageOwnAvailability: true,  // professional self-manages their schedule
   },
   patient: {
@@ -521,6 +524,7 @@ export const ROLE_PERMISSIONS = {
     canViewFinancial:      false,
     canManageSettings:     false,
     canViewWhatsApp:       false,
+    canManageInventory:    false,
     canManageOwnAvailability: false,
   },
 } satisfies Record<UserRole, Record<string, boolean>>
@@ -537,6 +541,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   canViewFinancial:         'Ver financeiro',
   canManageSettings:        'Configurações da clínica',
   canViewWhatsApp:          'Caixa de entrada WhatsApp',
+  canManageInventory:       'Gerenciar estoque',
   canManageOwnAvailability: 'Gerenciar própria disponibilidade',
 }
 

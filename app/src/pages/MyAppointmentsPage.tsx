@@ -1,4 +1,5 @@
-import { format, parseISO, differenceInHours } from 'date-fns'
+import { differenceInHours } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 import { CalendarBlank, Clock, XCircle } from '@phosphor-icons/react'
 import { useState } from 'react'
@@ -7,13 +8,19 @@ import { useMyPatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
 import { useUpdateAppointmentStatus } from '../hooks/useAppointmentsMutations'
 import { useClinic } from '../hooks/useClinic'
+import { TZ_BR } from '../utils/date'
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from '../types'
 import type { Appointment } from '../types'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 
 export default function MyAppointmentsPage() {
   const { patient, loading: loadingPatient } = useMyPatient()
-  const { appointments, loading: loadingAppts } = usePatientAppointments(patient?.id ?? '')
+  const {
+    appointments,
+    loading: loadingAppts,
+    isError: apptsError,
+    refetch: refetchAppts,
+  } = usePatientAppointments(patient?.id ?? '')
   const { data: clinic } = useClinic()
   const updateStatus = useUpdateAppointmentStatus()
   const [confirmCancel, setConfirmCancel] = useState<{ id: string; startsAt: string } | null>(null)
@@ -55,6 +62,21 @@ export default function MyAppointmentsPage() {
     return (
       <div className="flex justify-center py-16">
         <span className="text-gray-400 text-sm">Carregando consultas...</span>
+      </div>
+    )
+  }
+
+  if (apptsError) {
+    return (
+      <div className="flex flex-col gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+        <span>Não foi possível carregar suas consultas.</span>
+        <button
+          type="button"
+          onClick={() => { void refetchAppts() }}
+          className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+        >
+          Tentar novamente
+        </button>
       </div>
     )
   }
@@ -131,8 +153,8 @@ function AppointmentCard({
 }) {
   const statusClasses = APPOINTMENT_STATUS_COLORS[a.status] ?? 'bg-gray-100 text-gray-500'
   const statusLabel = APPOINTMENT_STATUS_LABELS[a.status] ?? a.status
-  const dateLabel = format(parseISO(a.startsAt), "dd 'de' MMMM yyyy", { locale: ptBR })
-  const timeLabel = format(parseISO(a.startsAt), 'HH:mm')
+  const dateLabel = formatInTimeZone(a.startsAt, TZ_BR, "dd 'de' MMMM yyyy", { locale: ptBR })
+  const timeLabel = formatInTimeZone(a.startsAt, TZ_BR, 'HH:mm')
   const isCancellable = !!onCancel
   const showCancelDisabledHint = !!onCancel && !canCancel && (cancellationHours ?? 0) > 0
 

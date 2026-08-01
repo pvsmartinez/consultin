@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { MagnifyingGlass, Plus, User, UploadSimple, X, Sliders, ArrowRight } from '@phosphor-icons/react'
 import { usePatients, PATIENTS_PAGE_SIZE } from '../hooks/usePatients'
 import { useDebounce } from '../hooks/useDebounce'
-import { formatDate } from '../utils/date'
+import { formatDate, brDateToIso } from '../utils/date'
 import { SEX_LABELS } from '../types'
 import { buildSettingsPath } from '../lib/settingsNavigation'
 
@@ -202,7 +202,7 @@ export default function PacientesPage() {
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-gray-400">Nascimento</p>
                     <p className="mt-1 text-sm text-gray-700">
-                      {p.birthDate ? formatDate(p.birthDate + 'T00:00:00') : '—'}
+                      {p.birthDate ? formatDate(brDateToIso(p.birthDate)) : '—'}
                     </p>
                   </div>
                   <div className="col-span-2">
@@ -241,7 +241,7 @@ export default function PacientesPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{p.cpf ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500 hidden md:table-cell">
-                    {p.birthDate ? formatDate(p.birthDate + 'T00:00:00') : '—'}
+                    {p.birthDate ? formatDate(brDateToIso(p.birthDate)) : '—'}
                   </td>
                   <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">
                     {p.sex ? SEX_LABELS[p.sex] : '—'}

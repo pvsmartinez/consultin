@@ -110,4 +110,11 @@ describe('ROLE_PERMISSIONS', () => {
     expect(ROLE_PERMISSIONS.professional.canViewPatients).toBe(true)
     expect(ROLE_PERMISSIONS.professional.canManagePatients).toBe(false)
   })
+
+  it('inventory permission: admin and receptionist manage, professional and patient cannot', () => {
+    expect(ROLE_PERMISSIONS.admin.canManageInventory).toBe(true)
+    expect(ROLE_PERMISSIONS.receptionist.canManageInventory).toBe(true)
+    expect(ROLE_PERMISSIONS.professional.canManageInventory).toBe(false)
+    expect(ROLE_PERMISSIONS.patient.canManageInventory).toBe(false)
+  })
 })

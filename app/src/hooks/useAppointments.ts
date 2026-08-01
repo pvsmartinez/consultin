@@ -11,7 +11,13 @@ export function usePatientAppointments(patientId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')
-        .select(`*, professional:professionals(id, name, specialty)`)
+        .select(`
+          id, clinic_id, patient_id, professional_id, starts_at, ends_at,
+          status, notes, room_id, service_type_id,
+          charge_amount_cents, paid_amount_cents, professional_fee_cents,
+          paid_at, payment_method, created_at,
+          professional:professionals(id, name, specialty)
+        `)
         .eq('patient_id', patientId)
         .order('starts_at', { ascending: false })
       if (error) throw new Error(error.message)
@@ -23,5 +29,8 @@ export function usePatientAppointments(patientId: string) {
   return {
     appointments: query.data ?? [],
     loading:      query.isPending && query.isFetching,
+    isError:      query.isError,
+    error:        query.error ?? null,
+    refetch:      query.refetch,
   }
 }

@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { startOfMonth, endOfMonth } from 'date-fns'
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { mapAppointment } from '../utils/mappers'
+import { TZ_BR } from '../utils/date'
 import { useAuthContext } from '../contexts/AuthContext'
 import type { Appointment } from '../types'
 
@@ -12,8 +13,14 @@ export interface FinancialRow extends Appointment {
 }
 
 export function useFinancial(month: Date) {
-  const monthStart = startOfMonth(month).toISOString()
-  const monthEnd   = endOfMonth(month).toISOString()
+  // Compute month boundaries in São Paulo so the starts_at filter doesn't
+  // include/exclude edge hours when the browser is outside America/Sao_Paulo.
+  const spYmd = formatInTimeZone(month.toISOString(), TZ_BR, 'yyyy-MM-dd')
+  const spMonth = spYmd.slice(0, 7)
+  const [y, m] = spMonth.split('-').map(Number)
+  const lastDay = String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')
+  const monthStart = fromZonedTime(`${spMonth}-01T00:00:00`, TZ_BR).toISOString()
+  const monthEnd   = fromZonedTime(`${spMonth}-${lastDay}T23:59:59`, TZ_BR).toISOString()
   const { profile } = useAuthContext()
   const clinicId = profile?.clinicId
 
@@ -25,7 +32,10 @@ export function useFinancial(month: Date) {
       const { data, error } = await supabase
         .from('appointments')
         .select(`
-          *,
+          id, clinic_id, patient_id, professional_id, starts_at, ends_at,
+          status, notes, room_id, service_type_id,
+          charge_amount_cents, paid_amount_cents, professional_fee_cents,
+          paid_at, payment_method, created_at,
           patient:patients(id, name, phone, cpf),
           professional:professionals(id, name, specialty)
         `)

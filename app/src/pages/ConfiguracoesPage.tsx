@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Gear, CalendarBlank, Sliders, Clock, Door, CurrencyDollar, WhatsappLogo,
@@ -15,19 +15,19 @@ import { useClinic } from '../hooks/useClinic'
 import { useClinicModules } from '../hooks/useClinicModules'
 import type { ClinicModule } from '../hooks/useClinicModules'
 import type { Clinic } from '../types'
-import DadosTab from './settings/DadosTab'
-import DocumentosTab from './settings/DocumentosTab'
-import AgendaTab from './settings/AgendaTab'
-import CamposTab from './settings/CamposTab'
-import DisponibilidadeTab from './settings/DisponibilidadeTab'
-import SalasTab from './settings/SalasTab'
-import ServicosTab from './settings/ServicosTab'
-import PagamentoTab from './settings/PagamentoTab'
-import WhatsAppTab from './settings/WhatsAppTab'
-import NotificacoesTab from './settings/NotificacoesTab'
-import UsuariosTab from './settings/UsuariosTab'
-import AnamnesisTab from './settings/AnamnesisTab'
-import PaginaPublicaTab from './settings/PaginaPublicaTab'
+const DadosTab            = lazy(() => import('./settings/DadosTab'))
+const DocumentosTab       = lazy(() => import('./settings/DocumentosTab'))
+const AgendaTab           = lazy(() => import('./settings/AgendaTab'))
+const CamposTab           = lazy(() => import('./settings/CamposTab'))
+const DisponibilidadeTab  = lazy(() => import('./settings/DisponibilidadeTab'))
+const SalasTab            = lazy(() => import('./settings/SalasTab'))
+const ServicosTab         = lazy(() => import('./settings/ServicosTab'))
+const PagamentoTab        = lazy(() => import('./settings/PagamentoTab'))
+const WhatsAppTab         = lazy(() => import('./settings/WhatsAppTab'))
+const NotificacoesTab     = lazy(() => import('./settings/NotificacoesTab'))
+const UsuariosTab         = lazy(() => import('./settings/UsuariosTab'))
+const AnamnesisTab        = lazy(() => import('./settings/AnamnesisTab'))
+const PaginaPublicaTab    = lazy(() => import('./settings/PaginaPublicaTab'))
 import { trackOnboardingComplete } from '../lib/googleAds'
 import { APP_ROUTES } from '../lib/appRoutes'
 import { buildSettingsPath, type SettingsEntity, type SettingsTab } from '../lib/settingsNavigation'
@@ -300,7 +300,7 @@ interface TabComponentProps {
   fieldEntity?: SettingsEntity
 }
 
-const TAB_CONTENT: Record<SettingsContentTab, React.ComponentType<TabComponentProps>> = {
+const TAB_CONTENT: Record<SettingsContentTab, React.LazyExoticComponent<React.ComponentType<TabComponentProps>>> = {
   dados: DadosTab,
   documentos: DocumentosTab,
   agenda: AgendaTab,
@@ -621,12 +621,14 @@ export default function ConfiguracoesPage() {
               </div>
             </section>
           ) : (
-            TabComponent && (
-              <TabComponent
-                clinic={clinic}
-                fieldEntity={resolvedActiveTab === 'campos' ? fieldEntity : undefined}
-              />
-            )
+            <Suspense fallback={<div className="py-10 text-center text-sm text-gray-400">Carregando...</div>}>
+              {TabComponent && (
+                <TabComponent
+                  clinic={clinic}
+                  fieldEntity={resolvedActiveTab === 'campos' ? fieldEntity : undefined}
+                />
+              )}
+            </Suspense>
           )}
         </div>
       </section>

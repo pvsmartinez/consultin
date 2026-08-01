@@ -130,6 +130,21 @@ export default function HomePage() {
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <HomeGreeting name={profile?.name} />
+      {home.isError && (
+        <div
+          className="flex flex-col gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between"
+          role="alert"
+        >
+          <span>Não foi possível carregar os dados da sua agenda.</span>
+          <button
+            type="button"
+            onClick={() => { void home.refetch() }}
+            className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
       {renderContent()}
 
       {modalOpen && (

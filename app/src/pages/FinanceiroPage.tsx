@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react'
-import { format, addMonths, subMonths, parseISO, isThisMonth } from 'date-fns'
+import { format, addMonths, subMonths, isThisMonth } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { ptBR } from 'date-fns/locale'
 import { CaretLeft, CaretRight, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { useFinancial, PAYMENT_METHOD_LABELS } from '../hooks/useFinancial'
 import type { AppointmentPaymentMethod } from '../hooks/useFinancial'
+import { TZ_BR } from '../utils/date'
 import { formatBRL } from '../utils/currency'
 import { useClinic } from '../hooks/useClinic'
 import { Badge } from '@pvsmartinez/shared/ui'
@@ -124,7 +126,7 @@ export default function FinanceiroPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-gray-900">{row.patient?.name ?? '—'}</p>
-                          <p className="mt-1 text-xs text-gray-500">{format(parseISO(row.startsAt), 'dd/MM HH:mm')}</p>
+                          <p className="mt-1 text-xs text-gray-500">{formatInTimeZone(row.startsAt, TZ_BR, 'dd/MM HH:mm')}</p>
                           <p className="mt-1 text-xs text-gray-500">Profissional: {row.professional?.name ?? '—'}</p>
                         </div>
                         <Badge variant={APPOINTMENT_STATUS_VARIANTS[row.status]}>
@@ -202,7 +204,7 @@ export default function FinanceiroPage() {
                       {data.map(row => (
                         <tr key={row.id} className="hover:bg-gray-50 transition">
                           <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                            {format(parseISO(row.startsAt), 'dd/MM HH:mm')}
+                            {formatInTimeZone(row.startsAt, TZ_BR, 'dd/MM HH:mm')}
                           </td>
                           <td className="px-4 py-3 text-gray-800 font-medium">
                             {row.patient?.name ?? '—'}

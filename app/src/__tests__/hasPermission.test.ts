@@ -111,6 +111,12 @@ describe('hasPermission — admin', () => {
     expect(result.current.hasPermission('canManageSettings')).toBe(true)
   })
 
+  it('returns true for canManageInventory', async () => {
+    const { result } = renderHook(() => useAuthContext(), { wrapper })
+    await waitFor(() => expect(result.current.profile?.roles).toEqual(['admin']))
+    expect(result.current.hasPermission('canManageInventory')).toBe(true)
+  })
+
   it('returns false for unknown permission key', async () => {
     const { result } = renderHook(() => useAuthContext(), { wrapper })
     await waitFor(() => expect(result.current.profile?.roles).toEqual(['admin']))
@@ -153,6 +159,12 @@ describe('hasPermission — receptionist', () => {
     const { result } = renderHook(() => useAuthContext(), { wrapper })
     await waitFor(() => expect(result.current.profile?.roles).toEqual(['receptionist']))
     expect(result.current.hasPermission('canManageSettings')).toBe(false)
+  })
+
+  it('returns true for canManageInventory', async () => {
+    const { result } = renderHook(() => useAuthContext(), { wrapper })
+    await waitFor(() => expect(result.current.profile?.roles).toEqual(['receptionist']))
+    expect(result.current.hasPermission('canManageInventory')).toBe(true)
   })
 })
 
@@ -198,7 +210,7 @@ describe('hasPermission — patient', () => {
   it('returns false for all known permissions', async () => {
     const { result } = renderHook(() => useAuthContext(), { wrapper })
     await waitFor(() => expect(result.current.profile?.roles).toEqual(['patient']))
-    const perms = ['canViewPatients', 'canManagePatients', 'canManageAgenda', 'canManageProfessionals', 'canViewFinancial', 'canManageSettings']
+    const perms = ['canViewPatients', 'canManagePatients', 'canManageAgenda', 'canManageProfessionals', 'canViewFinancial', 'canManageSettings', 'canManageInventory']
     for (const p of perms) {
       expect(result.current.hasPermission(p)).toBe(false)
     }

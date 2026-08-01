@@ -79,7 +79,7 @@ export default function StaffRoutes() {
       {/* Estoque (módulo inventory) */}
       <Route path={APP_ROUTES.staff.inventory} element={
         <RequireModule module="inventory">
-          <RequireAuth permission="canManageAgenda"><EstoquePage /></RequireAuth>
+          <RequireAuth permission="canManageInventory"><EstoquePage /></RequireAuth>
         </RequireModule>
       } />
 

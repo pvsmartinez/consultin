@@ -119,8 +119,18 @@ function materialToForm(material: InventoryMaterial): MaterialFormState {
 }
 
 export default function EstoquePage() {
-  const { data: materials = [], isLoading: loadingMaterials } = useInventoryMaterials()
-  const { data: movements = [], isLoading: loadingMovements } = useInventoryMovements(undefined, 18)
+  const {
+    data: materials = [],
+    isLoading: loadingMaterials,
+    isError: materialsError,
+    refetch: refetchMaterials,
+  } = useInventoryMaterials()
+  const {
+    data: movements = [],
+    isLoading: loadingMovements,
+    isError: movementsError,
+    refetch: refetchMovements,
+  } = useInventoryMovements(undefined, 18)
   const createMaterial = useCreateInventoryMaterial()
   const updateMaterial = useUpdateInventoryMaterial()
   const createMovement = useCreateInventoryMovement()
@@ -364,6 +374,19 @@ export default function EstoquePage() {
           <div className="space-y-3">
             {loadingMaterials ? (
               <EmptyStateCard title="Carregando materiais" description="Buscando o estoque da clínica." />
+            ) : materialsError ? (
+              <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4" role="alert">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-rose-800">Não foi possível carregar os materiais do estoque.</p>
+                  <button
+                    type="button"
+                    onClick={() => { void refetchMaterials() }}
+                    className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              </section>
             ) : filteredMaterials.length === 0 ? (
               <EmptyStateCard
                 title="Nenhum material encontrado"
@@ -557,6 +580,17 @@ export default function EstoquePage() {
             <div className="space-y-3">
               {loadingMovements ? (
                 <p className="text-sm text-slate-500">Carregando movimentações...</p>
+              ) : movementsError ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between" role="alert">
+                  <span>Não foi possível carregar as movimentações.</span>
+                  <button
+                    type="button"
+                    onClick={() => { void refetchMovements() }}
+                    className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
               ) : movements.length === 0 ? (
                 <p className="text-sm text-slate-500">Nenhuma movimentação registrada ainda.</p>
               ) : (

@@ -7,8 +7,9 @@ import type { FieldErrors } from 'react-hook-form'
 import { X, Plus, RepeatOnce, Warning, UserPlus, CurrencyCircleDollar, PencilSimple, ClipboardText, IdentificationCard, Package, CheckCircle, Trash } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { format, parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
-import { fromZonedTime } from 'date-fns-tz'
+import { parseISO, addMinutes, addDays, addWeeks, addMonths } from 'date-fns'
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz'
+import { TZ_BR } from '../../utils/date'
 import Input from '../ui/Input'
 import TextArea from '../ui/TextArea'
 import AppointmentPaymentModal from './AppointmentPaymentModal'
@@ -127,7 +128,7 @@ function formatMoneyPreview(value?: string): string {
 }
 
 function formatAppointmentPreview(startsAt: string, endsAt: string): string {
-  return `${format(parseISO(startsAt), 'dd/MM')} · ${format(parseISO(startsAt), 'HH:mm')}–${format(parseISO(endsAt), 'HH:mm')}`
+  return `${formatInTimeZone(startsAt, TZ_BR, 'dd/MM')} · ${formatInTimeZone(startsAt, TZ_BR, 'HH:mm')}–${formatInTimeZone(endsAt, TZ_BR, 'HH:mm')}`
 }
 
 function SummaryChip({ label, value }: { label: string; value: string }) {
@@ -274,7 +275,12 @@ export default function AppointmentModal({
     [appointmentInventoryMovements],
   )
   const currentPatientId = selectedPatient?.id ?? watchedPatientId ?? appointment?.patientId ?? ''
-  const { appointments: patientAppointments = [], loading: loadingPatientAppointments } = usePatientAppointments(currentPatientId)
+  const {
+    appointments: patientAppointments = [],
+    loading: loadingPatientAppointments,
+    isError: patientAppointmentsError,
+    refetch: refetchPatientAppointments,
+  } = usePatientAppointments(currentPatientId)
   const { itemsQuery: patientClinicalItemsQuery } = usePatientClinicalItems(currentPatientId)
   const canAutoHideProfessional = !hasStaff && activeProfessionals.length === 1
   const hasActiveProfessional = activeProfessionals.length > 0
@@ -350,8 +356,8 @@ export default function AppointmentModal({
       reset({
         patientId:       appointment.patientId,
         professionalId:  appointment.professionalId,
-        date:            format(start, 'yyyy-MM-dd'),
-        startTime:       format(start, 'HH:mm'),
+        date:            formatInTimeZone(appointment.startsAt, TZ_BR, 'yyyy-MM-dd'),
+        startTime:       formatInTimeZone(appointment.startsAt, TZ_BR, 'HH:mm'),
         durationMin:     String(diffMin),
         status:          appointment.status,
         notes:           appointment.notes ?? '',
@@ -376,7 +382,7 @@ export default function AppointmentModal({
       reset({
         patientId:       initialPatientId ?? '',
         professionalId:  initialProfessionalId ?? '',
-        date:            initialDate ?? format(new Date(), 'yyyy-MM-dd'),
+        date:            initialDate ?? formatInTimeZone(new Date().toISOString(), TZ_BR, 'yyyy-MM-dd'),
         startTime:       initialTime ?? defaultTimeSlot(),
         durationMin:     String(initialDurationMin ?? 30),
         status:          'scheduled',
@@ -790,12 +796,12 @@ export default function AppointmentModal({
                     <div className="grid gap-2.5 sm:grid-cols-3">
                       <SummaryChip
                         label="Data"
-                        value={previewStartsAt ? format(parseISO(previewStartsAt), 'dd/MM/yyyy') : 'Não definida'}
+                        value={previewStartsAt ? formatInTimeZone(previewStartsAt, TZ_BR, 'dd/MM/yyyy') : 'Não definida'}
                       />
                       <SummaryChip
                         label="Horário"
                         value={previewStartsAt && previewEndsAt
-                          ? `${format(parseISO(previewStartsAt), 'HH:mm')}–${format(parseISO(previewEndsAt), 'HH:mm')}`
+                          ? `${formatInTimeZone(previewStartsAt, TZ_BR, 'HH:mm')}–${formatInTimeZone(previewEndsAt, TZ_BR, 'HH:mm')}`
                           : 'Não definido'}
                       />
                       <SummaryChip
@@ -847,6 +853,17 @@ export default function AppointmentModal({
                   >
                     {loadingPatientAppointments ? (
                       <p className="text-sm text-gray-400">Carregando histórico...</p>
+                    ) : patientAppointmentsError ? (
+                      <div className="flex flex-col gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+                        <span>Não foi possível carregar o histórico do paciente.</span>
+                        <button
+                          type="button"
+                          onClick={() => { void refetchPatientAppointments() }}
+                          className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+                        >
+                          Tentar novamente
+                        </button>
+                      </div>
                     ) : otherPatientAppointments.length === 0 ? (
                       <p className="rounded-2xl border border-dashed border-gray-200 bg-[#f8fafb] px-4 py-4 text-sm text-gray-400">
                         Sem outras consultas.
@@ -931,7 +948,7 @@ export default function AppointmentModal({
                       </p>
                       <p className="mt-1 text-sm text-gray-500">
                         {latestClinicalItem
-                          ? `${format(parseISO(latestClinicalItem.createdAt), 'dd/MM/yyyy')} · ${latestClinicalItem.createdByName ?? 'equipe'}`
+                          ? `${formatInTimeZone(latestClinicalItem.createdAt, TZ_BR, 'dd/MM/yyyy')} · ${latestClinicalItem.createdByName ?? 'equipe'}`
                           : 'Use o prontuário para emitir os documentos.'}
                       </p>
                     </div>

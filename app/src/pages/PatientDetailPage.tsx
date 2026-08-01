@@ -21,7 +21,7 @@ import AppointmentModal from '../components/appointments/AppointmentModal'
 import { usePatient } from '../hooks/usePatients'
 import { usePatientAppointments } from '../hooks/useAppointments'
 import { useClinic } from '../hooks/useClinic'
-import { formatDate, formatDateTime } from '../utils/date'
+import { formatDate, formatDateTime, brDateToIso } from '../utils/date'
 import {
   SEX_LABELS,
   APPOINTMENT_STATUS_LABELS,
@@ -43,7 +43,7 @@ function hasCustomFieldValue(value: unknown) {
 function formatCustomFieldValue(type: string, value: unknown) {
   if (Array.isArray(value)) return value.join(', ')
   if (type === 'boolean') return value ? 'Sim' : 'Não'
-  if (type === 'date' && typeof value === 'string') return formatDate(`${value}T00:00:00`)
+  if (type === 'date' && typeof value === 'string') return formatDate(brDateToIso(value))
   if (typeof value === 'string') return value
   if (typeof value === 'number') return String(value)
   return JSON.stringify(value)
@@ -145,7 +145,12 @@ export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { patient, loading } = usePatient(id!)
-  const { appointments, loading: loadingApts } = usePatientAppointments(id!)
+  const {
+    appointments,
+    loading: loadingApts,
+    isError: appointmentsError,
+    refetch: refetchAppointments,
+  } = usePatientAppointments(id!)
   const { data: clinic } = useClinic()
   const [scheduling, setScheduling] = useState(false)
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
@@ -170,7 +175,7 @@ export default function PatientDetailPage() {
 
   const age = patient.birthDate
     ? Math.floor(
-        (Date.now() - new Date(`${patient.birthDate}T00:00:00`).getTime())
+        (Date.now() - new Date(brDateToIso(patient.birthDate)).getTime())
           / (1000 * 60 * 60 * 24 * 365.25),
       )
     : null
@@ -205,7 +210,7 @@ export default function PatientDetailPage() {
   const headerBadges = [
     age !== null ? `${age} anos` : null,
     patient.sex ? SEX_LABELS[patient.sex] : null,
-    patient.birthDate ? formatDate(`${patient.birthDate}T00:00:00`) : null,
+    patient.birthDate ? formatDate(brDateToIso(patient.birthDate)) : null,
   ].filter(Boolean)
   const whatsappHref = patient.phone
     ? (() => {
@@ -396,7 +401,7 @@ export default function PatientDetailPage() {
               <InfoRow label="RG" value={patient.rg} copyable />
               <InfoRow
                 label="Nascimento"
-                value={patient.birthDate ? formatDate(`${patient.birthDate}T00:00:00`) : null}
+                value={patient.birthDate ? formatDate(brDateToIso(patient.birthDate)) : null}
               />
               <InfoRow label="Sexo" value={patient.sex ? SEX_LABELS[patient.sex] : null} />
             </dl>
@@ -474,6 +479,17 @@ export default function PatientDetailPage() {
         >
           {loadingApts ? (
             <p className="text-sm text-gray-400">Carregando...</p>
+          ) : appointmentsError ? (
+            <div className="flex flex-col gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+              <span>Não foi possível carregar o histórico de consultas.</span>
+              <button
+                type="button"
+                onClick={() => { void refetchAppointments() }}
+                className="self-start rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 sm:self-auto"
+              >
+                Tentar novamente
+              </button>
+            </div>
           ) : appointments.length === 0 ? (
             <div className="py-6 text-center">
               <CalendarBlank size={32} className="mx-auto mb-2 text-gray-200" />
