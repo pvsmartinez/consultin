@@ -26,7 +26,7 @@ vi.mock('../services/supabase', () => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import PaginaPublicaTab from '../pages-v1/settings/PaginaPublicaTab'
+import PaginaPublicaTab from '../pages/settings/PaginaPublicaTab'
 
 function makeClinic(): Clinic {
   return {

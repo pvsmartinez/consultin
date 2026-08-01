@@ -16,19 +16,19 @@ vi.mock('../hooks/useClinicModules', () => ({
   useClinicModules: () => useClinicModulesMock(),
 }))
 
-vi.mock('../pages-v1/settings/DadosTab', () => ({ default: () => <div>DadosTab</div> }))
-vi.mock('../pages-v1/settings/DocumentosTab', () => ({ default: () => <div>DocumentosTab</div> }))
-vi.mock('../pages-v1/settings/AgendaTab', () => ({ default: () => <div>AgendaTab</div> }))
-vi.mock('../pages-v1/settings/DisponibilidadeTab', () => ({ default: () => <div>DisponibilidadeTab</div> }))
-vi.mock('../pages-v1/settings/SalasTab', () => ({ default: () => <div>SalasTab</div> }))
-vi.mock('../pages-v1/settings/ServicosTab', () => ({ default: () => <div>ServicosTab</div> }))
-vi.mock('../pages-v1/settings/PagamentoTab', () => ({ default: () => <div>PagamentoTab</div> }))
-vi.mock('../pages-v1/settings/WhatsAppTab', () => ({ default: () => <div>WhatsAppTab</div> }))
-vi.mock('../pages-v1/settings/NotificacoesTab', () => ({ default: () => <div>NotificacoesTab</div> }))
-vi.mock('../pages-v1/settings/UsuariosTab', () => ({ default: () => <div>UsuariosTab</div> }))
-vi.mock('../pages-v1/settings/AnamnesisTab', () => ({ default: () => <div>AnamnesisTab</div> }))
-vi.mock('../pages-v1/settings/PaginaPublicaTab', () => ({ default: () => <div>PaginaPublicaTab</div> }))
-vi.mock('../pages-v1/settings/CamposTab', () => ({
+vi.mock('../pages/settings/DadosTab', () => ({ default: () => <div>DadosTab</div> }))
+vi.mock('../pages/settings/DocumentosTab', () => ({ default: () => <div>DocumentosTab</div> }))
+vi.mock('../pages/settings/AgendaTab', () => ({ default: () => <div>AgendaTab</div> }))
+vi.mock('../pages/settings/DisponibilidadeTab', () => ({ default: () => <div>DisponibilidadeTab</div> }))
+vi.mock('../pages/settings/SalasTab', () => ({ default: () => <div>SalasTab</div> }))
+vi.mock('../pages/settings/ServicosTab', () => ({ default: () => <div>ServicosTab</div> }))
+vi.mock('../pages/settings/PagamentoTab', () => ({ default: () => <div>PagamentoTab</div> }))
+vi.mock('../pages/settings/WhatsAppTab', () => ({ default: () => <div>WhatsAppTab</div> }))
+vi.mock('../pages/settings/NotificacoesTab', () => ({ default: () => <div>NotificacoesTab</div> }))
+vi.mock('../pages/settings/UsuariosTab', () => ({ default: () => <div>UsuariosTab</div> }))
+vi.mock('../pages/settings/AnamnesisTab', () => ({ default: () => <div>AnamnesisTab</div> }))
+vi.mock('../pages/settings/PaginaPublicaTab', () => ({ default: () => <div>PaginaPublicaTab</div> }))
+vi.mock('../pages/settings/CamposTab', () => ({
   default: ({ fieldEntity }: { fieldEntity?: string }) => <div>CamposTab:{fieldEntity ?? 'none'}</div>,
 }))
 

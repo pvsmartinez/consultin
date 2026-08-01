@@ -97,9 +97,9 @@ vi.mock('sonner', () => ({
   },
 }))
 
-import LandingPage from '../pages-v1/LandingPage'
-import CadastroClinicaPage from '../pages-v1/CadastroClinicaPage'
-import FinanceiroTab from '../pages-v1/settings/FinanceiroTab'
+import LandingPage from '../pages/LandingPage'
+import CadastroClinicaPage from '../pages/CadastroClinicaPage'
+import FinanceiroTab from '../pages/settings/FinanceiroTab'
 
 function makeQC() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })

@@ -190,7 +190,7 @@ describe('Flow: Recepcionista — agendamento de consulta', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('cria consulta com profissional e slot selecionados', async () => {
-    const { default: AgendarConsultaPage } = await import('../pages-v1/AgendarConsultaPage')
+    const { default: AgendarConsultaPage } = await import('../pages/AgendarConsultaPage')
     render(
       <QueryClientProvider client={makeQC()}>
         <MemoryRouter>

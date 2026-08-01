@@ -19,11 +19,11 @@ vi.mock('../components/ui/PageLoader', () => ({
   PageLoader: () => <div data-testid="page-loader" />,
 }))
 
-vi.mock('../pages-v1/NovaSenhaPage', () => ({
+vi.mock('../pages/NovaSenhaPage', () => ({
   default: () => <div data-testid="nova-senha-page" />,
 }))
 
-vi.mock('../pages-v1/OnboardingPage', () => ({
+vi.mock('../pages/OnboardingPage', () => ({
   default: () => <div data-testid="onboarding-page" />,
 }))
 

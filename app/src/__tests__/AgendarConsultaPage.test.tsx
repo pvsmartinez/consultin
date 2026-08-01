@@ -84,7 +84,7 @@ vi.mock('../services/supabase', () => ({
   },
 }))
 
-import AgendarConsultaPage from '../pages-v1/AgendarConsultaPage'
+import AgendarConsultaPage from '../pages/AgendarConsultaPage'
 
 function makeQC() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })

@@ -27,7 +27,7 @@ vi.mock('../components/ui/ConfirmDialog', () => ({
   default: () => null,
 }))
 
-import UsuariosTab from '../pages-v1/settings/UsuariosTab'
+import UsuariosTab from '../pages/settings/UsuariosTab'
 
 function setup() {
   render(

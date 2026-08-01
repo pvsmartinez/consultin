@@ -36,7 +36,7 @@ vi.mock('../services/supabase', () => ({
   },
 }))
 
-import NovaSenhaPage from '../pages-v1/NovaSenhaPage'
+import NovaSenhaPage from '../pages/NovaSenhaPage'
 
 // Helper to set the window hash before rendering
 function renderPageWithHash(hash = '') {

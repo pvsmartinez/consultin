@@ -64,7 +64,7 @@ vi.mock('../components/ui/ConfirmDialog', () => ({
   default: () => null,
 }))
 
-import EquipePage from '../pages-v1/EquipePage'
+import EquipePage from '../pages/EquipePage'
 
 function makeQC() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })

@@ -144,7 +144,7 @@ describe('Flow: Novo owner — cadastro de clínica', () => {
   })
 
   it('abre a tela pública de cadastro com CTA principal', async () => {
-    const { default: CadastroClinicaPage } = await import('../pages-v1/CadastroClinicaPage')
+    const { default: CadastroClinicaPage } = await import('../pages/CadastroClinicaPage')
     render(
       <MemoryRouter>
         <CadastroClinicaPage />
@@ -159,7 +159,7 @@ describe('Flow: Novo owner — cadastro de clínica', () => {
 
 describe('Flow: Novo owner — página de boas-vindas', () => {
   it('mostra mensagem de confirmação e link para voltar ao início', async () => {
-    const { default: BemVindoPage } = await import('../pages-v1/BemVindoPage')
+    const { default: BemVindoPage } = await import('../pages/BemVindoPage')
     render(<MemoryRouter><BemVindoPage /></MemoryRouter>)
 
     expect(screen.getByRole('heading', { name: /clínica cadastrada/i })).toBeInTheDocument()
@@ -181,7 +181,7 @@ describe('Flow: Novo owner — primeiro acesso à equipe', () => {
   })
 
   it('lista equipe vazia e exibe botão para adicionar profissional', async () => {
-    const { default: EquipePage } = await import('../pages-v1/EquipePage')
+    const { default: EquipePage } = await import('../pages/EquipePage')
     render(
       <QueryClientProvider client={makeQC()}>
         <MemoryRouter>
@@ -198,7 +198,7 @@ describe('Flow: Novo owner — primeiro acesso à equipe', () => {
   it('abre modal ao clicar em Novo Profissional e fecha após salvar', async () => {
     mockCreateProfessional.mockResolvedValue(undefined)
 
-    const { default: EquipePage } = await import('../pages-v1/EquipePage')
+    const { default: EquipePage } = await import('../pages/EquipePage')
     render(
       <QueryClientProvider client={makeQC()}>
         <MemoryRouter>

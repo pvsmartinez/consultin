@@ -4,14 +4,14 @@ import PublicAnalyticsTracker from '../components/analytics/PublicAnalyticsTrack
 import { PageLoader } from '../components/ui/PageLoader'
 import { APP_ROUTES } from '../lib/appRoutes'
 
-const LandingPage         = lazy(() => import('../pages-v1/LandingPage'))
-const LoginPage           = lazy(() => import('../pages-v1/LoginPage'))
-const CadastroClinicaPage = lazy(() => import('../pages-v1/CadastroClinicaPage'))
-const BemVindoPage        = lazy(() => import('../pages-v1/BemVindoPage'))
-const EmailVerificationPage = lazy(() => import('../pages-v1/EmailVerificationPage'))
-const ClinicPublicPage    = lazy(() => import('../pages-v1/ClinicPublicPage'))
-const PublicBookingPage   = lazy(() => import('../pages-v1/PublicBookingPage'))
-const PublicNotFoundPage  = lazy(() => import('../pages-v1/PublicNotFoundPage'))
+const LandingPage         = lazy(() => import('../pages/LandingPage'))
+const LoginPage           = lazy(() => import('../pages/LoginPage'))
+const CadastroClinicaPage = lazy(() => import('../pages/CadastroClinicaPage'))
+const BemVindoPage        = lazy(() => import('../pages/BemVindoPage'))
+const EmailVerificationPage = lazy(() => import('../pages/EmailVerificationPage'))
+const ClinicPublicPage    = lazy(() => import('../pages/ClinicPublicPage'))
+const PublicBookingPage   = lazy(() => import('../pages/PublicBookingPage'))
+const PublicNotFoundPage  = lazy(() => import('../pages/PublicNotFoundPage'))
 
 export default function PublicRoutes() {
   return (

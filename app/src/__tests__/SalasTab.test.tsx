@@ -24,7 +24,7 @@ vi.mock('../components/ui/ConfirmDialog', () => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import SalasTab from '../pages-v1/settings/SalasTab'
+import SalasTab from '../pages/settings/SalasTab'
 
 function setup() {
   render(

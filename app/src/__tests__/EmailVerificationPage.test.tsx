@@ -29,7 +29,7 @@ vi.mock('../components/seo/Seo', () => ({
   Seo: () => null,
 }))
 
-import EmailVerificationPage from '../pages-v1/EmailVerificationPage'
+import EmailVerificationPage from '../pages/EmailVerificationPage'
 
 function renderPage() {
   return render(

@@ -102,7 +102,7 @@ vi.mock('../components/appointments/AppointmentModal', () => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import PatientDetailPage from '../pages-v1/PatientDetailPage'
+import PatientDetailPage from '../pages/PatientDetailPage'
 
 function makeQC() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })

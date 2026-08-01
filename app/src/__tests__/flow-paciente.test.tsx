@@ -172,7 +172,7 @@ describe('Flow: Paciente — agendamento online (PublicBookingPage)', () => {
   })
 
   it('preenche formulário e agenda consulta com sucesso', async () => {
-    const { default: PublicBookingPage } = await import('../pages-v1/PublicBookingPage')
+    const { default: PublicBookingPage } = await import('../pages/PublicBookingPage')
     render(
       <QueryClientProvider client={makeQC()}>
         <MemoryRouter>
@@ -208,7 +208,7 @@ describe('Flow: Paciente — minhas consultas (MyAppointmentsPage)', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('lista consultas próximas e passadas', async () => {
-    const { default: MyAppointmentsPage } = await import('../pages-v1/MyAppointmentsPage')
+    const { default: MyAppointmentsPage } = await import('../pages/MyAppointmentsPage')
     render(
       <QueryClientProvider client={makeQC()}>
         <MemoryRouter>
@@ -226,7 +226,7 @@ describe('Flow: Paciente — minhas consultas (MyAppointmentsPage)', () => {
   it('permite cancelar consulta 48h antes (dentro do prazo)', async () => {
     mockUpdateStatus.mutate.mockImplementation((_args, { onSuccess }) => onSuccess?.())
 
-    const { default: MyAppointmentsPage } = await import('../pages-v1/MyAppointmentsPage')
+    const { default: MyAppointmentsPage } = await import('../pages/MyAppointmentsPage')
     render(
       <QueryClientProvider client={makeQC()}>
         <MemoryRouter>

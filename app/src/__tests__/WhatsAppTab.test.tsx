@@ -24,7 +24,7 @@ vi.mock('@tanstack/react-query', async () => {
 })
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import WhatsAppTab from '../pages-v1/settings/WhatsAppTab'
+import WhatsAppTab from '../pages/settings/WhatsAppTab'
 
 function makeClinic(overrides: Partial<Clinic> = {}): Clinic {
   return {

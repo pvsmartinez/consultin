@@ -14,7 +14,7 @@ vi.mock('../components/availability/AvailabilityEditor', () => ({
   ),
 }))
 
-import DisponibilidadeTab from '../pages-v1/settings/DisponibilidadeTab'
+import DisponibilidadeTab from '../pages/settings/DisponibilidadeTab'
 
 const PROFS = [
   { id: 'p1', name: 'Dr. Costa', specialty: 'Clínica Geral', active: true },

@@ -13,13 +13,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 vi.mock('../hooks/useClinic', () => ({
   useClinic: vi.fn(),
 }))
-vi.mock('../pages-v1/settings/FinanceiroTab', () => ({
+vi.mock('../pages/settings/FinanceiroTab', () => ({
   default: ({ clinic }: { clinic: unknown }) =>
     <div data-testid="financeiro-tab">{JSON.stringify(clinic)}</div>,
 }))
 
 import { useClinic } from '../hooks/useClinic'
-import AssinaturaPage from '../pages-v1/AssinaturaPage'
+import AssinaturaPage from '../pages/AssinaturaPage'
 
 function makeQC() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })

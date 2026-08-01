@@ -50,7 +50,7 @@ vi.mock('../components/seo/Seo', () => ({
   Seo: () => null,
 }))
 
-import CadastroClinicaPage from '../pages-v1/CadastroClinicaPage'
+import CadastroClinicaPage from '../pages/CadastroClinicaPage'
 
 function renderPage() {
   return render(

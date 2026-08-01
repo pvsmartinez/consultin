@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import BemVindoPage from '../pages-v1/BemVindoPage'
+import BemVindoPage from '../pages/BemVindoPage'
 
 vi.mock('../components/seo/Seo', () => ({
   Seo: () => null,

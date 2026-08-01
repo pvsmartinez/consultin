@@ -1,4 +1,4 @@
-import SalasTab from '../pages-v1/settings/SalasTab'
+import SalasTab from './settings/SalasTab'
 
 export default function SalasPage() {
   return (

@@ -14,7 +14,7 @@ vi.mock('../lib/gtag', () => ({
   gtagEvent: vi.fn(),
 }))
 
-import LandingPage from '../pages-v1/LandingPage'
+import LandingPage from '../pages/LandingPage'
 
 function renderPage() {
   return render(

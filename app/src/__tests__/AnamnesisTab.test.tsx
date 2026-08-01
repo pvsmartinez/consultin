@@ -8,7 +8,7 @@ const mockUpdate = { mutateAsync: vi.fn() }
 vi.mock('../hooks/useClinic', () => ({ useClinic: () => ({ update: mockUpdate }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import AnamnesisTab from '../pages-v1/settings/AnamnesisTab'
+import AnamnesisTab from '../pages/settings/AnamnesisTab'
 
 function makeClinic(fields: Clinic['anamnesisFields'] = []): Clinic {
   return {

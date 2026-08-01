@@ -11,8 +11,8 @@ import ErrorBoundary    from './components/ErrorBoundary'
 import { EMAIL_VERIFICATION_PATH } from './lib/emailVerification'
 import { APP_ROUTES, isProtectedAppPath } from './lib/appRoutes'
 
-const NovaSenhaPage       = lazy(() => import('./pages-v1/NovaSenhaPage'))
-const OnboardingPage      = lazy(() => import('./pages-v1/OnboardingPage'))
+const NovaSenhaPage       = lazy(() => import('./pages/NovaSenhaPage'))
+const OnboardingPage      = lazy(() => import('./pages/OnboardingPage'))
 const AppLayout           = lazy(() => import('./components/layout/AppLayout'))
 const PatientPortalLayout = lazy(() => import('./components/layout/PatientPortalLayout'))
 

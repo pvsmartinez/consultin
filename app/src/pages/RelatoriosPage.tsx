@@ -1,5 +1,5 @@
 import { ChartBar, WhatsappLogo, ShieldCheck } from '@phosphor-icons/react'
-import RelatoriosContent from '../pages-v1/RelatoriosPage'
+import RelatoriosContent from './RelatoriosContent'
 
 export default function RelatoriosPage() {
 	return (

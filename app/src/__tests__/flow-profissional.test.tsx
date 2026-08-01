@@ -128,7 +128,7 @@ describe('Flow: Profissional — minha disponibilidade', () => {
       isLoading: false,
     })
 
-    const { default: MinhaDisponibilidadePage } = await import('../pages-v1/MinhaDisponibilidadePage')
+    const { default: MinhaDisponibilidadePage } = await import('../pages/MinhaDisponibilidadePage')
     wrapWithProviders(<MinhaDisponibilidadePage />)
 
     await waitFor(() => {

@@ -29,7 +29,7 @@ vi.mock('../contexts/AuthContext', () => ({
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import NotificacoesTab from '../pages-v1/settings/NotificacoesTab'
+import NotificacoesTab from '../pages/settings/NotificacoesTab'
 
 function setup() {
   render(

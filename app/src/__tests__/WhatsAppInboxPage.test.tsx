@@ -46,7 +46,7 @@ vi.mock('../lib/settingsNavigation', () => ({
 }))
 
 import { useClinic } from '../hooks/useClinic'
-import WhatsAppInboxPage from '../pages-v1/WhatsAppInboxPage'
+import WhatsAppInboxPage from '../pages/WhatsAppInboxPage'
 
 const MOCK_CLINIC = { id: 'clinic-1', name: 'Clínica Teste', waAttendantInbox: true, whatsappEnabled: true }
 const MOCK_SESSION = {

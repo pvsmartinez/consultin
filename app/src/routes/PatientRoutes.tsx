@@ -4,11 +4,11 @@ import { PageLoader } from '../components/ui/PageLoader'
 import { useMyPatientClinics } from '../hooks/usePatients'
 import { APP_ROUTES } from '../lib/appRoutes'
 
-const MyAppointmentsPage = lazy(() => import('../pages-v1/MyAppointmentsPage'))
-const AgendarConsultaPage = lazy(() => import('../pages-v1/AgendarConsultaPage'))
-const MeuPerfilPage      = lazy(() => import('../pages-v1/MeuPerfilPage'))
-const PatientClinicsPage = lazy(() => import('../pages-v1/PatientClinicsPage'))
-const AccessDeniedPage   = lazy(() => import('../pages-v1/AccessDeniedPage'))
+const MyAppointmentsPage = lazy(() => import('../pages/MyAppointmentsPage'))
+const AgendarConsultaPage = lazy(() => import('../pages/AgendarConsultaPage'))
+const MeuPerfilPage      = lazy(() => import('../pages/MeuPerfilPage'))
+const PatientClinicsPage = lazy(() => import('../pages/PatientClinicsPage'))
+const AccessDeniedPage   = lazy(() => import('../pages/AccessDeniedPage'))
 
 function PatientHomeRedirect() {
   const { data: clinics = [], isLoading } = useMyPatientClinics()

@@ -27,7 +27,7 @@ vi.mock('../utils/validators', () => ({
   formatPhone: (v: string) => v,
 }))
 
-import FinanceiroTab from '../pages-v1/settings/FinanceiroTab'
+import FinanceiroTab from '../pages/settings/FinanceiroTab'
 
 function makeClinic(overrides: Partial<Clinic> = {}): Clinic {
   return {

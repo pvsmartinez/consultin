@@ -74,7 +74,7 @@ vi.mock('jspdf', () => ({
 vi.mock('jspdf-autotable', () => ({ default: vi.fn() }))
 
 import { useReportData, useAdministrativeSnapshots } from '../hooks/useRelatorios'
-import RelatoriosPage from '../pages-v1/RelatoriosPage'
+import RelatoriosPage from '../pages/RelatoriosPage'
 
 const MOCK_ROW = {
   id: 'appt-1',

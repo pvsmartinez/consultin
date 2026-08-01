@@ -10,7 +10,7 @@ vi.mock('../components/fields/EntityFieldsPanel', () => ({
     <div data-testid="entity-fields-panel" data-entity={entityLabel === 'paciente' ? 'pacientes' : 'profissionais'} />,
 }))
 
-import CamposTab from '../pages-v1/settings/CamposTab'
+import CamposTab from '../pages/settings/CamposTab'
 
 function makeClinic(): Clinic {
   return {

@@ -8,7 +8,7 @@ const mockUpdate = { mutateAsync: vi.fn() }
 vi.mock('../hooks/useClinic', () => ({ useClinic: () => ({ update: mockUpdate }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-import AgendaTab from '../pages-v1/settings/AgendaTab'
+import AgendaTab from '../pages/settings/AgendaTab'
 
 function makeClinic(overrides: Partial<Clinic> = {}): Clinic {
   return {

@@ -22,9 +22,9 @@ const MinhaDisponibilidadePage = lazy(() => import('../pages/MinhaDisponibilidad
 const MinhaContaPage           = lazy(() => import('../pages/MinhaContaPage'))
 
 // ─── v1 pages still in use ───────────────────────────────────────────────────
-const PatientAnamnesisPage    = lazy(() => import('../pages-v1/PatientAnamnesisPage'))
-const AccessDeniedPage        = lazy(() => import('../pages-v1/AccessDeniedPage'))
-const AssinaturaPage          = lazy(() => import('../pages-v1/AssinaturaPage'))
+const PatientAnamnesisPage    = lazy(() => import('../pages/PatientAnamnesisPage'))
+const AccessDeniedPage        = lazy(() => import('../pages/AccessDeniedPage'))
+const AssinaturaPage          = lazy(() => import('../pages/AssinaturaPage'))
 
 // ─── Staff routes (rendered inside <AppLayout>) ───────────────────────────────
 // Suspense boundary lives in App.tsx so the sidebar stays visible during

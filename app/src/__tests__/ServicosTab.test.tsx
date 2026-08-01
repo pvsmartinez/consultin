@@ -24,7 +24,7 @@ vi.mock('../components/ui/ConfirmDialog', () => ({
   default: () => null,
 }))
 
-import ServicosTab from '../pages-v1/settings/ServicosTab'
+import ServicosTab from '../pages/settings/ServicosTab'
 
 function setup() {
   render(
