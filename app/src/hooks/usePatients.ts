@@ -14,7 +14,7 @@ const PATIENT_LIST_COLS =
   'address_city,address_state,address_zip,notes,custom_fields,created_at'
 
 export const PATIENTS_PAGE_SIZE = 50
-export const PATIENT_SEARCH_LIMIT = 8
+const PATIENT_SEARCH_LIMIT = 8
 
 // Map camelCase PatientInput -> snake_case for DB
 function mapInput(input: PatientInput) {

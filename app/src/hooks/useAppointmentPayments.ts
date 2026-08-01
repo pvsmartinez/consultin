@@ -50,28 +50,6 @@ export function useAppointmentPayments(appointmentId: string | undefined) {
   })
 }
 
-/** Lista todos os pagamentos de consultas da clínica no mês */
-export function useClinicAppointmentPayments(clinicId: string | undefined, month: Date) {
-  const start = new Date(month.getFullYear(), month.getMonth(), 1).toISOString()
-  const end   = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59).toISOString()
-
-  return useQuery({
-    queryKey: QK.financial.clinicPayments(clinicId, start),
-    enabled: !!clinicId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('appointment_payments')
-        .select('*, appointment:appointments(id, starts_at, patient:patients(id,name), professional:professionals(id,name))')
-        .eq('clinic_id', clinicId!)
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      return (data ?? []).map((r: Record<string, unknown>) => mapRow(r))
-    },
-  })
-}
-
 // ─── Input types ──────────────────────────────────────────────────────────────
 
 export interface CreateAppointmentChargeInput {

@@ -37,7 +37,7 @@ function itemTypeToTemplateKey(itemType: ClinicalItemType): TemplateKey {
   }
 }
 
-export function mergeClinicDocumentTemplates(
+function mergeClinicDocumentTemplates(
   templates: Partial<ClinicDocumentTemplates> | null | undefined,
 ): ClinicDocumentTemplates {
   return {

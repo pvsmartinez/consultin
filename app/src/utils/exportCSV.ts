@@ -3,7 +3,6 @@
  * Generic primitives (arrayToCsv, downloadFile, parseCSV) live in @pvsmartinez/shared.
  */
 import { arrayToCsv, downloadFile } from '@pvsmartinez/shared'
-export { parseCSV } from '@pvsmartinez/shared'
 
 // ─── Appointment export ──────────────────────────────────────────────────────
 

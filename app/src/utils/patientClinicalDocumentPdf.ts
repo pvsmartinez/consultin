@@ -17,7 +17,7 @@ interface PatientClinicalDocumentContext {
   professional?: { name: string | null; council: string | null }
 }
 
-export function resolvePatientClinicalDocumentBodySource(
+function resolvePatientClinicalDocumentBodySource(
   item: PatientClinicalItem,
   clinic: Pick<Clinic, 'documentTemplates'> | null,
 ) {

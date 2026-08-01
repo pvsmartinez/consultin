@@ -270,35 +270,3 @@ export function useAcceptInvite() {
     },
   })
 }
-
-// ─── useMyClinicMemberships ───────────────────────────────────────────────────
-// Returns all clinic memberships for the current user.
-// Professionals with multi-clinic: returns one entry per clinic.
-export function useMyClinicMemberships() {
-  const { session } = useAuthContext()
-  return useQuery({
-    queryKey: QK.clinic.myClinics(session?.user.id),
-    enabled: !!session?.user.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('user_clinic_memberships')
-        .select('*, clinics(id, name)')
-        .eq('user_id', session!.user.id)
-        .eq('active', true)
-        .order('created_at')
-      if (error) throw error
-      return (data ?? []).map((r) => {
-        const clinic = r.clinics as { id: string; name: string } | null
-        return {
-          id:             r.id as string,
-          userId:         r.user_id as string,
-          clinicId:       r.clinic_id as string,
-          clinicName:     clinic?.name ?? null,
-          professionalId: (r.professional_id as string) ?? null,
-          active:         r.active as boolean,
-          createdAt:      r.created_at as string,
-        }
-      })
-    },
-  })
-}
