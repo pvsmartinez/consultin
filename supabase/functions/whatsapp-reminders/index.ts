@@ -23,6 +23,10 @@ const SELF_URL     = SUPABASE_URL
 
 const TZ = 'America/Sao_Paulo'
 
+// Safety cap on how many appointments a single reminders run processes.
+// Prevents a growing install base from loading an unbounded day of data.
+const REMINDERS_MAX_APPOINTMENTS = 2000
+
 serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
@@ -47,7 +51,29 @@ serve(async (req) => {
   const startUTC = fromZonedTime(new Date(y, m, d, 0, 0, 0, 0),    TZ).toISOString()
   const endUTC   = fromZonedTime(new Date(y, m, d, 23, 59, 59, 999), TZ).toISOString()
 
-  // ── Fetch all appointments for the target date across all enabled clinics ──
+  // ── Which clinics have WhatsApp reminders enabled for this run ────────────
+  const { data: clinics, error: clinicsErr } = await supabase
+    .from('clinics')
+    .select('id, whatsapp_enabled, wa_reminders_d1, wa_reminders_d0, whatsapp_phone_number_id, wa_reminder_d1_text, wa_reminder_d0_text')
+    .eq('whatsapp_enabled', true)
+    .eq(type === 'd1' ? 'wa_reminders_d1' : 'wa_reminders_d0', true)
+
+  if (clinicsErr) {
+    console.error('[reminders] clinics query failed:', clinicsErr)
+    return jsonError('DB error fetching clinics', 500)
+  }
+
+  const enabledClinicMap = new Map(
+    (clinics ?? []).map((c) => [c.id, c as {
+      id: string
+      wa_reminder_d1_text: string | null
+      wa_reminder_d0_text: string | null
+    }])
+  )
+
+  const enabledClinicIds = [...enabledClinicMap.keys()]
+
+  // ── Fetch appointments for the target date, only for enabled clinics ──────
   const { data: appointments, error: apptErr } = await supabase
     .from('appointments')
     .select(`
@@ -58,10 +84,13 @@ serve(async (req) => {
       patient:patients ( id, name, phone ),
       professional:professionals ( name )
     `)
+    .in('clinic_id', enabledClinicIds)
     .gte('starts_at', startUTC)
     .lte('starts_at', endUTC)
     .in('status', ['scheduled', 'confirmed'])
     .not('patients.phone', 'is', null)
+    .order('starts_at')
+    .limit(REMINDERS_MAX_APPOINTMENTS)
 
   if (apptErr) {
     console.error('[reminders] appointment query failed:', apptErr)
@@ -71,23 +100,6 @@ serve(async (req) => {
   if (!appointments?.length) {
     return json({ sent: 0, message: 'No appointments found for target date' })
   }
-
-  // ── Fetch which clinics have WhatsApp reminders enabled ───────────────────
-  const clinicIds = [...new Set(appointments.map((a) => a.clinic_id))]
-  const { data: clinics } = await supabase
-    .from('clinics')
-    .select('id, whatsapp_enabled, wa_reminders_d1, wa_reminders_d0, whatsapp_phone_number_id, wa_reminder_d1_text, wa_reminder_d0_text')
-    .in('id', clinicIds)
-    .eq('whatsapp_enabled', true)
-    .eq(type === 'd1' ? 'wa_reminders_d1' : 'wa_reminders_d0', true)
-
-  const enabledClinicMap = new Map(
-    (clinics ?? []).map((c) => [c.id, c as {
-      id: string
-      wa_reminder_d1_text: string | null
-      wa_reminder_d0_text: string | null
-    }])
-  )
 
   let sent = 0
   let skipped = 0
