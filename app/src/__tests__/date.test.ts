@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDate, formatDateTime, formatTime, todayBR } from '../utils/date'
+import { formatDate, formatDateTime, formatTime, todayBR, weekRangeBR } from '../utils/date'
 
 /**
  * All tests use a fixed UTC timestamp so they're timezone-agnostic:
@@ -75,5 +75,29 @@ describe('todayBR', () => {
     const day = parseInt(todayBR().split('-')[2], 10)
     expect(day).toBeGreaterThanOrEqual(1)
     expect(day).toBeLessThanOrEqual(31)
+  })
+})
+
+describe('weekRangeBR', () => {
+  it('returns a Monday-starting 7-day range', () => {
+    // 2026-08-13 (Thursday) — week is 2026-08-10 (Mon) .. 2026-08-17
+    const { start, end } = weekRangeBR(new Date('2026-08-13T12:00:00.000Z'))
+    expect(start).toBe('2026-08-10T03:00:00.000Z')
+    expect(end).toBe('2026-08-17T03:00:00.000Z')
+    expect(new Date(end).getTime() - new Date(start).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
+  })
+
+  it('maps a São Paulo Sunday to the week starting the previous Monday', () => {
+    // 2026-08-16 18:00 SP = Sunday
+    const { start } = weekRangeBR(new Date('2026-08-16T21:00:00.000Z'))
+    expect(start).toBe('2026-08-10T03:00:00.000Z')
+  })
+
+  it('crosses weeks at São Paulo midnight, independent of machine timezone', () => {
+    // Sunday 23:59 SP (17T02:59Z) vs Monday 00:00 SP (17T03:00Z)
+    const late = weekRangeBR(new Date('2026-08-17T02:59:59.000Z'))
+    const early = weekRangeBR(new Date('2026-08-17T03:00:00.000Z'))
+    expect(late.start).toBe('2026-08-10T03:00:00.000Z')
+    expect(early.start).toBe('2026-08-17T03:00:00.000Z')
   })
 })

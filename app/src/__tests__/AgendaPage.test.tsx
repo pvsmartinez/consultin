@@ -62,7 +62,7 @@ describe('AgendaPage', () => {
     expect(calendarProps.mock.calls[0]?.[0]).toMatchObject({
       toolbar: false,
       view: 'week',
-      views: ['month', 'week', 'work_week', 'day'],
+      views: ['month', 'week', 'work_week', 'day', 'agenda'],
     })
   })
 
@@ -73,8 +73,10 @@ describe('AgendaPage', () => {
     act(() => props.onNavigate(new Date('2026-08-13T12:00:00')))
 
     const [start, end] = appointmentsQuery.mock.calls.at(-1)?.[0] as [string, string]
-    expect(new Date(start).getDay()).toBe(0)
-    expect(new Date(end).getDay()).toBe(0)
+    // pt-BR weeks start on Monday; bounds are São Paulo midnight, so the UTC
+    // weekday is stable regardless of the machine timezone running the tests.
+    expect(new Date(start).getUTCDay()).toBe(1)
+    expect(new Date(end).getUTCDay()).toBe(1)
     expect(new Date(end).getTime() - new Date(start).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
   })
 

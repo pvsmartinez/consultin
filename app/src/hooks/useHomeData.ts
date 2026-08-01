@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
+import { formatInTimeZone } from 'date-fns-tz'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useClinic } from './useClinic'
 import { useAppointmentsQuery, useMyProfessionalRecords } from './useAppointmentsMutations'
-import { TZ_BR, todayBR } from '../utils/date'
+import { TZ_BR, todayBR, weekRangeBR } from '../utils/date'
 import type { Appointment, AppointmentStatus } from '../types'
 
 type HomeAppointment = Appointment & { clinicName: string | null }
@@ -101,11 +101,13 @@ export function useHomeData(): HomeData {
 
   const today = todayBR()
   const dow = dowOf(today)
-  const mondayOffset = (dow + 6) % 7
-  const weekStart = addDaysStr(today, -mondayOffset)
-  const weekEnd = addDaysStr(weekStart, 6)
-  const startsFrom = fromZonedTime(`${weekStart}T00:00:00`, TZ_BR).toISOString()
-  const startsUntil = fromZonedTime(`${weekEnd}T23:59:59`, TZ_BR).toISOString()
+
+  // Shared Monday-starting São Paulo week — must match the Agenda's week range
+  // so both pages hit the same React Query cache key (no duplicate fetch).
+  const weekRange = weekRangeBR(new Date())
+  const startsFrom = weekRange.start
+  const startsUntil = weekRange.end
+  const weekStart = formatInTimeZone(new Date(startsFrom), TZ_BR, 'yyyy-MM-dd')
 
   const isPersonal = role === 'professional'
   const myClinicIds = myRecords.filter(r => r.clinicId === profile?.clinicId).map(r => r.id)

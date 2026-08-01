@@ -30,7 +30,8 @@ import { useRooms } from '../hooks/useRooms'
 import { useProfessionals } from '../hooks/useProfessionals'
 import UpgradeModal from '../components/billing/UpgradeModal'
 import { useClinicQuota } from '../hooks/useClinicQuota'
-import { TZ_BR } from '../utils/date'
+import { TZ_BR, weekRangeBR } from '../utils/date'
+import { useIsMobile, isMobileBreakpoint } from '../hooks/useIsMobile'
 import { APPOINTMENT_STATUS_LABELS, type Appointment, type AppointmentStatus } from '../types'
 import { getAppointmentSaveErrorMessage } from '../utils/appointmentErrors'
 import { fillMissingRoomSelections } from '../utils/agendaRoomSelections'
@@ -44,7 +45,7 @@ const PT_DAY_LABELS: Record<DayKey, string> = {
   sun: 'Domingo', mon: 'Segunda', tue: 'Terça', wed: 'Quarta',
   thu: 'Quinta', fri: 'Sexta', sat: 'Sábado',
 }
-type CalendarView = 'day' | 'week' | 'month'
+type CalendarView = 'day' | 'week' | 'month' | 'agenda'
 type DayBreakdown = 'none' | 'room' | 'professional'
 
 type AgendaCalendarResource = { id: string; title: string; color?: string }
@@ -62,7 +63,8 @@ type AgendaCalendarEvent = {
 const localizer = dateFnsLocalizer({
   format,
   parse,
-  startOfWeek,
+  // pt-BR: the calendar week starts on Monday (matches the queries below).
+  startOfWeek: (date: Date) => startOfWeek(date, { weekStartsOn: 1 }),
   getDay,
   locales: { 'pt-BR': ptBR },
 })
@@ -146,13 +148,14 @@ function getCalendarQueryRange(date: Date, view: CalendarView) {
   }
 
   if (view === 'month') {
-    const start = startOfWeek(startOfMonth(date))
-    const end = addDays(endOfWeek(endOfMonth(date)), 1)
+    const start = startOfWeek(startOfMonth(date), { weekStartsOn: 1 })
+    const end = addDays(endOfWeek(endOfMonth(date), { weekStartsOn: 1 }), 1)
     return { start: start.toISOString(), end: end.toISOString() }
   }
 
-  const start = startOfWeek(date)
-  return { start: start.toISOString(), end: addDays(start, 7).toISOString() }
+  // 'week' and 'agenda' (list) both cover the Monday-starting São Paulo week —
+  // the exact same range the Home page uses, so the query cache key matches.
+  return weekRangeBR(date)
 }
 
 function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
@@ -542,7 +545,9 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const today = new Date()
   const [calendarDate, setCalendarDate] = useState(today)
 
-  const [calendarView, setCalendarView]           = useState<CalendarView>('week')
+  const isMobile = useIsMobile()
+
+  const [calendarView, setCalendarView]           = useState<CalendarView>(() => (isMobileBreakpoint() ? 'day' : 'week'))
   const [dayBreakdown, setDayBreakdown]           = useState<DayBreakdown>('none')
   const [filterRoomId, setFilterRoomId]           = useState<string>('')
   const [filterProfId, setFilterProfId]           = useState<string>('')
@@ -1020,12 +1025,18 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const hideWeekend = !calendarDisplay.visibleDays.includes(0) && !calendarDisplay.visibleDays.includes(6)
   const rbcView: View = calendarView === 'week' && hideWeekend ? 'work_week' : calendarView
   const calendarViews: View[] = hideWeekend
-    ? ['week', 'work_week', 'day']
-    : ['month', 'week', 'work_week', 'day']
+    ? ['week', 'work_week', 'day', 'agenda']
+    : ['month', 'week', 'work_week', 'day', 'agenda']
+  // Full height on desktop; on mobile leave room for the browser chrome and
+  // bottom tab bar without forcing a double scroll.
+  const calendarHeight = isMobile
+    ? Math.max(400, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) - 220))
+    : 820
+  const calendarOverflowX = isMobile && (calendarView === 'week' || calendarView === 'month')
   const calendarPeriodLabel = calendarView === 'month'
     ? format(calendarDate, "MMMM 'de' yyyy", { locale: ptBR })
-    : calendarView === 'week'
-      ? `${format(startOfWeek(calendarDate), 'dd/MM')} – ${format(endOfWeek(calendarDate), 'dd/MM')}`
+    : calendarView === 'week' || calendarView === 'agenda'
+      ? `${format(startOfWeek(calendarDate, { weekStartsOn: 1 }), 'dd/MM')} – ${format(endOfWeek(calendarDate, { weekStartsOn: 1 }), 'dd/MM')}`
       : format(calendarDate, "EEEE, d 'de' MMMM", { locale: ptBR })
 
   function handleCalendarNavigate(nextDate: Date) {
@@ -1035,7 +1046,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   function navigateCalendar(direction: -1 | 1) {
     const nextDate = calendarView === 'month'
       ? addMonths(calendarDate, direction)
-      : calendarView === 'week'
+      : calendarView === 'week' || calendarView === 'agenda'
         ? addWeeks(calendarDate, direction)
         : addDays(calendarDate, direction)
     setCalendarDate(nextDate)
@@ -1125,6 +1136,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
               className="mt-0.5 bg-transparent text-sm font-semibold text-gray-700 focus:outline-none"
             >
               <option value="day">Dia</option>
+              <option value="agenda">Lista</option>
               <option value="week">Semana</option>
               {!hideWeekend && <option value="month">Mês</option>}
             </select>
@@ -1185,7 +1197,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
         </div>
       )}
 
-      <div className={`overflow-hidden rounded-xl border border-gray-100 bg-white p-4 ${isLoading || isFetching ? 'opacity-60' : ''}`}>
+      <div className={`${calendarOverflowX ? 'overflow-x-auto' : 'overflow-hidden'} rounded-xl border border-gray-100 bg-white p-4 ${isLoading || isFetching ? 'opacity-60' : ''}`}>
         <div className="mb-3 flex items-center justify-between gap-3 px-1">
           <h2 className="first-letter:uppercase text-base font-semibold text-gray-800">{calendarPeriodLabel}</h2>
           {hideWeekend && calendarView === 'week' && <span className="text-xs text-gray-500">Segunda a sexta</span>}
@@ -1220,54 +1232,56 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           </div>
         ) : null}
 
-        <DragAndDropCalendar
-          className={`consultin-calendar consultin-view-${rbcView}`}
-          localizer={localizer}
-          culture="pt-BR"
-          date={calendarDate}
-          view={rbcView}
-          views={calendarViews}
-          toolbar={false}
-          events={events}
-          resources={dayBreakdownResources}
-          resourceAccessor="resourceId"
-          resourceIdAccessor="id"
-          resourceTitleAccessor="title"
-          onNavigate={handleCalendarNavigate}
-          onView={view => setCalendarView(view === 'work_week' ? 'week' : view as CalendarView)}
-          onSelectSlot={handleDateSelect}
-          onSelectEvent={handleEventClick}
-          onEventDrop={handleEventDrop}
-          onEventResize={handleEventResize}
-          selectable={!isPersonalView && calendarView !== 'month'}
-          resizable={!isPersonalView}
-          draggableAccessor={() => !isPersonalView}
-          resizableAccessor={() => !isPersonalView}
-          step={15}
-          timeslots={2}
-          min={timeToDate(calendarDisplay.slotMin)}
-          max={timeToDate(calendarDisplay.slotMax)}
-          scrollToTime={timeToDate(calendarDisplay.slotMin)}
-          dayLayoutAlgorithm="no-overlap"
-          showAllEvents
-          popup
-          components={{ event: renderAppointmentEvent }}
-          eventPropGetter={event => ({
-            className: 'consultin-agenda-event',
-            style: {
-              backgroundColor: `color-mix(in srgb, ${event.color} 15%, var(--ui-bg))`,
-              borderLeft: `3px solid ${event.color}`,
-            },
-          })}
-          formats={{
-            timeGutterFormat: date => format(date, 'HH:mm'),
-            dayHeaderFormat: date => format(date, "EEEE, dd/MM", { locale: ptBR }),
-            weekdayFormat: date => format(date, 'EEE', { locale: ptBR }),
-            dayRangeHeaderFormat: ({ start, end }) => `${format(start, 'dd/MM')} – ${format(end, 'dd/MM')}`,
-          }}
-          messages={{ showMore: count => `+${count} consultas`, noEventsInRange: 'Nenhuma consulta neste período' }}
-          style={{ height: 820 }}
-        />
+        <div className={calendarOverflowX ? 'min-w-[680px]' : ''}>
+          <DragAndDropCalendar
+            className={`consultin-calendar consultin-view-${rbcView}`}
+            localizer={localizer}
+            culture="pt-BR"
+            date={calendarDate}
+            view={rbcView}
+            views={calendarViews}
+            toolbar={false}
+            events={events}
+            resources={dayBreakdownResources}
+            resourceAccessor="resourceId"
+            resourceIdAccessor="id"
+            resourceTitleAccessor="title"
+            onNavigate={handleCalendarNavigate}
+            onView={view => setCalendarView(view === 'work_week' ? 'week' : view as CalendarView)}
+            onSelectSlot={handleDateSelect}
+            onSelectEvent={handleEventClick}
+            onEventDrop={handleEventDrop}
+            onEventResize={handleEventResize}
+            selectable={!isPersonalView && calendarView !== 'month'}
+            resizable={!isPersonalView && !isMobile}
+            draggableAccessor={() => !isPersonalView && !isMobile}
+            resizableAccessor={() => !isPersonalView && !isMobile}
+            step={15}
+            timeslots={2}
+            min={timeToDate(calendarDisplay.slotMin)}
+            max={timeToDate(calendarDisplay.slotMax)}
+            scrollToTime={timeToDate(calendarDisplay.slotMin)}
+            dayLayoutAlgorithm="no-overlap"
+            showAllEvents
+            popup
+            components={{ event: renderAppointmentEvent }}
+            eventPropGetter={event => ({
+              className: 'consultin-agenda-event',
+              style: {
+                backgroundColor: `color-mix(in srgb, ${event.color} 15%, var(--ui-bg))`,
+                borderLeft: `3px solid ${event.color}`,
+              },
+            })}
+            formats={{
+              timeGutterFormat: date => format(date, 'HH:mm'),
+              dayHeaderFormat: date => format(date, "EEEE, dd/MM", { locale: ptBR }),
+              weekdayFormat: date => format(date, 'EEE', { locale: ptBR }),
+              dayRangeHeaderFormat: ({ start, end }) => `${format(start, 'dd/MM')} – ${format(end, 'dd/MM')}`,
+            }}
+            messages={{ showMore: count => `+${count} consultas`, noEventsInRange: 'Nenhuma consulta neste período' }}
+            style={{ height: calendarHeight }}
+          />
+        </div>
       </div>
 
       <Suspense fallback={null}>
