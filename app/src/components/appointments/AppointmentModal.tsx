@@ -16,7 +16,7 @@ import AppointmentPaymentModal from './AppointmentPaymentModal'
 import ProfessionalModal from '../professionals/ProfessionalModal'
 import { useProfessionals } from '../../hooks/useProfessionals'
 import { usePatientAppointments } from '../../hooks/useAppointments'
-import { useAppointmentMutations } from '../../hooks/useAppointmentsMutations'
+import { useAppointmentMutations, useUpdateAppointmentStatus } from '../../hooks/useAppointmentsMutations'
 import { useAppointmentPayments } from '../../hooks/useAppointmentPayments'
 import { usePatientSearch, useCreatePatient } from '../../hooks/usePatients'
 import { usePatientClinicalItems } from '../../hooks/usePatientClinicalItems'
@@ -30,6 +30,7 @@ import PatientDrawer from '../patients/PatientDrawer'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import { APP_ROUTES } from '../../lib/appRoutes'
 import { getAppointmentSaveErrorMessage } from '../../utils/appointmentErrors'
+import { parseCurrency } from '../../utils/currency'
 import { getAppointmentRoomRequirement } from '../../utils/appointmentRoomRequirement'
 import {
   APPOINTMENT_STATUS_COLORS,
@@ -194,6 +195,7 @@ export default function AppointmentModal({
   const { hasStaff, hasFinancial, hasInventory } = useClinicModules()
   const { data: professionals = [] } = useProfessionals()
   const { create, update, cancel, remove } = useAppointmentMutations()
+  const quickStatus = useUpdateAppointmentStatus()
   const { data: payments = [], isLoading: loadingPayments } = useAppointmentPayments(appointment?.id)
   const { data: rooms = [] } = useRooms()
   const { data: serviceTypes = [] } = useServiceTypes()
@@ -459,13 +461,15 @@ export default function AppointmentModal({
         return
       }
 
-      const chargeRaw = values.chargeAmount ? parseFloat(values.chargeAmount.replace(',', '.')) : NaN
-      const feeRaw = values.professionalFee ? parseFloat(values.professionalFee.replace(',', '.')) : NaN
-      if (values.chargeAmount && isNaN(chargeRaw)) {
+      // parseCurrency handles the pt-BR thousands separator ("1.500,00" → 150000).
+      // A bare parseFloat(replace(',', '.')) read that as 1.5 and silently stored R$ 1,50.
+      const chargeRaw = values.chargeAmount ? parseCurrency(values.chargeAmount) : NaN
+      const feeRaw = values.professionalFee ? parseCurrency(values.professionalFee) : NaN
+      if (values.chargeAmount && Number.isNaN(chargeRaw)) {
         toast.error('Valor cobrado inválido')
         return
       }
-      if (values.professionalFee && isNaN(feeRaw)) {
+      if (values.professionalFee && Number.isNaN(feeRaw)) {
         toast.error('Repasse ao profissional inválido')
         return
       }
@@ -477,8 +481,8 @@ export default function AppointmentModal({
         toast.error('Repasse ao profissional não pode ser negativo')
         return
       }
-      const chargeAmountCents = values.chargeAmount ? Math.round(chargeRaw * 100) : null
-      const professionalFeeCents = values.professionalFee ? Math.round(feeRaw * 100) : null
+      const chargeAmountCents = values.chargeAmount ? chargeRaw : null
+      const professionalFeeCents = values.professionalFee ? feeRaw : null
       let shouldClose = false
 
       const basePayload = {
@@ -654,6 +658,22 @@ export default function AppointmentModal({
     navigate(path === 'detail' ? `/pacientes/${patientId}` : `/pacientes/${patientId}/anamnese`)
   }
 
+  /** Status is the most frequent action on an existing appointment, so it persists on
+   *  click. Requiring a separate "Salvar alterações" meant marking a consultation as
+   *  done, closing the drawer, and losing it silently. */
+  async function handleStatusClick(status: AppointmentStatus) {
+    const previous = (watchedStatus ?? appointment?.status ?? 'scheduled') as AppointmentStatus
+    setValue('status', status, { shouldDirty: true, shouldTouch: true, shouldValidate: true })
+    if (!isEditing || !appointment || status === previous) return
+    try {
+      await quickStatus.mutateAsync({ id: appointment.id, status })
+      toast.success(`Consulta marcada como “${APPOINTMENT_STATUS_LABELS[status]}”`)
+    } catch (error) {
+      setValue('status', previous, { shouldDirty: true })
+      toast.error(getAppointmentSaveErrorMessage(error, 'Não foi possível atualizar o status'))
+    }
+  }
+
   async function handleCancel() {
     if (!appointment) return
     if (appointment.status === 'cancelled') {
@@ -763,8 +783,9 @@ export default function AppointmentModal({
                               key={status}
                               type="button"
                               aria-pressed={selected}
-                              onClick={() => setValue('status', status, { shouldDirty: true, shouldTouch: true, shouldValidate: true })}
-                              className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold leading-tight transition ${selected
+                              disabled={quickStatus.isPending}
+                              onClick={() => { void handleStatusClick(status) }}
+                              className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold leading-tight transition disabled:opacity-60 ${selected
                                 ? `${APPOINTMENT_STATUS_COLORS[status]} border-current ring-1 ring-current/10`
                                 : 'border-gray-200 bg-white text-gray-600 hover:border-[#0ea5b0]/50 hover:text-[#006970]'}`}
                             >

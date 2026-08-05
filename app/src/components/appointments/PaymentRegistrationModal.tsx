@@ -9,7 +9,7 @@ import { X, CheckCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { useMarkPaid, PAYMENT_METHOD_LABELS } from '../../hooks/useFinancial'
 import type { AppointmentPaymentMethod } from '../../hooks/useFinancial'
-import { formatBRL } from '../../utils/currency'
+import { formatBRL, parseCurrency } from '../../utils/currency'
 
 interface Props {
   open: boolean
@@ -32,8 +32,9 @@ export default function PaymentRegistrationModal({
   const [method, setMethod]   = useState<AppointmentPaymentMethod>('pix')
 
   async function handleConfirm() {
-    const cents = Math.round(parseFloat(amount.replace(',', '.')) * 100)
-    if (isNaN(cents) || cents <= 0) {
+    // parseCurrency handles the pt-BR thousands separator ("1.500,00" → 150000).
+    const cents = parseCurrency(amount)
+    if (Number.isNaN(cents) || cents <= 0) {
       toast.error('Informe um valor válido.')
       return
     }

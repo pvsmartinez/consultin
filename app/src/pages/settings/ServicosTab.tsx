@@ -8,7 +8,7 @@ import { useClinicModules } from '../../hooks/useClinicModules'
 import { useClinic } from '../../hooks/useClinic'
 import { SERVICE_TYPE_COLORS } from '../../types'
 import type { ServiceType, ServiceTypeInput, ServiceTypeInventorySuggestion } from '../../types'
-import { formatBRL } from '../../utils/currency'
+import { formatBRL, parseCurrency } from '../../utils/currency'
 
 interface FormState {
   name: string
@@ -120,9 +120,10 @@ export default function ServicosTab() {
     if (!form.name.trim()) { toast.error('Nome obrigatório'); return }
     let priceCentsVal: number | null = null
     if (form.priceCents.trim()) {
-      const parsed = parseFloat(form.priceCents.replace(',', '.'))
-      if (isNaN(parsed)) { toast.error('Valor inválido'); return }
-      priceCentsVal = Math.round(parsed * 100)
+      // parseCurrency handles the pt-BR thousands separator ("1.500,00" → 150000).
+      const parsed = parseCurrency(form.priceCents)
+      if (Number.isNaN(parsed)) { toast.error('Valor inválido'); return }
+      priceCentsVal = parsed
     }
 
     const input: ServiceTypeInput = {

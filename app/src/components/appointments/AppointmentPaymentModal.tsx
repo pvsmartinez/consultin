@@ -14,7 +14,7 @@ import {
   type CreateTransferInput,
 } from '../../hooks/useAppointmentPayments'
 import { useProfessionalBankAccount } from '../../hooks/useProfessionalBankAccount'
-import { formatBRL } from '../../utils/currency'
+import { formatBRL, parseCurrency } from '../../utils/currency'
 import { formatDateTime } from '../../utils/date'
 import type { Appointment, AppointmentPayment } from '../../types'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_COLORS, TRANSFER_STATUS_LABELS } from '../../types'
@@ -54,7 +54,8 @@ export default function AppointmentPaymentModal({ appointment, existingPayment, 
   const [pixQrCode, setPixQrCode]   = useState<string | null>(null)
   const [copied, setCopied]         = useState(false)
 
-  const amountCents = Math.round(parseFloat(customAmount.replace(',', '.')) * 100) || 0
+  // parseCurrency handles the pt-BR thousands separator ("1.500,00" → 150000).
+  const amountCents = parseCurrency(customAmount) || 0
 
   // ── Create charge ──────────────────────────────────────────────────────────
   async function handleCreateCharge() {
