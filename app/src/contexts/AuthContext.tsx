@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
-import type { Session } from '@supabase/supabase-js'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase'
 import { QK } from '../lib/queryKeys'
 import { primaryRole, mergedPermissions } from '../types'
@@ -196,10 +196,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       settle()
     }, 5000)
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      settle()
-      setSession(session)
-
+    // supabase-js v2 invokes this callback while holding its internal auth lock, so
+    // awaiting any other supabase call from inside it deadlocks until one of our own
+    // timeouts fires. On a cold load with a stored session that cost ~5s (startup RPC
+    // timeout) plus the profile-fallback retries, and left the app in a degraded state —
+    // while the same RPC answers in ~40ms once the lock is free. Everything that talks
+    // to supabase therefore runs in `handleAuthChange`, deferred by a macrotask; only
+    // synchronous state updates stay in the callback itself.
+    const handleAuthChange = async (event: AuthChangeEvent, session: Session | null) => {
       // Intercept password-reset AND invite flows — show change-password screen immediately.
       // PASSWORD_RECOVERY: forgot-password link.
       // SIGNED_IN + type=invite in URL hash: new user clicking their invite email.
@@ -274,6 +278,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         startupFetchInProgressRef.current = false
         setLoading(false) // no-op if already false
       }
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      settle()
+      setSession(session)
+      setTimeout(() => { void handleAuthChange(event, session) }, 0)
     })
 
     return () => { settle(); subscription.unsubscribe() }
