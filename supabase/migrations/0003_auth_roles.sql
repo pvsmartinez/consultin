@@ -46,7 +46,7 @@ CREATE POLICY "appointments_clinic_staff" ON appointments
 CREATE POLICY "appointments_patient_own" ON appointments
   FOR SELECT
   USING (
-    current_user_role() = 'patient'
+    current_user_role()::text = 'patient'
     AND patient_id = (SELECT id FROM patients WHERE user_id = auth.uid() LIMIT 1)
   );
 
@@ -63,14 +63,14 @@ CREATE POLICY "patients_clinic_staff" ON patients
 CREATE POLICY "patients_own_record" ON patients
   FOR SELECT
   USING (
-    current_user_role() = 'patient'
+    current_user_role()::text = 'patient'
     AND user_id = auth.uid()
   );
 
 CREATE POLICY "patients_own_update" ON patients
   FOR UPDATE
   USING (
-    current_user_role() = 'patient'
+    current_user_role()::text = 'patient'
     AND user_id = auth.uid()
   );
 
