@@ -41,7 +41,19 @@ vi.mock('../hooks/useAppointmentsMutations', () => ({
 vi.mock('../hooks/useClinicQuota', () => ({
   useClinicQuota: () => ({ subscriptionRequired: false, exceeded: false }),
 }))
+vi.mock('../hooks/useAgendaBlocks', async () => {
+  const actual = await vi.importActual<typeof import('../hooks/useAgendaBlocks')>('../hooks/useAgendaBlocks')
+  return {
+    ...actual,
+    useAgendaBlocksQuery: () => ({ data: [] }),
+    useAgendaBlockMutations: () => ({
+      create: { mutateAsync: vi.fn(), isPending: false },
+      remove: { mutateAsync: vi.fn(), isPending: false },
+    }),
+  }
+})
 vi.mock('../components/appointments/AppointmentModal', () => ({ default: () => null }))
+vi.mock('../components/appointments/AgendaBlockModal', () => ({ default: () => null }))
 vi.mock('../components/billing/UpgradeModal', () => ({ default: () => null }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 

@@ -14,6 +14,7 @@ import {
   DoorOpen,
   Lock,
   Plus,
+  Prohibit,
   SealCheck,
   Warning,
   WarningCircle,
@@ -36,8 +37,10 @@ import { APPOINTMENT_STATUS_LABELS, type Appointment, type AppointmentStatus } f
 import { getAppointmentSaveErrorMessage } from '../utils/appointmentErrors'
 import { fillMissingRoomSelections } from '../utils/agendaRoomSelections'
 import { APP_ROUTES } from '../lib/appRoutes'
+import { useAgendaBlocksQuery, useAgendaBlockMutations, findBlockAt, type AgendaBlock } from '../hooks/useAgendaBlocks'
 
 const AppointmentModal = lazy(() => import('../components/appointments/AppointmentModal'))
+const AgendaBlockModal = lazy(() => import('../components/appointments/AgendaBlockModal'))
 
 const DAY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = typeof DAY_ORDER[number]
@@ -55,9 +58,11 @@ type AgendaCalendarEvent = {
   start: Date
   end: Date
   resourceId?: string
+  /** absent on background events (agenda blocks), which are not appointments */
   appointment: Appointment
   conflictNames?: string[]
   color: string
+  allDay?: boolean
 }
 
 const localizer = dateFnsLocalizer({
@@ -141,6 +146,55 @@ function timeToDate(value: string) {
   return date
 }
 
+const DAY_END_MIN = 23 * 60 + 59
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.slice(0, 5).split(':').map(Number)
+  return (hours || 0) * 60 + (minutes || 0)
+}
+
+function minutesToTime(total: number) {
+  const clamped = Math.max(0, Math.min(DAY_END_MIN, total))
+  const hours = Math.floor(clamped / 60)
+  const minutes = clamped % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+/**
+ * Widen the visible time window so it covers every appointment in the loaded range.
+ *
+ * react-big-calendar clamps events to `min`/`max`: an 08:00 appointment in a
+ * 09:00–18:00 grid was drawn flush against the top edge and a 23:00 one flush against
+ * the bottom, i.e. rendered at a time they do not happen at. Growing the window to the
+ * enclosing hour keeps the configured hours as the default view while never showing an
+ * appointment at the wrong position.
+ */
+export function visibleTimeWindow(
+  configuredStart: string,
+  configuredEnd: string,
+  appointments: Array<{ startsAt: string; endsAt: string }>,
+): { slotMin: string; slotMax: string } {
+  let minMinutes = timeToMinutes(configuredStart)
+  let maxMinutes = timeToMinutes(configuredEnd)
+
+  for (const appointment of appointments) {
+    const start = new Date(appointment.startsAt)
+    const end = new Date(appointment.endsAt)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue
+
+    const startMinutes = start.getHours() * 60 + start.getMinutes()
+    // An appointment ending exactly on the hour shouldn't add an empty hour below it.
+    const endMinutes = end.getHours() * 60 + end.getMinutes()
+
+    if (startMinutes < minMinutes) minMinutes = Math.floor(startMinutes / 60) * 60
+    if (endMinutes > maxMinutes) maxMinutes = Math.ceil(endMinutes / 60) * 60
+  }
+
+  if (maxMinutes <= minMinutes) maxMinutes = minMinutes + 60
+
+  return { slotMin: minutesToTime(minMinutes), slotMax: minutesToTime(maxMinutes) }
+}
+
 function getCalendarQueryRange(date: Date, view: CalendarView) {
   if (view === 'day') {
     const start = startOfDay(date)
@@ -159,6 +213,21 @@ function getCalendarQueryRange(date: Date, view: CalendarView) {
 }
 
 function renderAppointmentEvent({ event }: EventProps<AgendaCalendarEvent>) {
+  // This renderer is also used for background events (agenda blocks), which carry no
+  // appointment. Reading through to `appointment` there threw and the ErrorBoundary
+  // blanked the whole calendar, so blocks get their own minimal presentation.
+  if (!event.appointment) {
+    return (
+      <div
+        className="flex h-full min-w-0 items-center gap-1 overflow-hidden px-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-text-muted)]"
+        title={`Sem atendimento: ${event.title}`}
+      >
+        <Prohibit size={11} aria-hidden="true" />
+        <span className="truncate">{event.title}</span>
+      </div>
+    )
+  }
+
   const { appointment, conflictNames, color, end, start } = event
   const hasConflict = !!conflictNames?.length
   const patientFullName = normalizeName(appointment.patient?.name) || 'Paciente'
@@ -554,6 +623,17 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const [extendConfirm, setExtendConfirm]         = useState<ExtendConfirm | null>(null)
   const [closedSlotPending, setClosedSlotPending] = useState<ClosedSlotPending | null>(null)
   const [roomsQuickOpen, setRoomsQuickOpen]       = useState(false)
+  const [showWeekend, setShowWeekend]             = useState(false)
+  const [showCancelled, setShowCancelled]         = useState(false)
+  const [blockModalOpen, setBlockModalOpen]       = useState(false)
+  const [blockModalSlot, setBlockModalSlot]       = useState<{ date: string; time: string; durationMin: number } | null>(null)
+  const [blockToRemove, setBlockToRemove]         = useState<AgendaBlock | null>(null)
+  const [blockedSlotPending, setBlockedSlotPending] = useState<{
+    block: AgendaBlock
+    date: string
+    time: string
+    durationMin: number
+  } | null>(null)
   const [unassignedPopupOpen, setUnassignedPopupOpen] = useState(false)
   const [lastUnassignedPromptCount, setLastUnassignedPromptCount] = useState(0)
   const [selectedRoomByAppointment, setSelectedRoomByAppointment] = useState<Record<string, string>>({})
@@ -629,6 +709,8 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     queryProfessionalFilter,
   )
   const { update, cancel } = useAppointmentMutations()
+  const { data: agendaBlocks = [] } = useAgendaBlocksQuery(calendarRange.start, calendarRange.end)
+  const { remove: removeBlock } = useAgendaBlockMutations()
 
   const clinicColorMap = Object.fromEntries(
     myProfRecords.map((r, i) => [r.clinicId, CLINIC_PALETTE[i % CLINIC_PALETTE.length]])
@@ -642,7 +724,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     && personalProfessionalFilter.length === 0
     && isProfessionalRecordsError
 
-  const filteredAppointments = useMemo(() => (
+  const scopedAppointments = useMemo(() => (
     (appointments as (Appointment & { clinicName?: string | null })[]).filter(appointment => {
       if (filterRoomId === UNASSIGNED_ROOM_FILTER && appointment.roomId) return false
       if (filterRoomId && filterRoomId !== UNASSIGNED_ROOM_FILTER && appointment.roomId !== filterRoomId) return false
@@ -650,6 +732,21 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
       return true
     })
   ), [appointments, filterProfId, filterRoomId, isPersonalView])
+
+  // Cancelled appointments used to stay on the grid, where the no-overlap layout made
+  // them steal half the width of the real appointment in the same slot. They are hidden
+  // by default and the count stays on screen, so nothing disappears silently.
+  const cancelledCount = useMemo(
+    () => scopedAppointments.filter(appointment => appointment.status === 'cancelled').length,
+    [scopedAppointments],
+  )
+
+  const filteredAppointments = useMemo(
+    () => (showCancelled
+      ? scopedAppointments
+      : scopedAppointments.filter(appointment => appointment.status !== 'cancelled')),
+    [scopedAppointments, showCancelled],
+  )
 
   // Overlaps are allowed (a professional may intentionally double-book — e.g. covering
   // no-shows or running two patients in parallel) but flagged visually so nothing is hidden.
@@ -794,8 +891,59 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     }
   })
 
+  // Blocks render behind the appointments (react-big-calendar `backgroundEvents`) so a
+  // blocked period reads as unavailable shading rather than as something bookable.
+  const backgroundEvents: AgendaCalendarEvent[] = useMemo(
+    () => agendaBlocks
+      .filter(block => !block.allDay)
+      .filter(block => !filterProfId || !block.professionalId || block.professionalId === filterProfId)
+      .map(block => ({
+        id: block.id,
+        title: block.reason ?? 'Indisponível',
+        start: new Date(block.startsAt),
+        end: new Date(block.endsAt),
+        color: '#64748b',
+        appointment: undefined as unknown as Appointment,
+      })),
+    [agendaBlocks, filterProfId],
+  )
+
+  // All-day blocks (holiday, trip) belong in the all-day row, not as a 24h column smear.
+  const allDayBlockEvents: AgendaCalendarEvent[] = useMemo(
+    () => agendaBlocks
+      .filter(block => block.allDay)
+      .filter(block => !filterProfId || !block.professionalId || block.professionalId === filterProfId)
+      .map(block => ({
+        id: `block-${block.id}`,
+        title: block.reason ?? 'Sem atendimento',
+        start: new Date(block.startsAt),
+        end: new Date(block.endsAt),
+        allDay: true,
+        color: '#64748b',
+        appointment: undefined as unknown as Appointment,
+      })),
+    [agendaBlocks, filterProfId],
+  )
+
+  function openBlockModal(slot?: { date: string; time: string; durationMin: number }) {
+    setBlockModalSlot(slot ?? null)
+    setBlockModalOpen(true)
+  }
+
   function handleDateSelect(arg: SlotInfo) {
     const durationMin = Math.max(15, Math.round((arg.end.getTime() - arg.start.getTime()) / 60000))
+    // A block warns instead of refusing — same call as overlapping appointments, the
+    // reception decides. Silently allowing it would defeat the point of marking it.
+    const block = findBlockAt(agendaBlocks, arg.start, filterProfId || null)
+    if (block) {
+      setBlockedSlotPending({
+        block,
+        date: format(arg.start, 'yyyy-MM-dd'),
+        time: format(arg.start, 'HH:mm'),
+        durationMin,
+      })
+      return
+    }
     if (!isPersonalView && clinic?.workingHours && !isInsideBusinessHours(arg.start, clinic.workingHours)) {
       const dayKey = DAY_ORDER[arg.start.getDay() as 0|1|2|3|4|5|6]
       setClosedSlotPending({
@@ -867,9 +1015,28 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   }
 
   function handleEventClick(event: AgendaCalendarEvent) {
+    // A block has no appointment behind it; clicking it offers to lift the block instead
+    // of opening an empty appointment form.
+    if (!event.appointment) {
+      const block = agendaBlocks.find(item => `block-${item.id}` === event.id || item.id === event.id)
+      if (block) setBlockToRemove(block)
+      return
+    }
     setEditingAppt(event.appointment)
     setInitialSlot(null)
     setModalOpen(true)
+  }
+
+  async function handleRemoveBlock() {
+    if (!blockToRemove) return
+    const target = blockToRemove
+    setBlockToRemove(null)
+    try {
+      await removeBlock.mutateAsync(target.id)
+      toast.success('Bloqueio removido')
+    } catch {
+      toast.error('Não foi possível remover o bloqueio')
+    }
   }
 
   async function handleEventDrop({ event, start, resourceId }: EventInteractionArgs<AgendaCalendarEvent>) {
@@ -1023,10 +1190,24 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
   const pageTitle = isPersonalView ? 'Minha Agenda' : 'Agenda'
   const todayHeadline = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
   const hideWeekend = !calendarDisplay.visibleDays.includes(0) && !calendarDisplay.visibleDays.includes(6)
-  const rbcView: View = calendarView === 'week' && hideWeekend ? 'work_week' : calendarView
-  const calendarViews: View[] = hideWeekend
-    ? ['week', 'work_week', 'day', 'agenda']
-    : ['month', 'week', 'work_week', 'day', 'agenda']
+  // A clinic that doesn't normally open on weekends still books the odd Saturday, so
+  // collapsing Sat/Sun is a default the user can undo — never a hard hide. The month
+  // view also stays available: it used to be dropped from the picker entirely for these
+  // clinics, which removed the only overview where a weekend booking was visible.
+  const collapseWeekend = hideWeekend && !showWeekend
+  const rbcView: View = calendarView === 'week' && collapseWeekend ? 'work_week' : calendarView
+  const calendarViews: View[] = ['month', 'week', 'work_week', 'day', 'agenda']
+  const timeWindow = useMemo(
+    () => visibleTimeWindow(calendarDisplay.slotMin, calendarDisplay.slotMax, filteredAppointments),
+    [calendarDisplay.slotMin, calendarDisplay.slotMax, filteredAppointments],
+  )
+  const hiddenWeekendCount = useMemo(() => {
+    if (calendarView !== 'week' || !collapseWeekend) return 0
+    return filteredAppointments.filter(appointment => {
+      const day = new Date(appointment.startsAt).getDay()
+      return day === 0 || day === 6
+    }).length
+  }, [calendarView, collapseWeekend, filteredAppointments])
   // Full height on desktop; on mobile leave room for the browser chrome and
   // bottom tab bar without forcing a double scroll.
   const calendarHeight = isMobile
@@ -1056,10 +1237,6 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
     setCalendarView(nextView)
   }
 
-  useEffect(() => {
-    if (hideWeekend && calendarView === 'month') setCalendarView('week')
-  }, [calendarView, hideWeekend])
-
   function handleDayBreakdownChange(nextBreakdown: DayBreakdown) {
     setDayBreakdown(nextBreakdown)
   }
@@ -1086,13 +1263,21 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
             </div>
           </div>
           {!isPersonalView && (
-            <button
-              onClick={() => { setEditingAppt(null); setInitialSlot(null); openNewAppointmentModal() }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm text-white shadow-sm transition-all active:scale-95 sm:w-auto"
-              style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
-            >
-              <Plus size={16} /> Nova consulta
-            </button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <button
+                onClick={() => openBlockModal()}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 transition-colors hover:border-slate-400 hover:text-slate-700 sm:w-auto"
+              >
+                <Prohibit size={16} /> Bloquear agenda
+              </button>
+              <button
+                onClick={() => { setEditingAppt(null); setInitialSlot(null); openNewAppointmentModal() }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm text-white shadow-sm transition-all active:scale-95 sm:w-auto"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+              >
+                <Plus size={16} /> Nova consulta
+              </button>
+            </div>
           )}
         </div>
 
@@ -1138,7 +1323,7 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
               <option value="day">Dia</option>
               <option value="agenda">Lista</option>
               <option value="week">Semana</option>
-              {!hideWeekend && <option value="month">Mês</option>}
+              <option value="month">Mês</option>
             </select>
           </label>
           <div className="flex min-h-11 items-center gap-1 rounded-xl border border-gray-200 bg-[#f8fafb] px-1.5 py-1 sm:ml-auto" aria-label="Navegação do calendário">
@@ -1165,6 +1350,23 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
                 <option value="professional">Profissional</option>
               </select>
             </label>
+          )}
+          {cancelledCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowCancelled(current => !current)}
+              aria-pressed={showCancelled}
+              className={`flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm transition-colors sm:w-auto ${
+                showCancelled
+                  ? 'border-rose-300 bg-rose-50 text-rose-700'
+                  : 'border-gray-200 bg-[#f8fafb] text-gray-600 hover:border-[#0ea5b0]/40 hover:text-[#0ea5b0]'
+              }`}
+            >
+              <XCircle size={14} weight={showCancelled ? 'fill' : 'regular'} />
+              {showCancelled
+                ? `Ocultar canceladas (${cancelledCount})`
+                : `Ver canceladas (${cancelledCount})`}
+            </button>
           )}
           {hasRooms && (role === 'admin' || isSuperAdmin) && (
             <button
@@ -1202,6 +1404,23 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           <h2 className="first-letter:uppercase text-base font-semibold text-gray-800">{calendarPeriodLabel}</h2>
           {hideWeekend && calendarView === 'week' && <span className="text-xs text-gray-500">Segunda a sexta</span>}
         </div>
+
+        {hiddenWeekendCount > 0 && (
+          <div className="mb-3 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between" role="status">
+            <span>
+              {hiddenWeekendCount === 1
+                ? '1 consulta neste fim de semana não aparece nesta visão.'
+                : `${hiddenWeekendCount} consultas neste fim de semana não aparecem nesta visão.`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowWeekend(true)}
+              className="self-start rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 sm:self-auto"
+            >
+              Mostrar sábado e domingo
+            </button>
+          </div>
+        )}
 
         {isAppointmentsError ? (
           <div className="mb-3 flex flex-col gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between" role="alert">
@@ -1241,7 +1460,8 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
             view={rbcView}
             views={calendarViews}
             toolbar={false}
-            events={events}
+            events={[...events, ...allDayBlockEvents]}
+            backgroundEvents={backgroundEvents}
             resources={dayBreakdownResources}
             resourceAccessor="resourceId"
             resourceIdAccessor="id"
@@ -1254,19 +1474,23 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
             onEventResize={handleEventResize}
             selectable={!isPersonalView && calendarView !== 'month'}
             resizable={!isPersonalView && !isMobile}
-            draggableAccessor={() => !isPersonalView && !isMobile}
-            resizableAccessor={() => !isPersonalView && !isMobile}
+            draggableAccessor={event => !!event.appointment && !isPersonalView && !isMobile}
+            resizableAccessor={event => !!event.appointment && !isPersonalView && !isMobile}
             step={15}
             timeslots={2}
-            min={timeToDate(calendarDisplay.slotMin)}
-            max={timeToDate(calendarDisplay.slotMax)}
+            min={timeToDate(timeWindow.slotMin)}
+            max={timeToDate(timeWindow.slotMax)}
             scrollToTime={timeToDate(calendarDisplay.slotMin)}
             dayLayoutAlgorithm="no-overlap"
             showAllEvents
             popup
             components={{ event: renderAppointmentEvent }}
             eventPropGetter={event => ({
-              className: 'consultin-agenda-event',
+              // Block events carry no appointment — they are periods without care, and
+              // must not be styled (or read) as something that happens.
+              className: event.appointment
+                ? 'consultin-agenda-event'
+                : 'consultin-agenda-event consultin-agenda-block',
               style: {
                 backgroundColor: `color-mix(in srgb, ${event.color} 15%, var(--ui-bg))`,
                 borderLeft: `3px solid ${event.color}`,
@@ -1341,6 +1565,82 @@ export default function AgendaPage({ myOnly = false }: { myOnly?: boolean }) {
           onClose={() => setUnassignedPopupOpen(false)}
         />
       )}
+
+      {blockToRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-80 rounded-2xl bg-white p-6 shadow-xl">
+            <p className="text-sm font-semibold text-gray-800">Remover bloqueio?</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {blockToRemove.reason ?? 'Sem atendimento'} ·{' '}
+              {blockToRemove.allDay
+                ? formatInTimeZone(blockToRemove.startsAt, TZ_BR, "dd/MM")
+                : `${formatInTimeZone(blockToRemove.startsAt, TZ_BR, 'dd/MM HH:mm')}–${formatInTimeZone(blockToRemove.endsAt, TZ_BR, 'HH:mm')}`}
+              . O horário volta a aceitar agendamento normalmente.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setBlockToRemove(null)}
+                className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">
+                Manter
+              </button>
+              <button onClick={handleRemoveBlock} disabled={removeBlock.isPending}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50">
+                {removeBlock.isPending ? 'Removendo...' : 'Remover'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {blockedSlotPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-80 rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                <Prohibit size={16} className="text-slate-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Agenda bloqueada</p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {blockedSlotPending.time} está dentro de um bloqueio
+                  {blockedSlotPending.block.reason ? ` (${blockedSlotPending.block.reason})` : ''}.
+                  Você pode agendar por cima se precisar.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  const { date, time, durationMin } = blockedSlotPending
+                  setBlockedSlotPending(null)
+                  setEditingAppt(null)
+                  setInitialSlot({ date, time, durationMin })
+                  openNewAppointmentModal()
+                }}
+                className="w-full rounded-lg px-4 py-2 text-sm text-white transition-all active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #0ea5b0 0%, #006970 100%)' }}
+              >
+                Agendar mesmo assim
+              </button>
+              <button onClick={() => setBlockedSlotPending(null)}
+                className="w-full rounded-lg px-4 py-2 text-sm text-gray-400 hover:text-gray-600">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Suspense fallback={null}>
+        <AgendaBlockModal
+          open={blockModalOpen}
+          onClose={() => { setBlockModalOpen(false); setBlockModalSlot(null) }}
+          initialDate={blockModalSlot?.date}
+          initialTime={blockModalSlot?.time}
+          initialDurationMin={blockModalSlot?.durationMin}
+          initialProfessionalId={filterProfId || null}
+          professionals={activeProfessionals.map(p => ({ id: p.id, name: p.name }))}
+        />
+      </Suspense>
 
       {closedSlotPending && (
         <ClosedSlotModal
