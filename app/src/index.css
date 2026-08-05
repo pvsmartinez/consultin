@@ -161,3 +161,30 @@ body {
 .rbc-show-more { color: var(--ui-brand-primary); font-size: 0.75rem; font-weight: 600; }
 .rbc-row-segment { padding: 0 2px 2px; }
 .rbc-month-row + .rbc-month-row, .rbc-day-bg + .rbc-day-bg, .rbc-header + .rbc-header { border-color: var(--ui-border); }
+
+/* Agenda blocks (feriado, almoço, viagem). Diagonal hatching reads as "nothing happens
+   here" — a flat fill would compete with the appointment cards for attention, and a
+   solid colour would look like yet another appointment. */
+.rbc-background-event {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ui-text-muted) 12%, transparent) 0 6px,
+    transparent 6px 12px
+  );
+  border: 0;
+  border-left: 3px solid color-mix(in srgb, var(--ui-text-muted) 45%, transparent);
+  border-radius: 0.375rem;
+  box-shadow: none;
+  color: var(--ui-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  opacity: 1;
+  padding: 0.125rem 0.375rem;
+}
+.rbc-background-event .rbc-event-label { display: none; }
+/* All-day blocks sit in the all-day row; keep them muted so a holiday doesn't shout. */
+.rbc-event.consultin-agenda-block {
+  background: color-mix(in srgb, var(--ui-text-muted) 14%, var(--ui-bg));
+  border-left: 3px solid color-mix(in srgb, var(--ui-text-muted) 55%, transparent);
+  color: var(--ui-text-muted);
+}

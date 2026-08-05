@@ -86,6 +86,13 @@ export const QK = {
     closures:          (roomId:   string | null | undefined) => ['room-closures', roomId]                   as const,
   },
 
+  // ── Agenda blocks (períodos sem atendimento) ──────────────────
+  agendaBlocks: {
+    /** Prefix — invalidates every ['agenda-blocks', ...] entry */
+    all:  ()                                                                       => ['agenda-blocks']                     as const,
+    list: (clinicId: string | null | undefined, from: string, to: string)          => ['agenda-blocks', clinicId, from, to] as const,
+  },
+
   // ── Dashboard ─────────────────────────────────────────────────
   dashboard: {
     /** Prefix — invalidates every ['dashboard-clinic-kpis', ...] entry */

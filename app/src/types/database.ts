@@ -39,6 +39,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      agenda_blocks: {
+        Row: {
+          all_day: boolean
+          clinic_id: string
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          external_ref: string | null
+          id: string
+          professional_id: string | null
+          reason: string | null
+          starts_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          clinic_id: string
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          external_ref?: string | null
+          id?: string
+          professional_id?: string | null
+          reason?: string | null
+          starts_at: string
+        }
+        Update: {
+          all_day?: boolean
+          clinic_id?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          external_ref?: string | null
+          id?: string
+          professional_id?: string | null
+          reason?: string | null
+          starts_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_blocks_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_blocks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_blocks_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_payments: {
         Row: {
           amount_cents: number
@@ -603,7 +664,6 @@ export type Database = {
           whatsapp_phone_display: string | null
           whatsapp_phone_number_id: string | null
           whatsapp_token: string | null
-          whatsapp_token_secret_id: string | null
           whatsapp_verify_token: string | null
           whatsapp_waba_id: string | null
           working_hours: Json
@@ -661,7 +721,6 @@ export type Database = {
           whatsapp_phone_display?: string | null
           whatsapp_phone_number_id?: string | null
           whatsapp_token?: string | null
-          whatsapp_token_secret_id?: string | null
           whatsapp_verify_token?: string | null
           whatsapp_waba_id?: string | null
           working_hours?: Json
@@ -719,7 +778,6 @@ export type Database = {
           whatsapp_phone_display?: string | null
           whatsapp_phone_number_id?: string | null
           whatsapp_token?: string | null
-          whatsapp_token_secret_id?: string | null
           whatsapp_verify_token?: string | null
           whatsapp_waba_id?: string | null
           working_hours?: Json
@@ -2657,3 +2715,4 @@ export const Constants = {
     },
   },
 } as const
+
