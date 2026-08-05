@@ -93,34 +93,46 @@ experience, not as a mandatory first-run blocker.
 | ----------------------- | ------------ | -------------------------------- |
 | Web (browser)           | Primary      | Any browser, mobile-responsive   |
 | Desktop (macOS/Windows) | Secondary    | Tauri v2 wrapper — same codebase |
-| Mobile app              | Future phase | React Native (Expo) — status below |
+| Mobile app              | In progress  | Capacitor (wraps `app/`) — status below |
 
 ---
 
-### Mobile app status (2026-07-22, open decision — do not treat as settled)
+### Mobile app status (2026-07-26, decided: Capacitor)
 
-`mobile/` (Expo + EAS Build/Submit) was scaffolded 2026-07-21, is still untracked in git, and
-has never produced a working TestFlight build. Other pmatz mobile apps (flightdeck, puzzleleague)
-ship via a different, proven pattern: Vite + Capacitor + local Xcode archive
-(see `flightdeck/AGENT.md` and `flightdeck/scripts/build-ios.sh`).
+Pedro decided to consolidate on the Capacitor pattern (same as flightdeck/puzzleleague)
+instead of the Expo/EAS scaffold. `app/` (the Tauri desktop React app) is now also wrapped
+natively for iOS/Android via Capacitor 7.x:
 
-Known friction with the current Expo approach:
+- `app/ios/App` and `app/android` are **real, buildable** native projects (`.xcodeproj` +
+  `Podfile` for iOS, full Gradle project for Android) — generated with `npx cap add ios` /
+  `npx cap add android`, not hand-written stubs.
+- `@capacitor/*` packages are pinned to `^7.x` across the board (core, cli, ios, android,
+  and all plugins) to match this Mac's Node 20 (Capacitor 8 needs Node 22+ — see
+  [[flightdeck-pipeline]]). `@capacitor/cli`/`ios`/`android` live in `devDependencies`.
+  A prior session had mixed `@capacitor/cli@7` with `@capacitor/core`/plugins on `@8`,
+  which is why the previous `ios/`/`android/` folders were fake (3-4 hand-written files,
+  no `.xcodeproj`/`Podfile`/`build.gradle` — `cap add` never actually ran).
+  Compliance key `ITSAppUsesNonExemptEncryption=false` added to `app/ios/App/App/Info.plist`.
+- npm scripts on `app/package.json`: `native:sync` (build + `cap sync ios`),
+  `native:sync:android`, `native:add:ios`/`native:add:android`, `native:open:ios`/`native:open:android`.
+- `scripts/build-ios.sh` (new, mirrors `flightdeck/scripts/build-ios.sh`) builds, archives,
+  and exports an IPA; `--simulator` build verified working end-to-end on 2026-07-26.
+  Reads Apple credentials from `pedrin/.env` (`APPLE_TEAM_ID`/`APPLE_KEY_ID`/`APPLE_ISSUER_ID`)
+  and Supabase URL/anon key from `app/.env` directly via `grep` (not `source` — `app/.env`
+  has an Asaas key containing a literal `$aach_...` that breaks bash `source`/`set -u`).
+  `app/ios/App/ExportOptions-AppStore.plist` created with `teamID` `8VV48629P3` (Pedro's
+  personal Apple dev team, reused from flightdeck).
 
-- `@pvsmartinez/shared` peer-depends on `react-router-dom`/React 19; Expo/RN pins React 18
-  (RN 0.76 compat), so installing anything into `mobile/` needs `--legacy-peer-deps`. A
-  Capacitor app (plain Vite + React 19) would not have this conflict.
-- EAS pipeline still needs: `eas login` / `EXPO_TOKEN` (no session on this Mac), `eas init`
-  (no `projectId` in `app.json` yet), and a `GITHUB_TOKEN` wired as an `eas secret` so the
-  cloud build can install `@pvsmartinez/shared` (a local shell env var isn't enough — the
-  build runs in Expo's cloud, not locally).
-- Already fixed: `ITSAppUsesNonExemptEncryption` added to `app.json` (same "Missing
-  Compliance" gotcha that hit flightdeck); `eas-cli` added as a local devDependency.
-
-**Open call for Pedro:** keep the separate native Expo mobile app (purpose-built lightweight
-screens, different UX from the desktop layout) and finish wiring EAS, or consolidate onto the
-Capacitor pattern (reuses the proven pipeline + gotcha fixes, avoids the peer-dep friction, but
-means either a responsive pass on the existing desktop `app/` or a new lightweight Vite sibling
-app — not a drop-in swap). Not decided yet — don't assume either direction without confirming.
+**Not done yet (next steps for an actual TestFlight release):**
+- No release build/archive/upload has been run yet — only `--simulator` was verified.
+- Xcode signing ("Signing & Capabilities" → Apple Team) has not been set interactively —
+  needed once before `./scripts/build-ios.sh` (no `--simulator`) can archive.
+- No app icon / splash asset pass — Capacitor's default placeholder icon is still in place.
+- The UI is the full desktop layout (calendar, sidebar, dense tables), not a responsive/
+  mobile-first pass — usable in a pinch but not optimized for a phone screen yet.
+- `mobile/` (the old Expo/EAS scaffold, tracked in git as of the 2026-07-25 `chore: sync`
+  commit) and `scripts/deploy-mobile.sh` are now superseded/orphaned — left in place
+  pending Pedro's call on whether to delete them.
 
 ---
 
