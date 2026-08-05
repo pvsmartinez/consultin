@@ -76,6 +76,20 @@ coverage/
 app/src-tauri/target/
 app/src-tauri/gen/
 
+# Build nativo (Capacitor / Xcode / Gradle)
+# `app/.build` são 170 MB de artefato do Xcode; sem esta regra o `git add -A` da
+# rotina de commit joga tudo isso no repositório. Os projetos nativos em si
+# (app/android, app/ios) continuam versionáveis — só a saída de build sai fora.
+app/.build/
+app/ios/App/build/
+app/ios/App/Pods/
+app/ios/App/*.xcworkspace/xcuserdata/
+app/ios/App/*.xcodeproj/xcuserdata/
+app/android/build/
+app/android/app/build/
+app/android/.gradle/
+app/android/local.properties
+
 # Uploads / Assets gerados
 uploads/
 public/uploads/
@@ -85,3 +99,7 @@ public/uploads/
 *.key
 *.crt
 .vercel
+
+# Artefatos locais do Supabase CLI
+supabase/.branches/
+supabase/.temp/

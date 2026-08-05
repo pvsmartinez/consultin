@@ -32,7 +32,11 @@
       "iconColor": "#4F46E5"
     },
     "PushNotifications": {
-      "presentationOptions": ["badge", "sound", "alert"]
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
     }
   },
   "android": {
@@ -45,7 +49,7 @@
   },
   "ios": {
     "backgroundColor": "#4F46E5",
-    "contentInset": "automatic",
+    "contentInset": "never",
     "preferredContentMode": "mobile",
     "scheme": "Consultin"
   }
