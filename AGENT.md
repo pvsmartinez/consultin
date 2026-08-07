@@ -224,7 +224,7 @@ consultin/
 │           ├── currency.ts           # centavos ↔ R$ 0,00
 │           └── date.ts               # date/time utils (pt-BR, America/Sao_Paulo)
 ├── supabase/
-│   ├── migrations/                   # SQL migrations — apply with apply-migrations.sh
+│   ├── migrations/                   # SQL migrations — apply with scripts/migrate.py
 │   ├── functions/                    # Edge Functions (Deno)
 │   │   ├── admin-users/              # Super-admin user management
 │   │   ├── asaas/                    # Asaas API proxy
@@ -234,7 +234,6 @@ consultin/
 │   │   └── whatsapp-ai-agent/        # AI-powered WhatsApp bot
 │   └── seed.sql
 └── scripts/
-    ├── apply-migrations.sh           # Applies all migrations (reads password from pedrin/.env)
     └── push-asaas-secrets.sh         # Pushes Asaas keys to Supabase secrets
 ```
 
@@ -263,28 +262,27 @@ cd app && npm run typecheck
 
 ## Supabase — Migrations & Types
 
-### Applying migrations (CI/CD — preferred)
+### Applying migrations
 
-Migrations are applied automatically on `git push origin main` via GitHub Actions
-(`.github/workflows/deploy.yml`, `migrate` job), which runs the official `supabase db push --linked`.
-Nothing else needed — just push.
-
-The migration history is tracked in `supabase_migrations.schema_migrations` on the remote DB,
-keyed by the version prefix before the first underscore in the filename (or the full 14-digit
-timestamp for newer-style files). **Never reuse a version prefix across two migration files** —
-`supabase db push` cannot distinguish them (this caused a real collision between two `0041_*`
-files in March 2026, fixed by renaming one to its commit timestamp).
-
-### Applying migrations manually (if needed)
-
-`scripts/apply-migrations.sh` reads the DB password from `pedrin/.env` and blindly re-runs every
-`.sql` file via raw `psql` — it has **no tracking table** and relies on migrations being
-idempotent (`IF NOT EXISTS`, etc.). Prefer `supabase db push --linked` (same mechanism as CI)
-since it only applies genuinely pending migrations:
+From the workspace root:
 
 ```bash
-cd consultin && supabase db push --linked
+python3 scripts/migrate.py consultin            # dry-run: what is pending
+python3 scripts/migrate.py consultin --apply    # apply, in order, and record
 ```
+
+`supabase db push` is **not** used here, and the `migrate` job was removed from
+`.github/workflows/deploy.yml`. This Supabase project is shared (consultin lives in `public`,
+cursos in `cursos`), and the official ledger is per-project rather than per-app, so the CLI reads
+the other app's migrations as missing. The workspace runner keys its ledger by `(app, version)`
+instead, which also removes the version-prefix collision hazard between apps — a real collision
+between two `0041_*` files happened in March 2026.
+
+Within this app, still never reuse a version prefix. Use full `YYYYMMDDHHMMSS` timestamps for new
+migrations. See the `supabase-shared-db` skill for the full rules.
+
+The old `scripts/apply-migrations.sh` was deleted: it re-ran every `.sql` through raw `psql` with
+no tracking table, relying on every migration being idempotent.
 
 ### Regenerating TypeScript types
 
@@ -296,7 +294,8 @@ supabase login
 supabase gen types typescript --project-id nxztzehgnkdmluogxehi > app/src/types/database.ts
 ```
 
-**Note:** `supabase CLI` is available at `/usr/local/bin/supabase`. Already logged in. No need to install or login.
+**Note:** this Mac is arm64-only — the CLI comes from Homebrew at `/opt/homebrew`, never
+`/usr/local`. Already installed and logged in.
 
 ### RLS Policy Authoring Rules — OBRIGATÓRIO
 
@@ -496,7 +495,7 @@ curl -s -X POST 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/token?grant_ty
 
 ### CI/CD
 
-- **GitHub Actions** (`.github/workflows/deploy.yml`): runs on every push to `main`, applies pending migrations via `supabase db push --linked` and deploys edge functions
+- **GitHub Actions** (`.github/workflows/deploy.yml`): runs on every push to `main` and deploys edge functions. Migrations are **not** applied by CI — use `python3 scripts/migrate.py consultin --apply` from the workspace root
 - **Vercel**: auto-deploys the frontend on every push to `main` via GitHub integration — no manual step needed
 - **To deploy**: just `git push origin main` — both run in parallel automatically
 
@@ -516,7 +515,7 @@ curl -s -X POST 'https://nxztzehgnkdmluogxehi.supabase.co/auth/v1/token?grant_ty
 | `git`             | All git operations                                                  |
 | Supabase REST API | CRUD via curl with anon/service-role key headers                    |
 
-| `supabase CLI` | `/usr/local/bin/supabase` — deploy functions: `supabase functions deploy <name> --project-ref nxztzehgnkdmluogxehi` |
+| `supabase CLI` | Homebrew (`/opt/homebrew`; this Mac is arm64-only) — deploy functions: `supabase functions deploy <name> --project-ref nxztzehgnkdmluogxehi` |
 
 ### ❌ Not Installed / Not Available
 

@@ -1,5 +1,5 @@
 -- Migration: 0001_initial_schema
--- Run: supabase db push
+-- Run: python3 scripts/migrate.py consultin --apply (da raiz do workspace)
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

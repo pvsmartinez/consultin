@@ -1,6 +1,6 @@
 #!/bin/bash
 # Seeds notify_staff_config table with Supabase URL + service role key.
-# Run this once after `bash scripts/apply-migrations.sh`.
+# Run this once after `python3 scripts/migrate.py consultin --apply` (from the workspace root).
 # Reads credentials from app/.env — never stored in git.
 
 set -e

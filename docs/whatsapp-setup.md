@@ -51,8 +51,8 @@ Lembretes automáticos (D-1 e D-0) são disparados via **pg_cron → `whatsapp-r
 ### 3.1 Aplicar a migration
 
 ```bash
-cd /Users/pedromartinez/Dev/pmatz/consultin
-supabase db push
+cd /Users/pedromartinez/Dev/pmatz
+python3 scripts/migrate.py consultin --apply
 ```
 
 Confirma que as tabelas e funções Vault foram criadas:
@@ -385,7 +385,7 @@ A arquitetura previa enviar para o profissional um resumo da agenda do dia (what
 
 ## 9. Checklist de verificação pós-deploy
 
-- [ ] `supabase db push` rodou sem erros
+- [ ] `python3 scripts/migrate.py consultin --apply` rodou sem erros
 - [ ] Tabelas `whatsapp_sessions`, `whatsapp_messages`, `whatsapp_templates`, `notification_log` existem
 - [ ] Funções `store_clinic_whatsapp_token` e `get_clinic_whatsapp_token` criadas e **sem acesso público** (`REVOKE ... FROM PUBLIC`)
 - [ ] As 5 Edge Functions respondem com 200 (teste com `curl`)
